@@ -34,7 +34,7 @@ export class VehicleFlagRecord {
   active: boolean;
 
   /** Wallet address แหล่งที่มาของ flag (ตำรวจ/DLT/ศาล ฯลฯ) */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   sourceAddress: string;
 
   /** hash เอกสารอ้างอิง – ตรงกับ on-chain refHash */

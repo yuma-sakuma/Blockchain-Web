@@ -8,18 +8,22 @@ export const ConsumerPage = () => {
   const { address } = useAuth();
   const [showGreenBook, setShowGreenBook] = useState<string | null>(null);
   const [showPrivacy, setShowPrivacy] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState<string | null>(null);
   
   // Dynamic User ID
   const currentUser = address ? `CONSUMER:${address}` : 'UNKNOWN';
   const displayUser = address ? `${address.substring(0, 6)}...` : 'Guest';
 
-  // Helper to account for "CONSUMER:0x..." vs just "0x..." depending on how we standardized it. 
-  // For now we try to match broadly or enforce prefix.
-  const myVehicles = vehicles.filter(v => 
-      v.currentOwner === currentUser || 
-      v.currentOwner === address || 
-      (v.currentOwner.includes('CONSUMER') && v.currentOwner.includes(address || ''))
-  );
+  // Address format normalization for robust matching
+  const normalizedAddress = address?.toLowerCase() || '';
+  
+  const myVehicles = vehicles.filter(v => {
+      const ownerLower = v.currentOwner.toLowerCase();
+      // Match if the owner exactly matches our address, is the CONSUMER: prefixed version, or is the PERSON: prefixed version.
+      return ownerLower === normalizedAddress || 
+             ownerLower === `consumer:${normalizedAddress}` || 
+             ownerLower === `person:${normalizedAddress}`;
+  });
 
   const handleGrantConsent = (tokenId: string, granteeOverride?: string) => {
     const grantee = granteeOverride || prompt("Target Entity ID (e.g. DEALER:0x... or INSURER:0x...):");
@@ -150,8 +154,8 @@ export const ConsumerPage = () => {
                       </div>
                       <div>
                           <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registration Details</label>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.registration.plateNo || 'PENDING'}</div>
-                          <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Book No: {selectedVehicle.registration.bookNo || 'N/A'}</div>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.registration?.plateNo || 'PENDING'}</div>
+                          <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Book No: {selectedVehicle.registration?.bookNo || 'N/A'}</div>
                           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                               <span className="badge badge-success">TAX VALID</span>
                               <span className="badge badge-info">INSURED</span>
@@ -215,6 +219,43 @@ export const ConsumerPage = () => {
           </div>
       )}
 
+      {/* History Timeline Modal */}
+      {showHistory && selectedVehicle && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div className="card" style={{ width: '600px', maxHeight: '80vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <History size={28} color="var(--accent-secondary)" />
+                        <h2 style={{ margin: 0 }}>Asset Lifecycle History</h2>
+                      </div>
+                      <button onClick={() => setShowHistory(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+                  </div>
+                  
+                  <div style={{ marginBottom: '2rem' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
+                      <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {events.filter(e => e.tokenId === selectedVehicle.tokenId).map((e, idx) => (
+                          <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid var(--accent-secondary)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{String(e.type).replace(/_/g, ' ')}</span>
+                                  <span className="text-secondary" style={{ fontSize: '0.8rem' }}>{new Date(e.timestamp).toLocaleDateString()}</span>
+                              </div>
+                              <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                                  Actor: {e.actor}
+                              </div>
+                          </div>
+                      ))}
+                      {events.filter(e => e.tokenId === selectedVehicle.tokenId).length === 0 && (
+                          <p className="text-secondary" style={{ fontStyle: 'italic' }}>No history records found for this asset.</p>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
+
       <div>
          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <CreditCard size={24} color="var(--accent-primary)" />
@@ -240,22 +281,22 @@ export const ConsumerPage = () => {
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Odometer</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.warranty?.terms?.mileageKm || 0).toLocaleString()} KM</div>
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
-                            <button onClick={() => setShowGreenBook(v.tokenId)} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+                            <button onClick={() => setShowGreenBook(v.tokenId)} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <FileText size={18} color="var(--success)" /> BOOK
                             </button>
                             <button onClick={() => setShowPrivacy(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <ShieldCheck size={18} color="var(--accent-primary)" /> PRIVACY
                             </button>
-                            <button style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+                            <button onClick={() => setShowHistory(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <History size={18} color="var(--accent-secondary)" /> HISTORY
                             </button>
-                            <button onClick={() => handleTransferVehicle(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+                            <button onClick={() => handleTransferVehicle(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <ArrowRightLeft size={18} color="var(--accent-primary)" /> TRANSFER
                             </button>
                         </div>

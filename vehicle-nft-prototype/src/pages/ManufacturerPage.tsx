@@ -26,7 +26,7 @@ export const ManufacturerPage = () => {
     // Simulate digital signing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const tokenId = 'NFT-' + Math.floor(Math.random() * 100000);
+    const tokenId = Math.floor(Math.random() * 1000000000).toString();
     const signature = 'sig_' + Math.random().toString(36).substring(7).toUpperCase();
     const actorId = `MANUFACTURER:${address?.substring(0, 6)}...`;
 
@@ -73,15 +73,20 @@ export const ManufacturerPage = () => {
   };
 
   const handleTransferToDealer = (tokenId: string) => {
-    const dealerId = "DEALER:KDT-Dealer-BKK01";
-    // Should verify if current user owns it, but simplistic "myStock" filter handles view.
+    // Default to the standard mock Dealer address for convenience
+    const defaultDealer = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+    const dest = prompt("Enter Dealer Wallet Address:", defaultDealer);
+    if (!dest) return;
+
+    const targetDealerId = `DEALER:${dest}`;
+
     addEvent({
       type: 'OWNERSHIP_TRANSFERRED',
       actor: `MANUFACTURER:${address?.substring(0, 6)}...`,
       tokenId: tokenId,
       payload: {
         from: `MANUFACTURER:${address}`,
-        to: dealerId,
+        to: targetDealerId,
         reason: 'inventory_transfer',
         docRef: 'INV-' + Math.floor(Math.random() * 10000)
       }

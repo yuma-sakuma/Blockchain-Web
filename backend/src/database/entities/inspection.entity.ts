@@ -1,11 +1,11 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { InspectionResult } from './enums';
 import { Vehicle } from './vehicle.entity';
@@ -26,7 +26,7 @@ export class Inspection {
   tokenId: string;
 
   /** Wallet address สถานตรวจสภาพ */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   stationAddress: string;
 
   /** ชื่อ/รหัสสถานตรวจสภาพ */

@@ -33,7 +33,8 @@ export const DealerPage = () => {
             }
         }
 
-        const customerName = prompt("Buyer Identity (Wallet Address or Name):", "0x...");
+        const defaultConsumer = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
+        const customerName = prompt("Buyer Identity (Wallet Address or Name):", defaultConsumer);
         if (!customerName) return;
 
         const buyerId = customerName.startsWith('0x') ? `CONSUMER:${customerName}` : `PERSON:${customerName}`;

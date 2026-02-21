@@ -25,7 +25,7 @@ export class TradeInEvaluation {
   tokenId: string;
 
   /** Wallet address ผู้ประเมิน (ดีลเลอร์) */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   evaluatorAddress: string;
 
   /** hash รายงานประเมิน – ตรงกับ on-chain evaluationHash */

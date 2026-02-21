@@ -29,7 +29,7 @@ export class MaintenanceLog {
   tokenId: string;
 
   /** Wallet address อู่/ศูนย์บริการ */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   workshopAddress: string;
 
   /** hash ของ consent อ้างอิง – ตรงกับ on-chain */

@@ -35,7 +35,7 @@ export class Registration {
   registeredAt: string;
 
   /** Wallet address เจ้าหน้าที่ DLT */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   dltOfficerAddress: string;
 
   /** เลขเล่มเขียว (plain text – เฉพาะ off-chain) */

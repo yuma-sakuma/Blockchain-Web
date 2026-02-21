@@ -1,11 +1,11 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { InsuranceAction } from './enums';
 import { Vehicle } from './vehicle.entity';
@@ -26,7 +26,7 @@ export class InsurancePolicy {
   tokenId: string;
 
   /** Wallet address บริษัทประกัน */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   insurerAddress: string;
 
   /** เลขกรมธรรม์ (plain text – off-chain) */

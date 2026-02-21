@@ -81,11 +81,10 @@ export class EventService {
         case 'OWNERSHIP_TRANSFERRED':
           if (payload.to) {
             vehicle.currentOwnerAddress = payload.to;
-            vehicle.ownerCount += 1;
+            vehicle.ownerCount = (vehicle.ownerCount || 0) + 1;
             vehicleUpdated = true;
-            
+
             const transfer = this.ownershipTransferRepository.create({
-              tokenId: vehicle.tokenId,
               fromAddress: payload.from || createEventDto.actor,
               toAddress: payload.to,
               reason: 'RESALE' as any, // Mock default reason

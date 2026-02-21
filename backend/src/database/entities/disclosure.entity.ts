@@ -26,7 +26,7 @@ export class Disclosure {
   tokenId: string;
 
   /** Wallet address ผู้ขาย */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   sellerAddress: string;
 
   /** hash(buyerDID) – ตรงกับ on-chain buyerOwnerId */

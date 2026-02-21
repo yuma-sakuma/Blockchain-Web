@@ -34,7 +34,7 @@ export const DLTPage = () => {
             type: 'PLATE_EVENT_RECORDED',
             actor: actorId,
             tokenId: searchResult.tokenId,
-            payload: { action: 'issue', plateNo: '1กข-1234', province: 'Bangkok', date: new Date().toISOString() }
+            payload: { action: 'issue', plateNo: `1กข-${Math.floor(Math.random() * 9000) + 1000}`, province: 'Bangkok', date: new Date().toISOString() }
         });
         alert("Registration complete. Digital Green Book issued.");
     };

@@ -1,11 +1,11 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ConsentScope } from './enums';
 import { Vehicle } from './vehicle.entity';
@@ -26,7 +26,7 @@ export class ConsentGrant {
   tokenId: string;
 
   /** Wallet address เจ้าของที่ให้ consent */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   ownerAddress: string;
 
   /** DID ของผู้ได้รับสิทธิ์ */

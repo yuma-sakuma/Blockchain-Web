@@ -1,10 +1,10 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  OneToMany,
-  PrimaryColumn,
-  UpdateDateColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    OneToMany,
+    PrimaryColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { ConsentGrant } from './consent-grant.entity';
 import { Disclosure } from './disclosure.entity';
@@ -37,7 +37,7 @@ export class Vehicle {
   vinHash: string;
 
   /** Wallet address ของผู้ผลิต */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   manufacturerAddress: string;
 
   /** Unix timestamp วันผลิต */
@@ -81,7 +81,7 @@ export class Vehicle {
   activeFlags: VehicleFlag[] | null;
 
   /** Wallet address เจ้าของปัจจุบัน */
-  @Column({ type: 'varchar', length: 42, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   currentOwnerAddress: string | null;
 
   /** จำนวนเจ้าของทั้งหมด */

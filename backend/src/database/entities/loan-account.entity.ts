@@ -28,7 +28,7 @@ export class LoanAccount {
   tokenId: string;
 
   /** Wallet address ผู้ให้สินเชื่อ */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   lenderAddress: string;
 
   /** สถานะภาระผูกพัน */

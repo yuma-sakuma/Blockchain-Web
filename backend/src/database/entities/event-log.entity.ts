@@ -7,7 +7,7 @@ import {
     ManyToOne,
     PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ActorRole, EventType } from './enums';
+import { ActorRole } from './enums';
 import { Vehicle } from './vehicle.entity';
 
 /**
@@ -26,11 +26,11 @@ export class EventLog {
   @Column({ type: 'bigint' })
   tokenId: string;
 
-  @Column({ type: 'enum', enum: EventType })
-  type: EventType;
+  @Column({ type: 'varchar', length: 50 })
+  type: string;
 
   /** Wallet address ผู้กระทำ */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   actorAddress: string;
 
   /** บทบาทของผู้กระทำ */

@@ -27,11 +27,11 @@ export class OwnershipTransfer {
   tokenId: string;
 
   /** Wallet address ผู้โอน */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   fromAddress: string;
 
   /** Wallet address ผู้รับโอน */
-  @Column({ length: 42 })
+  @Column({ length: 100 })
   toAddress: string;
 
   /** เหตุผลการโอน */
@@ -95,7 +95,7 @@ export class OwnershipTransfer {
   // ── Escrow (กรณี crypto) ──
 
   /** Address ของ escrow contract (ถ้ามี) */
-  @Column({ type: 'varchar', length: 42, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   escrowContract: string | null;
 
   /** Payment tx hash on-chain */
