@@ -9,7 +9,7 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute = ({ children, allowedRoles }: PrivateRouteProps) => {
-  const { isAuthenticated, role, address } = useAuth();
+  const { role, address } = useAuth();
   const location = useLocation();
 
   // 1. Not connected to wallet -> Go to Login

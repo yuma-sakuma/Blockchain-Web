@@ -1,8 +1,69 @@
 import { ClipboardCheck, Factory, FileBadge, Landmark, LayoutDashboard, LogOut, Shield, Store, User, Wrench } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { RoleNames, UserRole } from '../auth/roles';
+import { checkBackendStatus } from '../services/api';
+
+const BackendStatus = () => {
+  const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const data = await checkBackendStatus();
+        setStatus('online');
+        setDbStatus(data.database);
+      } catch (error) {
+        setStatus('offline');
+        setDbStatus('disconnected');
+      }
+    };
+
+    check();
+    const interval = setInterval(check, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ 
+      marginTop: '1rem', 
+      padding: '0.75rem', 
+      borderRadius: '8px', 
+      backgroundColor: 'rgba(0,0,0,0.05)',
+      fontSize: '0.75rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.25rem'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ 
+          width: '8px', 
+          height: '8px', 
+          borderRadius: '50%', 
+          backgroundColor: status === 'online' ? '#10b981' : (status === 'offline' ? '#ef4444' : '#f59e0b') 
+        }} />
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+          Backend: {status.charAt(0).toUpperCase() + status.slice(1)}
+        </span>
+      </div>
+      {status === 'online' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '1.25rem' }}>
+          <div style={{ 
+            width: '6px', 
+            height: '6px', 
+            borderRadius: '50%', 
+            backgroundColor: dbStatus === 'connected' ? '#10b981' : '#ef4444' 
+          }} />
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>
+            DB: {dbStatus.charAt(0).toUpperCase() + dbStatus.slice(1)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SidebarItem = ({ icon: Icon, label, path, active }: any) => (
   <Link 
@@ -138,6 +199,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             Please connect wallet
           </div>
         )}
+
+        {/* Backend Status Indicator */}
+        <BackendStatus />
       </aside>
 
       {/* Main Content */}

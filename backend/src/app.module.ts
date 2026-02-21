@@ -21,6 +21,8 @@ import {
   Vehicle,
   VehicleFlagRecord,
 } from './database/entities';
+import { VehicleModule } from './vehicle/vehicle.module';
+import { EventModule } from './event/event.module';
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import {
       Disclosure,
       TradeInEvaluation,
     ]),
+    VehicleModule,
+    EventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
