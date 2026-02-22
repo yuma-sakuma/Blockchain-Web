@@ -18,19 +18,20 @@ const getEventIcon = (type: EventType) => {
 export const OverviewPage = () => {
   const { vehicles, events } = useVehicleStore();
   const [search, setSearch] = useState('');
+  const [selectedVin, setSelectedVin] = useState<string | null>(null);
 
   const filteredVehicles = vehicles.filter(v => 
     v.vin.toLowerCase().includes(search.toLowerCase()) || 
     v.tokenId.includes(search)
   );
 
-  const selectedVehicle = (search && filteredVehicles.length > 0) ? filteredVehicles[0] : null;
+  const selectedVehicle = selectedVin ? vehicles.find(v => v.vin === selectedVin) : null;
   const vehicleEvents = selectedVehicle 
     ? events.filter(e => e.tokenId === selectedVehicle.tokenId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     : [];
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem', overflowX: 'hidden' }}>
       <header style={{ marginBottom: '4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', background: 'linear-gradient(to right, #fff, var(--accent-primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -52,7 +53,10 @@ export const OverviewPage = () => {
             placeholder="Search VIN, Chassis Number or NFT ID..." 
             style={{ paddingLeft: '4rem', fontSize: '1.25rem', paddingRight: '1.5rem', height: '70px', borderRadius: '20px', background: 'rgba(0,0,0,0.3)' }}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+               setSearch(e.target.value);
+               if (selectedVin) setSelectedVin(null);
+            }}
           />
         </div>
         
@@ -61,7 +65,7 @@ export const OverviewPage = () => {
                 <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '1rem' }}>Recently Tracked Assets</p>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     {vehicles.slice(0, 3).map(v => (
-                        <button key={v.tokenId} onClick={() => setSearch(v.vin)} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
+                        <button key={v.tokenId} onClick={() => setSelectedVin(v.vin)} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
                             <Car size={16} color="var(--accent-primary)" /> {v.vin}
                         </button>
                     ))}
@@ -73,7 +77,7 @@ export const OverviewPage = () => {
       {!selectedVehicle ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
           {filteredVehicles.map(v => (
-            <div key={v.tokenId} className="card" style={{ cursor: 'pointer', transition: 'transform 0.2s', position: 'relative', overflow: 'hidden' }} onClick={() => setSearch(v.vin)}>
+            <div key={v.tokenId} className="card" style={{ cursor: 'pointer', transition: 'transform 0.2s', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedVin(v.vin)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <span className="badge badge-info" style={{ fontFamily: 'monospace' }}>{v.tokenId}</span>
                 {v.flags.majorAccident && <span className="badge badge-danger">HISTORY LOSS</span>}
@@ -95,9 +99,14 @@ export const OverviewPage = () => {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '3rem', minWidth: 0 }}>
           {/* Main Visualizer */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 0 }}>
+            <div>
+                <button onClick={() => setSelectedVin(null)} className="btn" style={{ padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                    &larr; Back to Results
+                </button>
+            </div>
             <div className="card" style={{ padding: '3rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, right: 0, padding: '2rem', opacity: 0.1 }}>
                   <Car size={180} />
@@ -110,7 +119,7 @@ export const OverviewPage = () => {
                 <div>
                   <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>{selectedVehicle.makeModelTrim}</h2>
                   <div style={{ display: 'flex', gap: '1.5rem', fontSize: '1rem' }}>
-                    <span className="text-secondary">Chassis: <span style={{ color: 'white', fontWeight: 600 }}>{selectedVehicle.vin}</span></span>
+                    <span className="text-secondary">VIN: <span style={{ color: 'white', fontWeight: 600 }}>{selectedVehicle.vin}</span></span>
                     <span className="text-secondary">NFT Status: <span style={{ color: 'var(--success)', fontWeight: 600 }}>AUTHENTICATED</span></span>
                   </div>
                 </div>
@@ -119,7 +128,7 @@ export const OverviewPage = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Current Holder</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedVehicle.currentOwner}</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', wordBreak: 'break-all' }}>{selectedVehicle.currentOwner}</div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Mileage</div>
@@ -179,7 +188,7 @@ export const OverviewPage = () => {
           </div>
 
           {/* Side Panels */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 0 }}>
             <div className="card">
               <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                  <ShieldCheck size={20} color="var(--success)" />
@@ -188,7 +197,7 @@ export const OverviewPage = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ padding: '1.25rem', background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '16px' }}>
                     <div className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>LEGAL REGISTERED OWNER</div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{selectedVehicle.currentOwner}</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.1rem', wordBreak: 'break-all' }}>{selectedVehicle.currentOwner}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
                     <Info size={16} className="text-secondary" />

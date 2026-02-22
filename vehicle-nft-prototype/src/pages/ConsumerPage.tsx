@@ -1,5 +1,6 @@
 import { ArrowRightLeft, CreditCard, FileText, History, Lock, ShieldCheck, User, X } from 'lucide-react';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
 
@@ -105,7 +106,7 @@ export const ConsumerPage = () => {
       alert("Asset transfer protocol complete.");
   };
 
-  const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy));
+  const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy || showHistory));
 
   // Derive active consents
   const activeConsents = selectedVehicle ? events.filter(e => 
@@ -134,9 +135,9 @@ export const ConsumerPage = () => {
       </header>
 
       {/* Digital Green Book Modal */}
-      {showGreenBook && selectedVehicle && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '2px solid var(--success)' }}>
+      {showGreenBook && selectedVehicle && createPortal(
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '2px solid var(--success)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <ShieldCheck size={32} color="var(--success)" />
@@ -145,7 +146,7 @@ export const ConsumerPage = () => {
                       <button onClick={() => setShowGreenBook(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem' }}>
                       <div>
                           <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Vehicle Identity</label>
                           <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.makeModelTrim}</div>
@@ -171,13 +172,14 @@ export const ConsumerPage = () => {
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       {/* Privacy Management Modal */}
-      {showPrivacy && selectedVehicle && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '600px', background: '#0a0a0b', border: '1px solid var(--accent-primary)' }}>
+      {showPrivacy && selectedVehicle && createPortal(
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-primary)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <ShieldCheck size={28} color="var(--accent-primary)" />
@@ -209,20 +211,21 @@ export const ConsumerPage = () => {
                   </div>
 
                   <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Grant New Access</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                       <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'INSURER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Insurance</button>
                       <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'LENDER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Finance</button>
                       <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'SERVICE:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Service</button>
                       <button onClick={() => handleGrantConsent(selectedVehicle.tokenId)} className="btn" style={{ fontSize: '0.9rem' }}>+ Custom Entity...</button>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       {/* History Timeline Modal */}
-      {showHistory && selectedVehicle && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '600px', maxHeight: '80vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-secondary)' }}>
+      {showHistory && selectedVehicle && createPortal(
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-secondary)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <History size={28} color="var(--accent-secondary)" />
@@ -253,7 +256,8 @@ export const ConsumerPage = () => {
                       )}
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       <div>
@@ -287,13 +291,13 @@ export const ConsumerPage = () => {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
-                            <button onClick={() => setShowGreenBook(v.tokenId)} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            <button onClick={() => { setShowGreenBook(v.tokenId); setShowPrivacy(null); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <FileText size={18} color="var(--success)" /> BOOK
                             </button>
-                            <button onClick={() => setShowPrivacy(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            <button onClick={() => { setShowPrivacy(v.tokenId); setShowGreenBook(null); setShowHistory(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <ShieldCheck size={18} color="var(--accent-primary)" /> PRIVACY
                             </button>
-                            <button onClick={() => setShowHistory(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <History size={18} color="var(--accent-secondary)" /> HISTORY
                             </button>
                             <button onClick={() => handleTransferVehicle(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
