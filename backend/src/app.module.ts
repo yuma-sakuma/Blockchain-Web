@@ -3,26 +3,27 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { BlockchainModule } from './blockchain/blockchain.module';
 import {
-  ConsentGrant,
-  Disclosure,
-  EventLog,
-  Inspection,
-  InsuranceClaim,
-  InsurancePolicy,
-  LoanAccount,
-  MaintenanceLog,
-  OwnershipTransfer,
-  PartReplacement,
-  PlateRecord,
-  Registration,
-  TaxPayment,
-  TradeInEvaluation,
-  Vehicle,
-  VehicleFlagRecord,
+    ConsentGrant,
+    Disclosure,
+    EventLog,
+    Inspection,
+    InsuranceClaim,
+    InsurancePolicy,
+    LoanAccount,
+    MaintenanceLog,
+    OwnershipTransfer,
+    PartReplacement,
+    PlateRecord,
+    Registration,
+    TaxPayment,
+    TradeInEvaluation,
+    Vehicle,
+    VehicleFlagRecord,
 } from './database/entities';
-import { VehicleModule } from './vehicle/vehicle.module';
 import { EventModule } from './event/event.module';
+import { VehicleModule } from './vehicle/vehicle.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { EventModule } from './event/event.module';
     ]),
     VehicleModule,
     EventModule,
+    BlockchainModule,
   ],
   controllers: [AppController],
   providers: [AppService],
