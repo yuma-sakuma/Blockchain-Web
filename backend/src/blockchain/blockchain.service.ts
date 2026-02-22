@@ -40,11 +40,11 @@ export class BlockchainService implements OnModuleInit {
         }
     };
 
-    const registryAbi = loadAbi('VehicleRegistry.json');
-    const nftAbi = loadAbi('VehicleNFT.json');
-    const lifecycleAbi = loadAbi('VehicleLifecycle.json');
-    const lienAbi = loadAbi('VehicleLien.json');
-    const consentAbi = loadAbi('VehicleConsent.json');
+    const registryAbi = loadAbi('VehicleRegistry.sol/VehicleRegistry.json');
+    const nftAbi = loadAbi('VehicleNFT.sol/VehicleNFT.json');
+    const lifecycleAbi = loadAbi('VehicleLifecycle.sol/VehicleLifecycle.json');
+    const lienAbi = loadAbi('VehicleLien.sol/VehicleLien.json');
+    const consentAbi = loadAbi('VehicleConsent.sol/VehicleConsent.json');
 
     const signerOrProvider = this.wallet || this.provider;
 
