@@ -55,9 +55,9 @@ contract VehicleNFT is ERC721, AccessControl, ReentrancyGuard {
 
     event TransferLockChanged(uint256 indexed tokenId, bool locked, address changedBy);
 
-    // ─── Constructor ─────────────────────────────────────────
     constructor() ERC721("VehicleNFT", "VNFT") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MANUFACTURER_ROLE, msg.sender);
     }
 
     // ─── Mint ────────────────────────────────────────────────

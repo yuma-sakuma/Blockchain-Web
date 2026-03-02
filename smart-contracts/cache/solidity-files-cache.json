@@ -40,8 +40,8 @@
       ]
     },
     "C:\\Programming-Workspace\\Kmutnb\\Blockchain\\Blockchain_VIN\\Blockchain-Web\\smart-contracts\\contracts\\VehicleNFT.sol": {
-      "lastModificationDate": 1771389241417,
-      "contentHash": "9d831449cb1fb48e685705eca6f18144",
+      "lastModificationDate": 1772470113653,
+      "contentHash": "636dc80d0922bbc38121e629bafb9c24",
       "sourceName": "contracts/VehicleNFT.sol",
       "solcConfig": {
         "version": "0.8.20",
