@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Restore session on load
   useEffect(() => {
-    const savedAddress = localStorage.getItem('auth_address');
-    const savedRole = localStorage.getItem('auth_role') as UserRole | null;
+    const savedAddress = sessionStorage.getItem('auth_address');
+    const savedRole = sessionStorage.getItem('auth_role') as UserRole | null;
     
     if (savedAddress) {
       setAddress(savedAddress);
@@ -124,8 +124,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 4. Set Session
         setAddress(userAddress);
         setRole(userRole);
-        localStorage.setItem('auth_address', userAddress);
-        localStorage.setItem('auth_role', userRole);
+        sessionStorage.setItem('auth_address', userAddress);
+        sessionStorage.setItem('auth_role', userRole);
 
         // Save to Mock DB (Legacy support if needed, but localStorage is enough for now)
         const mockDb = JSON.parse(localStorage.getItem(MOCK_ROLE_DB_KEY) || '{}');
@@ -166,8 +166,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setAddress(mockAddress);
       setRole(targetRole);
-      localStorage.setItem('auth_address', mockAddress);
-      localStorage.setItem('auth_role', targetRole);
+      sessionStorage.setItem('auth_address', mockAddress);
+      sessionStorage.setItem('auth_role', targetRole);
       
       // Force reload to ensure all components pick up the new "signer" if they strictly rely on window.ethereum (which they shouldn't for read views, but for consistency)
       // window.location.reload(); 
@@ -178,8 +178,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setAddress(null);
     setRole(null);
-    localStorage.removeItem('auth_address');
-    localStorage.removeItem('auth_role');
+    sessionStorage.removeItem('auth_address');
+    sessionStorage.removeItem('auth_role');
   };
 
   return (

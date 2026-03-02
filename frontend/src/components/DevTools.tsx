@@ -9,7 +9,7 @@ export const DevTools = () => {
 
   const roles = Object.values(UserRole);
 
-  if (process.env.NODE_ENV === 'production') return null; // Optional: Hide in prod
+  if (import.meta.env.PROD) return null; // Optional: Hide in prod
 
   return (
     <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999 }}>
