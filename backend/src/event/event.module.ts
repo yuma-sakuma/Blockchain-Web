@@ -11,13 +11,14 @@ import { PlateRecord } from '../database/entities/plate-record.entity';
 import { Registration } from '../database/entities/registration.entity';
 import { TaxPayment } from '../database/entities/tax-payment.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { BlockchainModule } from '../blockchain/blockchain.module';
 import { EventController } from './event.controller';
 import { EventService } from './event.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      EventLog, 
+      EventLog,
       Vehicle,
       ConsentGrant,
       InsurancePolicy,
@@ -28,10 +29,11 @@ import { EventService } from './event.service';
       PlateRecord,
       TaxPayment,
       MaintenanceLog
-    ])
+    ]),
+    BlockchainModule
   ],
   providers: [EventService],
   controllers: [EventController],
   exports: [EventService],
 })
-export class EventModule {}
+export class EventModule { }

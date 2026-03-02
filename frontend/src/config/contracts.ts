@@ -1,5 +1,20 @@
 import { ethers } from "ethers";
 
+// ABIs
+import vehicleRegistryAbi from "../abi/VehicleRegistry.sol/VehicleRegistry.json";
+import vehicleNFTAbi from "../abi/VehicleNFT.sol/VehicleNFT.json";
+import vehicleLifecycleAbi from "../abi/VehicleLifecycle.sol/VehicleLifecycle.json";
+import vehicleLienAbi from "../abi/VehicleLien.sol/VehicleLien.json";
+import vehicleConsentAbi from "../abi/VehicleConsent.sol/VehicleConsent.json";
+
+export const ABIS = {
+  VEHICLE_REGISTRY: vehicleRegistryAbi.abi,
+  VEHICLE_NFT: vehicleNFTAbi.abi,
+  VEHICLE_LIFECYCLE: vehicleLifecycleAbi.abi,
+  VEHICLE_LIEN: vehicleLienAbi.abi,
+  VEHICLE_CONSENT: vehicleConsentAbi.abi,
+};
+
 export const CONTRACT_ADDRESSES = {
   VEHICLE_REGISTRY: "0xE95E068B4B6d9b1a039204e6637482bAd2D53Dc6",
   VEHICLE_NFT: "0x92D414a520345CD1C9bc16d57A298eBfBa001fF4",
