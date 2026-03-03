@@ -9,7 +9,7 @@ const config: HardhatUserConfig = {
   networks: {
     ganache: {
       url: process.env.GANACHE_RPC_URL || "http://127.0.0.1:7545",
-      accounts: process.env.GANACHE_KEYS ? process.env.GANACHE_KEYS.split(",") : []
+      ...(process.env.GANACHE_KEYS ? { accounts: process.env.GANACHE_KEYS.split(",") } : {})
     }
   }
 };
