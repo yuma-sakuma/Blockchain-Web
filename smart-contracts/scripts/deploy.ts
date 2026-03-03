@@ -53,6 +53,31 @@ async function main() {
   const addressesStr = JSON.stringify(addresses, null, 2);
   console.log("\nContract Addresses:\n", addressesStr);
   fs.writeFileSync(path.join(__dirname, "deployed-addresses.json"), addressesStr);
+
+  // Auto-sync contract addresses to backend .env
+  const backendEnvPath = path.join(__dirname, "..", "..", "backend", ".env");
+  try {
+    let envContent = "";
+    if (fs.existsSync(backendEnvPath)) {
+      envContent = fs.readFileSync(backendEnvPath, "utf8");
+    }
+
+    // Update or append each contract address
+    for (const [key, value] of Object.entries(addresses)) {
+      const regex = new RegExp(`^${key}=.*$`, "m");
+      if (regex.test(envContent)) {
+        envContent = envContent.replace(regex, `${key}=${value}`);
+      } else {
+        envContent = envContent.trimEnd() + `\n${key}=${value}`;
+      }
+    }
+
+    fs.writeFileSync(backendEnvPath, envContent);
+    console.log(`\n✅ Backend .env updated at: ${backendEnvPath}`);
+  } catch (err) {
+    console.warn(`\n⚠️  Could not update backend .env: ${err}`);
+    console.warn("Please manually copy addresses from deployed-addresses.json to backend/.env");
+  }
 }
 
 main().catch((error) => {
