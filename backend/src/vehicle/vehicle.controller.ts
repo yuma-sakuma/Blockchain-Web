@@ -10,12 +10,18 @@ export class VehicleController {
   constructor(
     private readonly vehicleService: VehicleService,
     private readonly blockchainService: BlockchainService
-  ) {}
+  ) { }
 
   @Get()
   @ApiQuery({ name: 'owner', required: false })
   async findAll(@Query('owner') owner?: string): Promise<Vehicle[]> {
     return this.vehicleService.findAll(owner);
+  }
+
+  @Get('check-vin')
+  @ApiQuery({ name: 'vin', required: true })
+  async checkVinExists(@Query('vin') vin: string): Promise<{ exists: boolean }> {
+    return this.vehicleService.checkVinExists(vin);
   }
 
   @Get(':tokenId')

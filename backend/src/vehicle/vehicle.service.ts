@@ -8,7 +8,7 @@ export class VehicleService {
   constructor(
     @InjectRepository(Vehicle)
     private vehicleRepository: Repository<Vehicle>,
-  ) {}
+  ) { }
 
   async findAll(owner?: string): Promise<Vehicle[]> {
     const whereClause = owner ? { currentOwnerAddress: owner } : {};
@@ -30,6 +30,13 @@ export class VehicleService {
     }
 
     return vehicle;
+  }
+
+  async checkVinExists(vin: string): Promise<{ exists: boolean }> {
+    const vehicle = await this.vehicleRepository.findOne({
+      where: { vinNumber: vin },
+    });
+    return { exists: !!vehicle };
   }
 }
 
