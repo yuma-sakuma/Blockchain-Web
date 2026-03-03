@@ -156,6 +156,23 @@ export class EventService {
               currency: 'THB'
             });
             await this.ownershipTransferRepository.save(transfer);
+
+            // Blockchain Interaction
+            try {
+              const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
+              const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
+                createEventDto.tokenId,
+                payload.to.includes('0x') ? payload.to : '0x0000000000000000000000000000000000000000', // simplistic address check
+                reasonMap[payload.reason] || 2,
+                ethers.id(payload.docRef || 'none'),
+                ethers.id(payload.to),
+                ethers.id('payment-ref')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+            } catch (err) {
+              console.error('Blockchain Transfer Recording Failed:', err);
+            }
           }
           break;
         case 'SALE_CONTRACT_CREATED':
@@ -175,6 +192,19 @@ export class EventService {
             dltOfficerAddress: createEventDto.actor
           });
           await this.registrationRepository.save(reg);
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleRegistryContract.registerVehicle(
+              createEventDto.tokenId,
+              ethers.id(payload.bookNo || 'none'),
+              ethers.id('reg-doc-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Registration Failed:', err);
+          }
           break;
         case 'PLATE_EVENT_RECORDED':
           let assignedPlateNo = payload.plateNo;
@@ -214,8 +244,23 @@ export class EventService {
             plateEventDocHash: 'mockHash'
           });
           await this.plateRecordRepository.save(plate);
-          // Attach assigned plate to payload so frontend can use it
-          payload.plateNo = assignedPlateNo;
+
+          // Blockchain Interaction
+          try {
+            const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
+            const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
+              createEventDto.tokenId,
+              ethers.id(payload.plateNo),
+              10,
+              typeMap[payload.type] || 0,
+              ethers.id('plate-doc-hash'),
+              Math.floor(Date.now() / 1000)
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Plate Event Failed:', err);
+          }
           break;
         case 'TAX_STATUS_UPDATED':
           const tax = this.taxPaymentRepository.create({
@@ -228,6 +273,20 @@ export class EventService {
             amount: payload.amount ? (payload.amount * 100).toString() : '200000',
           });
           await this.taxPaymentRepository.save(tax);
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
+              createEventDto.tokenId,
+              new Date().getFullYear(),
+              Math.floor(new Date(payload.validUntil).getTime() / 1000),
+              ethers.id('tax-receipt-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Tax Payment Failed:', err);
+          }
           break;
         case 'FLAG_UPDATED':
           if (payload.flag && payload.value !== undefined) {
@@ -240,15 +299,56 @@ export class EventService {
             }
             vehicle.activeFlags = Array.from(flagsSet);
             vehicleUpdated = true;
+
+            // Blockchain Interaction
+            try {
+              const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
+              if (flagMap[payload.flag]) {
+                const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                  createEventDto.tokenId,
+                  flagMap[payload.flag],
+                  payload.value,
+                  ethers.id('flag-ref-hash')
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+              }
+            } catch (err) {
+              console.error('Blockchain Flag Update Failed:', err);
+            }
           }
           break;
         case 'LIEN_CREATED':
           vehicle.transferLocked = true;
           vehicleUpdated = true;
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleLienContract.createLien(
+              createEventDto.tokenId,
+              ethers.id('loan-contract-hash'),
+              ethers.id('release-condition-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Lien Creation Failed:', err);
+          }
           break;
         case 'LIEN_RELEASED':
           vehicle.transferLocked = false;
           vehicleUpdated = true;
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleLienContract.releaseLien(
+              createEventDto.tokenId
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Lien Release Failed:', err);
+          }
           break;
         case 'REPOSSESSION_RECORDED':
           vehicle.transferLocked = true;
@@ -256,6 +356,21 @@ export class EventService {
           repossessionFlagsSet.add('SEIZED' as any);
           vehicle.activeFlags = Array.from(repossessionFlagsSet);
           vehicleUpdated = true;
+
+          // Blockchain Interaction
+          try {
+            const FLAG_SEIZED = 1 << 1;
+            const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+              createEventDto.tokenId,
+              FLAG_SEIZED,
+              true,
+              ethers.id('repossession-ref-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Repocession Recording Failed:', err);
+          }
           break;
         case 'INSTALLMENT_MILESTONE_RECORDED':
           // Specific handling could be adding to Financial log
@@ -273,17 +388,50 @@ export class EventService {
               nonce: Date.now().toString()
             });
             await this.consentGrantRepository.save(grant);
+
+            // Blockchain Interaction
+            try {
+              const scopeMask = 1;
+              const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
+                createEventDto.tokenId,
+                payload.grantTo.startsWith('0x') ? payload.grantTo : '0x0000000000000000000000000000000000000000',
+                scopeMask,
+                Math.floor(new Date(payload.expiresAt).getTime() / 1000),
+                false,
+                Date.now()
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+            } catch (err) {
+              console.error('Blockchain Consent Grant Failed:', err);
+            }
           }
           break;
         case 'CONSENT_REVOKED':
           if (payload.revokeFrom) {
-            const grants = await this.consentGrantRepository.find({ where: { tokenId: vehicle.tokenId, granteeDid: payload.revokeFrom }, order: { createdAt: 'DESC' } });
+            const grants = await this.consentGrantRepository.find({
+              where: { tokenId: vehicle.tokenId, granteeDid: payload.revokeFrom },
+              order: { createdAt: 'DESC' }
+            });
             if (grants.length > 0) {
               grants[0].revoked = true;
               await this.consentGrantRepository.save(grants[0]);
+
+              // Blockchain Interaction
+              try {
+                const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
+                  createEventDto.tokenId,
+                  payload.revokeFrom.startsWith('0x') ? payload.revokeFrom : '0x0000000000000000000000000000000000000000'
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+              } catch (err) {
+                console.error('Blockchain Consent Revoke Failed:', err);
+              }
             }
           }
           break;
+
         case 'INSURANCE_POLICY_UPDATED':
           const policy = this.insurancePolicyRepository.create({
             tokenId: vehicle.tokenId,
@@ -297,7 +445,25 @@ export class EventService {
             coverageHash: 'mockHash',
           });
           await this.insurancePolicyRepository.save(policy);
+
+          // Blockchain Interaction
+          try {
+            const actionMap = { 'new': 0, 'renew': 1, 'change': 2, 'cancel': 3 };
+            const tx = await this.blockchainService.vehicleLifecycleContract.recordInsurancePolicy(
+              createEventDto.tokenId,
+              ethers.id(payload.policyNumber || 'none'),
+              actionMap[payload.action] || 0,
+              Math.floor(Date.now() / 1000),
+              Math.floor(new Date(payload.validUntil).getTime() / 1000),
+              ethers.id('coverage-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Insurance Policy Failed:', err);
+          }
           break;
+
         case 'CLAIM_FILED':
           const claim = this.insuranceClaimRepository.create({
             tokenId: vehicle.tokenId,
@@ -310,7 +476,23 @@ export class EventService {
             evidenceHashes: []
           });
           await this.insuranceClaimRepository.save(claim);
+
+          // Blockchain Interaction
+          try {
+            const severityMap = { 'minor': 0, 'major': 1, 'structural': 2, 'total_loss': 3 };
+            const tx = await this.blockchainService.vehicleLifecycleContract.fileClaim(
+              createEventDto.tokenId,
+              ethers.id(payload.claimId || 'none'),
+              [], // evidence hashes
+              severityMap[payload.severity] || 0
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Claim Filing Failed:', err);
+          }
           break;
+
         case 'INSPECTION_RESULT_RECORDED':
           const inspection = this.inspectionRepository.create({
             tokenId: vehicle.tokenId,
@@ -324,7 +506,22 @@ export class EventService {
             issuedAt: Date.now().toString(),
           });
           await this.inspectionRepository.save(inspection);
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleRegistryContract.recordInspection(
+              createEventDto.tokenId,
+              payload.passed ? 1 : 0,
+              ethers.id(JSON.stringify(payload.metrics || {})),
+              ethers.id('cert-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Inspection Record Failed:', err);
+          }
           break;
+
         case 'MAINTENANCE_RECORDED':
           const maintenance = this.maintenanceLogRepository.create({
             tokenId: vehicle.tokenId,
@@ -338,7 +535,25 @@ export class EventService {
             partsHash: 'mockHash'
           });
           await this.maintenanceLogRepository.save(maintenance);
+
+          // Blockchain Interaction
+          try {
+            const tx = await this.blockchainService.vehicleLifecycleContract.logMaintenance(
+              createEventDto.tokenId,
+              ethers.id('consent-ref-hash'),
+              payload.mileageKm || 0,
+              ethers.id('maintenance-hash'),
+              ethers.id(JSON.stringify(payload.parts || [])),
+              0, // accident severity
+              Math.floor(Date.now() / 1000)
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Maintenance Log Failed:', err);
+          }
           break;
+
         case 'ODOMETER_SNAPSHOT':
           // Could save a mini maintenance log or just an event. The event handles it for now.
           break;
@@ -346,7 +561,6 @@ export class EventService {
           // Mock structure for part replacements inside Maintenance Log or as pure Event
           break;
         case 'SPECIFICATION_UPDATED':
-          // E.g., engine swapped or color changed
           if (payload.changes) {
             vehicle.specJson = { ...vehicle.specJson, ...payload.changes };
             vehicleUpdated = true;
@@ -362,7 +576,12 @@ export class EventService {
     const event = this.eventLogRepository.create({
       ...createEventDto,
       actorAddress: createEventDto.actor || '0x00',
-      actorRole: createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' : 'CONSUMER',
+      actorRole: createEventDto.actorRole ||
+        (createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' :
+          createEventDto.actor?.startsWith('DLT') ? 'REGULATORY' :
+            createEventDto.actor?.startsWith('WORKSHOP') ? 'SERVICE' :
+              createEventDto.actor?.startsWith('INSURER') ? 'INSURANCE' :
+                createEventDto.actor?.startsWith('FINANCE') ? 'FINANCIAL' : 'CONSUMER'),
       occurredAt: createEventDto.occurredAt || Date.now().toString(),
       payloadHash: payloadHash,
       txHash: txHash,
@@ -371,4 +590,3 @@ export class EventService {
     return this.eventLogRepository.save(event);
   }
 }
-
