@@ -160,9 +160,10 @@ export class EventService {
             // Blockchain Interaction
             try {
               const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
+              const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
               const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
                 createEventDto.tokenId,
-                payload.to.includes('0x') ? payload.to : '0x0000000000000000000000000000000000000000', // simplistic address check
+                toAddress,
                 reasonMap[payload.reason] || 2,
                 ethers.id(payload.docRef || 'none'),
                 ethers.id(payload.to),
@@ -244,6 +245,23 @@ export class EventService {
             plateEventDocHash: 'mockHash'
           });
           await this.plateRecordRepository.save(plate);
+
+          // Blockchain Interaction
+          try {
+            const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
+            const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
+              createEventDto.tokenId,
+              ethers.id(payload.plateNo),
+              10,
+              typeMap[payload.type] || 0,
+              ethers.id('plate-doc-hash'),
+              Math.floor(Date.now() / 1000)
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.error('Blockchain Plate Event Failed:', err);
+          }
           break;
         case 'TAX_STATUS_UPDATED':
           const tax = this.taxPaymentRepository.create({
@@ -377,7 +395,7 @@ export class EventService {
               const scopeMask = 1;
               const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
                 createEventDto.tokenId,
-                payload.grantTo.startsWith('0x') ? payload.grantTo : '0x0000000000000000000000000000000000000000',
+                ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress,
                 scopeMask,
                 Math.floor(new Date(payload.expiresAt).getTime() / 1000),
                 false,
@@ -404,7 +422,7 @@ export class EventService {
               try {
                 const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
                   createEventDto.tokenId,
-                  payload.revokeFrom.startsWith('0x') ? payload.revokeFrom : '0x0000000000000000000000000000000000000000'
+                  ethers.isAddress(payload.revokeFrom) ? ethers.getAddress(payload.revokeFrom) : ethers.ZeroAddress
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
