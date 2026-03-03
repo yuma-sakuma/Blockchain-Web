@@ -36,3 +36,9 @@ export const createEvent = async (eventData: any) => {
   return response.json();
 };
 
+export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> => {
+  const response = await fetch(`${API_URL}/vehicles/check-vin?vin=${encodeURIComponent(vin)}`);
+  if (!response.ok) throw new Error('Failed to check VIN');
+  return response.json();
+};
+

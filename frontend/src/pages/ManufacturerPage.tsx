@@ -1,12 +1,16 @@
 import { ArrowRightLeft, PackagePlus, ShieldCheck, Zap } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { checkVinExists } from '../services/api';
 import { useVehicleStore } from '../store';
 
 export const ManufacturerPage = () => {
   const { addEvent, vehicles } = useVehicleStore();
   const { address } = useAuth();
   const [isSigning, setIsSigning] = useState(false);
+  const [vinError, setVinError] = useState('');
+  const [isCheckingVin, setIsCheckingVin] = useState(false);
+  const vinCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formData, setFormData] = useState({
     vin: '',
     model: '',
@@ -18,9 +22,51 @@ export const ManufacturerPage = () => {
     warrantyMileage: '100000'
   });
 
+  // Debounced VIN uniqueness check
+  useEffect(() => {
+    if (vinCheckTimer.current) clearTimeout(vinCheckTimer.current);
+
+    if (!formData.vin.trim()) {
+      setVinError('');
+      setIsCheckingVin(false);
+      return;
+    }
+
+    setIsCheckingVin(true);
+    vinCheckTimer.current = setTimeout(async () => {
+      try {
+        const result = await checkVinExists(formData.vin.trim());
+        if (result.exists) {
+          setVinError('VIN number already exists in the database');
+        } else {
+          setVinError('');
+        }
+      } catch {
+        setVinError('');
+      } finally {
+        setIsCheckingVin(false);
+      }
+    }, 500);
+
+    return () => {
+      if (vinCheckTimer.current) clearTimeout(vinCheckTimer.current);
+    };
+  }, [formData.vin]);
+
   const handleMint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vin || !formData.model) return;
+
+    // Final VIN uniqueness check before submitting
+    try {
+      const result = await checkVinExists(formData.vin.trim());
+      if (result.exists) {
+        setVinError('VIN number already exists in the database');
+        return;
+      }
+    } catch {
+      // If check fails, allow submission (backend will also validate)
+    }
 
     setIsSigning(true);
     // Simulate digital signing delay
@@ -33,20 +79,20 @@ export const ManufacturerPage = () => {
     // 1. Mint Event
     addEvent({
       type: 'MANUFACTURER_MINTED',
-      actor: actorId, 
+      actor: actorId,
       tokenId: tokenId,
       payload: {
         tokenId: tokenId,
         vin: formData.vin,
         makeModelTrim: formData.model,
-        spec: { 
-          color: formData.color, 
+        spec: {
+          color: formData.color,
           engine: formData.engineNo,
           batteryKwh: Number(formData.batteryKwh),
           options: formData.options.split(',').map(o => o.trim()).filter(o => o)
         },
-        production: { 
-          manufacturedAt: new Date().toISOString(), 
+        production: {
+          manufacturedAt: new Date().toISOString(),
           plantId: address || 'UNKNOWN_PLANT'
         },
         manufacturerSignature: signature
@@ -55,17 +101,17 @@ export const ManufacturerPage = () => {
 
     // 2. Warranty Definition
     addEvent({
-        type: 'WARRANTY_DEFINED',
-        actor: actorId,
-        tokenId: tokenId,
-        payload: {
-             startPolicy: "at_first_registration", 
-             terms: { 
-                 years: Number(formData.warrantyYears), 
-                 mileageKm: Number(formData.warrantyMileage), 
-                 coverage: ["powertrain", "battery", "chassis"] 
-            }
+      type: 'WARRANTY_DEFINED',
+      actor: actorId,
+      tokenId: tokenId,
+      payload: {
+        startPolicy: "at_first_registration",
+        terms: {
+          years: Number(formData.warrantyYears),
+          mileageKm: Number(formData.warrantyMileage),
+          coverage: ["powertrain", "battery", "chassis"]
         }
+      }
     });
 
     setIsSigning(false);
@@ -104,8 +150,8 @@ export const ManufacturerPage = () => {
 
       <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
         {isSigning && (
-          <div style={{ 
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.8)', zIndex: 10, backdropFilter: 'blur(4px)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem'
           }}>
@@ -122,84 +168,96 @@ export const ManufacturerPage = () => {
 
         <form onSubmit={handleMint} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <div style={{ gridColumn: '1 / -1' }}>
-             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Vehicle Model & Trim</label>
-             <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="e.g. KDT E-Car 1.8 Premium" required />
+            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Vehicle Model & Trim</label>
+            <input value={formData.model} onChange={e => setFormData({ ...formData, model: e.target.value })} placeholder="e.g. KDT E-Car 1.8 Premium" required />
           </div>
-          
+
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>VIN Identification</label>
-            <input value={formData.vin} onChange={e => setFormData({...formData, vin: e.target.value})} placeholder="17-Digit VIN Number" required />
+            <input
+              value={formData.vin}
+              onChange={e => setFormData({ ...formData, vin: e.target.value })}
+              placeholder="17-Digit VIN Number"
+              required
+              style={{ borderColor: vinError ? '#ef4444' : undefined }}
+            />
+            {isCheckingVin && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', marginTop: '0.35rem' }}>Checking VIN...</div>
+            )}
+            {vinError && !isCheckingVin && (
+              <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.35rem', fontWeight: 600 }}>{vinError}</div>
+            )}
           </div>
 
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Exterior Color</label>
-            <input value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} placeholder="e.g. Midnight Blue Metallic" required />
+            <input value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} placeholder="e.g. Midnight Blue Metallic" required />
           </div>
 
           <div>
-             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Engine/Motor Serial</label>
-             <input value={formData.engineNo} onChange={e => setFormData({...formData, engineNo: e.target.value})} placeholder="SN-XXXXX" />
+            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Engine/Motor Serial</label>
+            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" />
           </div>
 
           <div>
-             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Battery Capacity (KWh)</label>
-             <input type="number" value={formData.batteryKwh} onChange={e => setFormData({...formData, batteryKwh: e.target.value})} placeholder="60" />
+            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Battery Capacity (KWh)</label>
+            <input type="number" value={formData.batteryKwh} onChange={e => setFormData({ ...formData, batteryKwh: e.target.value })} placeholder="60" />
           </div>
-          
+
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ gridColumn: '1 / -1', fontSize: '0.9rem', fontWeight: 600, color: 'var(--accent-secondary)' }}>Warranty Configuration</div>
-              <div>
-                 <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Warranty Period (Years)</label>
-                 <input type="number" value={formData.warrantyYears} onChange={e => setFormData({...formData, warrantyYears: e.target.value})} placeholder="3" />
-              </div>
-              <div>
-                 <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Max Mileage (Km)</label>
-                 <input type="number" value={formData.warrantyMileage} onChange={e => setFormData({...formData, warrantyMileage: e.target.value})} placeholder="100000" />
-              </div>
+            <div style={{ gridColumn: '1 / -1', fontSize: '0.9rem', fontWeight: 600, color: 'var(--accent-secondary)' }}>Warranty Configuration</div>
+            <div>
+              <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Warranty Period (Years)</label>
+              <input type="number" value={formData.warrantyYears} onChange={e => setFormData({ ...formData, warrantyYears: e.target.value })} placeholder="3" />
+            </div>
+            <div>
+              <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Max Mileage (Km)</label>
+              <input type="number" value={formData.warrantyMileage} onChange={e => setFormData({ ...formData, warrantyMileage: e.target.value })} placeholder="100000" />
+            </div>
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
-             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Installed Options (Comma separated)</label>
-             <textarea value={formData.options} onChange={e => setFormData({...formData, options: e.target.value})} placeholder="Sunroof, Leather Seats, Autopilot v2..." style={{ height: '80px' }} />
+            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Installed Options (Comma separated)</label>
+            <textarea value={formData.options} onChange={e => setFormData({ ...formData, options: e.target.value })} placeholder="Sunroof, Leather Seats, Autopilot v2..." style={{ height: '80px' }} />
           </div>
 
-          <button type="submit" className="premium-btn" style={{ gridColumn: '1 / -1', padding: '1.25rem' }} disabled={isSigning}>
+          <button type="submit" className="premium-btn" style={{ gridColumn: '1 / -1', padding: '1.25rem' }} disabled={isSigning || !!vinError || isCheckingVin}>
             Generate Certified Vehicle NFT
           </button>
         </form>
       </div>
 
       <div>
-         <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-           <Zap color="var(--warning)" size={20} />
-           Factory Inventory Pool
-         </h2>
-         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {myStock.length === 0 ? (
-               <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>No inventory in pool.</div>
-            ) : myStock.map(v => (
-                <div key={v.tokenId} className="card" style={{ padding: '1.5rem' }}>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0 }}>{v.makeModelTrim}</h3>
-                        <div className="text-secondary" style={{ fontSize: '0.85rem' }}>VIN: {v.vin}</div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                       <span className="badge badge-info">{v.spec.batteryKwh}kWh</span>
-                       <span className="badge badge-info">{v.spec.color}</span>
-                    </div>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Zap color="var(--warning)" size={20} />
+          Factory Inventory Pool
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          {myStock.length === 0 ? (
+            <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>No inventory in pool.</div>
+          ) : myStock.map(v => (
+            <div key={v.tokenId} className="card" style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0 }}>{v.makeModelTrim}</h3>
+                <div className="text-secondary" style={{ fontSize: '0.85rem' }}>VIN: {v.vin}</div>
+              </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>
-                            <ShieldCheck size={16} /> CERTIFIED
-                        </div>
-                        <button onClick={() => handleTransferToDealer(v.tokenId)} style={{ fontSize: '0.85rem' }}>
-                          <ArrowRightLeft size={16} /> Send to Dealer
-                        </button>
-                    </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                <span className="badge badge-info">{v.spec.batteryKwh}kWh</span>
+                <span className="badge badge-info">{v.spec.color}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>
+                  <ShieldCheck size={16} /> CERTIFIED
                 </div>
-            ))}
-         </div>
+                <button onClick={() => handleTransferToDealer(v.tokenId)} style={{ fontSize: '0.85rem' }}>
+                  <ArrowRightLeft size={16} /> Send to Dealer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
