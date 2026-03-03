@@ -288,20 +288,40 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
-    const newEvent: VehicleEvent = {
+    let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString()
     };
 
-    // Optimistic UI Update
+    // Keep optimistic update for speed on most events
     const updatedEvents = [...events, newEvent];
     setEvents(updatedEvents);
     setVehicles(prev => applyEventToState(prev, newEvent));
     
     try {
       // Sync to backend
-      await createEvent(newEvent);
+      const responseEvent = await createEvent(newEvent);
+
+      // IMPORTANT: If backend generated unique data (like plateNo during issue),
+      // we need to re-sync our local state with the backend's response payload.
+      if (newEvent.type === 'PLATE_EVENT_RECORDED' && newEvent.payload.action === 'issue') {
+         // Convert backend event to frontend format
+         const mappedResponseEvent: VehicleEvent = {
+            id: responseEvent.eventId,
+            tokenId: responseEvent.tokenId,
+            timestamp: new Date(Number(responseEvent.occurredAt)).toISOString(),
+            actor: responseEvent.actorAddress || 'UNKNOWN',
+            type: responseEvent.type,
+            payload: responseEvent.payload,
+         };
+
+         // Replace the optimistic event in the array
+         setEvents(prev => prev.map(e => e.id === newEvent.id ? mappedResponseEvent : e));
+         // Re-apply to state specifically to capture the generated plateNo
+         setVehicles(prev => applyEventToState(prev, mappedResponseEvent));
+      }
+
     } catch (err: any) {
       console.error("Failed to sync event with backend", err);
       // Reverting optimistic UI for prototype is complex, so we log it
