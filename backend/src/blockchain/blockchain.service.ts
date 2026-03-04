@@ -17,11 +17,18 @@ export class BlockchainService implements OnModuleInit {
 
   constructor(private configService: ConfigService) { }
 
-  onModuleInit() {
+  async onModuleInit() {
     const rpcUrl = this.configService.get<string>('GANACHE_RPC_URL') || 'http://127.0.0.1:7545';
     const privateKey = this.configService.get<string>('ADMIN_PRIVATE_KEY');
 
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    // Use a static network configuration to prevent hangs during network detection
+    // Ganache default chainId is 1337
+    this.provider = new ethers.JsonRpcProvider(rpcUrl, {
+      name: 'ganache',
+      chainId: 1337
+    }, {
+      staticNetwork: true
+    });
 
     if (privateKey) {
       this.wallet = new ethers.Wallet(privateKey, this.provider);
@@ -86,5 +93,49 @@ export class BlockchainService implements OnModuleInit {
       consentAbi,
       signerOrProvider
     );
+
+    // Auto-grant required roles to admin wallet on startup
+    await this.ensureRoles();
+  }
+
+  /**
+   * Grant all required roles to the admin wallet if not already granted.
+   * The deployer has DEFAULT_ADMIN_ROLE on all contracts, which allows granting other roles.
+   */
+  private async ensureRoles() {
+    if (!this.wallet) {
+      console.warn('[BlockchainService] No wallet configured, skipping role setup.');
+      return;
+    }
+
+    const adminAddress = this.wallet.address;
+
+    const roleGrants: { contract: ethers.Contract; contractName: string; roleName: string; roleHash: string }[] = [
+      // VehicleRegistry roles
+      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'DLT_OFFICER_ROLE', roleHash: ethers.id('DLT_OFFICER_ROLE') },
+      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'INSPECTOR_ROLE', roleHash: ethers.id('INSPECTOR_ROLE') },
+      // VehicleLifecycle roles
+      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'WORKSHOP_ROLE', roleHash: ethers.id('WORKSHOP_ROLE') },
+      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'INSURER_ROLE', roleHash: ethers.id('INSURER_ROLE') },
+      // VehicleLien roles
+      { contract: this.vehicleLienContract, contractName: 'VehicleLien', roleName: 'FINANCE_ROLE', roleHash: ethers.id('FINANCE_ROLE') },
+      // VehicleNFT roles (needed for setTransferLock from Registry/Lien)
+      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'REGISTRY_ROLE', roleHash: ethers.id('REGISTRY_ROLE') },
+      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'LIEN_ROLE', roleHash: ethers.id('LIEN_ROLE') },
+    ];
+
+    for (const { contract, contractName, roleName, roleHash } of roleGrants) {
+      try {
+        const hasRole = await contract.hasRole(roleHash, adminAddress);
+        if (!hasRole) {
+          console.log(`[BlockchainService] Granting ${roleName} on ${contractName} to ${adminAddress}...`);
+          const tx = await contract.grantRole(roleHash, adminAddress);
+          await tx.wait();
+          console.log(`[BlockchainService] ✅ ${roleName} granted on ${contractName}`);
+        }
+      } catch (err) {
+        console.warn(`[BlockchainService] ⚠️ Could not grant ${roleName} on ${contractName}: ${err.message || err}`);
+      }
+    }
   }
 }

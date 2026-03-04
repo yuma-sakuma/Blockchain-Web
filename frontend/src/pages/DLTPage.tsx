@@ -9,17 +9,34 @@ export const DLTPage = () => {
     const [searchVin, setSearchVin] = useState('');
     const [plateNumber, setPlateNumber] = useState('');
     const [newColor, setNewColor] = useState('');
+    const [isRepairing, setIsRepairing] = useState(false);
     
     // Dynamic Actor ID
     const actorId = address ? `DLT:${address}` : 'DLT:System';
+
+    const handleRepair = async () => {
+        if (!confirm("This will attempt to re-mint database vehicles onto the blockchain if they are missing. Use this after a Ganache reset. Proceed?")) return;
+        setIsRepairing(true);
+        try {
+            const { repairRegistry } = await import('../services/api');
+            const result = await repairRegistry();
+            const count = result.results.filter((r: any) => r.status === 'recovered').length;
+            alert(`Repair complete. Recovered ${count} vehicles. Please refresh your inventory.`);
+            window.location.reload(); // Refresh to get new tokenIds
+        } catch (err: any) {
+            alert("Repair failed: " + err.message);
+        } finally {
+            setIsRepairing(false);
+        }
+    };
 
     const searchResult = vehicles.find(v => v.vin === searchVin);
     const vehicleEvents = searchResult ? events.filter(e => e.tokenId === searchResult.tokenId) : [];
     const plateEvents = vehicleEvents.filter(e => e.type === 'PLATE_EVENT_RECORDED');
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!searchResult) return;
-        addEvent({
+        await addEvent({
             type: 'DLT_REGISTRATION_UPDATED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -30,7 +47,7 @@ export const DLTPage = () => {
             }
         });
 
-        addEvent({
+        await addEvent({
             type: 'PLATE_EVENT_RECORDED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -39,7 +56,7 @@ export const DLTPage = () => {
         alert("Registration complete. Digital Green Book issued.");
     };
 
-    const handleUpdateTax = () => {
+    const handleUpdateTax = async () => {
         if (!searchResult) return;
         
         const age = new Date().getFullYear() - new Date(searchResult.production.manufacturedAt).getFullYear();
@@ -51,7 +68,7 @@ export const DLTPage = () => {
             }
         }
 
-        addEvent({
+        await addEvent({
             type: 'TAX_STATUS_UPDATED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -64,9 +81,9 @@ export const DLTPage = () => {
         alert("Tax status updated successfully.");
     };
 
-    const handleUpdateColor = () => {
+    const handleUpdateColor = async () => {
         if (!searchResult || !newColor) return;
-        addEvent({
+        await addEvent({
             type: 'SPECIFICATION_UPDATED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -85,8 +102,27 @@ export const DLTPage = () => {
             <header>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Land Transport Authority</h1>
                 <p className="text-secondary">Official registry for vehicle identities, license plates, and legal flags.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="badge badge-info">Logged in as {actorId}</span>
+                    <button 
+                        onClick={handleRepair} 
+                        disabled={isRepairing}
+                        style={{ 
+                            fontSize: '0.8rem', 
+                            padding: '0.4rem 0.8rem', 
+                            border: '1px solid var(--warning)', 
+                            color: 'var(--warning)',
+                            background: isRepairing ? 'rgba(255,193,7,0.1)' : 'transparent',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}
+                    >
+                        {isRepairing ? 'Repairing Registry...' : 'Repair Central Registry'}
+                        <Settings size={14} />
+                    </button>
                 </div>
             </header>
 
@@ -124,7 +160,7 @@ export const DLTPage = () => {
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>License Plate</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || 'None'}</div>
+                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || searchResult.spec.plateNo || 'None'}</div>
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registered Color</div>

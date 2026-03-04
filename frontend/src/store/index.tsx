@@ -244,6 +244,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           ownerCount: v.ownerCount || 0,
           registration: { 
             isRegistered: v.registrationStatus === 'REGISTERED', 
+            plateNo: v.specJson?.plateNo,
             taxStatus: 'unpaid' 
           },
           warranty: { terms: { years: 0, mileageKm: 0, coverage: [] } },
@@ -295,8 +296,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Keep optimistic update for speed on most events
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
+    setEvents(prev => [...prev, newEvent]);
     setVehicles(prev => applyEventToState(prev, newEvent));
     
     try {
@@ -305,7 +305,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
       // IMPORTANT: If backend generated unique data (like plateNo during issue),
       // we need to re-sync our local state with the backend's response payload.
-      if (newEvent.type === 'PLATE_EVENT_RECORDED' && newEvent.payload.action === 'issue') {
+      if ((newEvent.type === 'PLATE_EVENT_RECORDED' && newEvent.payload.action === 'issue') || 
+          newEvent.type === 'DLT_REGISTRATION_UPDATED') {
          // Convert backend event to frontend format
          const mappedResponseEvent: VehicleEvent = {
             id: responseEvent.eventId,

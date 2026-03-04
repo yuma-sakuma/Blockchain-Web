@@ -11,6 +11,7 @@ export interface Specification {
   batteryKwh?: number;
   batteryCapacity?: string;
   options: string[];
+  plateNo?: string;
 }
 
 export interface Warranty {

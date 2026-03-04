@@ -144,7 +144,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Plate No.</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || 'PENDING'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || (selectedVehicle.spec as any).plateNo || 'PENDING'}</div>
                 </div>
               </div>
             </div>
@@ -244,11 +244,11 @@ export const OverviewPage = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span className="text-secondary">Engine Serial</span>
-                        <span style={{ fontFamily: 'monospace' }}>{selectedVehicle.spec.engineSerial}</span>
+                        <span>{selectedVehicle.spec.engine}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span className="text-secondary">Battery Cap</span>
-                        <span>{(selectedVehicle.spec as any).batteryCapacity || 'N/A'}</span>
+                        <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
                     </div>
                 </div>
             </div>

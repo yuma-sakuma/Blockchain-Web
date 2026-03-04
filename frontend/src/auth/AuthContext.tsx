@@ -169,10 +169,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionStorage.setItem('auth_address', mockAddress);
       sessionStorage.setItem('auth_role', targetRole);
       
-      // Force reload to ensure all components pick up the new "signer" if they strictly rely on window.ethereum (which they shouldn't for read views, but for consistency)
+      // // Force reload to ensure all components pick up the new role state
       // window.location.reload(); 
-      // Actually, React state update should be enough for UI, but `window.ethereum` won't match. 
-      // Our app uses `address` from context mostly, so it should work fine for UI testing.
   };
 
   const logout = () => {

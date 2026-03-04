@@ -41,4 +41,8 @@ export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> 
   if (!response.ok) throw new Error('Failed to check VIN');
   return response.json();
 };
-
+export const repairRegistry = async () => {
+  const response = await fetch(`${API_URL}/status/repair-registry`);
+  if (!response.ok) throw new Error('Failed to repair registry');
+  return response.json();
+};
