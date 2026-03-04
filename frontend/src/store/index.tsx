@@ -20,7 +20,7 @@ export const useVehicleStore = () => {
 // Initial State Logic (Reducer-like)
 const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): VehicleNFT[] => {
   const { type, payload } = event;
-  
+
   if (type === 'MANUFACTURER_MINTED') {
     const newVehicle: VehicleNFT = {
       tokenId: payload.tokenId || Date.now().toString(), // Simple mock ID
@@ -38,42 +38,42 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
     };
     return [...currentVehicles, newVehicle];
   }
-  
+
   return currentVehicles.map(v => {
     if (v.tokenId !== event.tokenId) return v;
-    
+
     // Apply state changes based on event type
     switch (type) {
       case 'WARRANTY_DEFINED':
         return { ...v, warranty: { ...v.warranty, ...payload } };
       case 'OWNERSHIP_TRANSFERRED':
-        return { 
-          ...v, 
-          currentOwner: payload.to, 
-          ownerCount: v.ownerCount + 1 
+        return {
+          ...v,
+          currentOwner: payload.to,
+          ownerCount: v.ownerCount + 1
         };
       case 'DLT_REGISTRATION_UPDATED':
-        return { 
-          ...v, 
-          registration: { 
-            ...v.registration, 
-            isRegistered: true, 
-            bookNo: payload.bookNo 
-          } 
+        return {
+          ...v,
+          registration: {
+            ...v.registration,
+            isRegistered: true,
+            bookNo: payload.bookNo
+          }
         };
       case 'PLATE_EVENT_RECORDED':
-        return { 
-          ...v, 
-          registration: { ...v.registration, plateNo: payload.plateNo } 
+        return {
+          ...v,
+          registration: { ...v.registration, plateNo: payload.plateNo }
         };
       case 'TAX_STATUS_UPDATED':
-        return { 
-          ...v, 
-          registration: { 
-            ...v.registration, 
-            taxStatus: 'paid', 
-            taxValidUntil: payload.validUntil 
-          } 
+        return {
+          ...v,
+          registration: {
+            ...v.registration,
+            taxStatus: 'paid',
+            taxValidUntil: payload.validUntil
+          }
         };
       case 'FLAG_UPDATED':
         return {
@@ -90,19 +90,19 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
           ...v,
           lien: { status: 'released', transferLocked: false, lender: undefined }
         };
-      case 'MAINTENANCE_RECORDED': 
+      case 'MAINTENANCE_RECORDED':
         // Logic: Update mileage if monotonic
         // In a real app we might store the service history in a separate list, 
         // but for the Snapshot, we mostly care about mileage updates attached to service.
         return {
-             ...v,
-             warranty: { 
-                 ...v.warranty, 
-                 terms: { 
-                     ...v.warranty.terms, 
-                     mileageKm: Math.max(v.warranty.terms.mileageKm, payload.mileageKm) 
-                 } 
-             }
+          ...v,
+          warranty: {
+            ...v.warranty,
+            terms: {
+              ...v.warranty.terms,
+              mileageKm: Math.max(v.warranty.terms.mileageKm, payload.mileageKm)
+            }
+          }
         };
       case 'INSURANCE_POLICY_UPDATED':
         return {
@@ -118,28 +118,28 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'CLAIM_FILED':
         const isMajor = payload.severity === 'total_loss' || payload.severity === 'high';
         return {
-            ...v,
-            flags: { 
-                ...v.flags, 
-                majorAccident: v.flags.majorAccident || isMajor,
-                totalLoss: payload.severity === 'total_loss' 
-            },
-            activeClaim: {
-                claimId: payload.claimId || `CLAIM-${Date.now()}`,
-                incidentDate: payload.date || new Date().toISOString(),
-                description: payload.description,
-                status: 'filed'
-            }
+          ...v,
+          flags: {
+            ...v.flags,
+            majorAccident: v.flags.majorAccident || isMajor,
+            totalLoss: payload.severity === 'total_loss'
+          },
+          activeClaim: {
+            claimId: payload.claimId || `CLAIM-${Date.now()}`,
+            incidentDate: payload.date || new Date().toISOString(),
+            description: payload.description,
+            status: 'filed'
+          }
         };
       case 'CLAIM_STATUS_CHANGED':
         return v.activeClaim ? {
-            ...v,
-            activeClaim: { ...v.activeClaim, status: payload.status }
+          ...v,
+          activeClaim: { ...v.activeClaim, status: payload.status }
         } : v;
       case 'INSURER_APPROVED_ESTIMATE':
         return v.activeClaim ? {
-            ...v,
-            activeClaim: { ...v.activeClaim, status: 'approved', estimateAmount: payload.amount }
+          ...v,
+          activeClaim: { ...v.activeClaim, status: 'approved', estimateAmount: payload.amount }
         } : v;
       case 'WRITE_CONSENT_GRANTED':
         return {
@@ -147,9 +147,9 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
           writeConsents: [
             ...(v.writeConsents || []).filter(c => new Date(c.validUntil) > new Date()), // cleanup expired
             {
-               grantee: payload.to,
-               scope: payload.scope,
-               validUntil: payload.expiresAt
+              grantee: payload.to,
+              scope: payload.scope,
+              validUntil: payload.expiresAt
             }
           ]
         };
@@ -160,10 +160,10 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
         const newSpec = { ...v.spec };
         if (payload.partType === 'ECU') newSpec.engine = payload.newPartNo; // Mock mapping
         if (payload.partType === 'Battery') newSpec.batteryKwh = payload.newPartNo; // Mock mapping
-        
+
         return {
-            ...v,
-            spec: newSpec
+          ...v,
+          spec: newSpec
         };
       case 'REPOSSESSION_RECORDED':
         return {
@@ -174,19 +174,19 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'ODOMETER_SNAPSHOT':
         return {
           ...v,
-          warranty: { 
-            ...v.warranty, 
-            terms: { 
-              ...v.warranty.terms, 
-              mileageKm: Math.max(v.warranty.terms.mileageKm, payload.mileageKm) 
-            } 
+          warranty: {
+            ...v.warranty,
+            terms: {
+              ...v.warranty.terms,
+              mileageKm: Math.max(v.warranty.terms.mileageKm, payload.mileageKm)
+            }
           }
         };
       case 'ACCIDENT_REPAIR_FLAGGED':
         return {
           ...v,
-          flags: { 
-            ...v.flags, 
+          flags: {
+            ...v.flags,
             majorAccident: v.flags.majorAccident || payload.severity === 'structural' || payload.severity === 'major'
           }
         };
@@ -217,7 +217,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           getVehicles(),
           getEvents()
         ]);
-        
+
         // Map backend event structure to frontend structure
         const mappedEvents: VehicleEvent[] = fetchedEvents.map((e: any) => ({
           id: e.eventId,
@@ -228,7 +228,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           payload: e.payload,
         }));
         setEvents(mappedEvents);
-        
+
         // Map backend vehicle structure to frontend VehicleNFT structure
         const mappedVehicles: VehicleNFT[] = fetchedVehicles.map((v: any) => ({
           tokenId: v.tokenId,
@@ -236,47 +236,52 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           makeModelTrim: v.modelJson?.model || 'Unknown',
           spec: v.specJson || { color: 'Unknown', options: [] },
           production: {
-             manufacturedAt: new Date(Number(v.manufacturedAt)).toISOString(),
-             plantId: v.manufacturerAddress
+            manufacturedAt: new Date(Number(v.manufacturedAt)).toISOString(),
+            plantId: v.manufacturerAddress
           },
           manufacturerSignature: v.manufacturerSignature || '',
           currentOwner: v.currentOwnerAddress || 'Unknown',
           ownerCount: v.ownerCount || 0,
-          registration: { 
-            isRegistered: v.registrationStatus === 'REGISTERED', 
-            plateNo: v.specJson?.plateNo,
-            taxStatus: 'unpaid' 
+          registration: {
+            isRegistered: v.registrationStatus === 'REGISTERED',
+            taxStatus: 'unpaid',
+            plateNo: v.plateRecords && v.plateRecords.length > 0
+              ? v.plateRecords.sort((a: any, b: any) => Number(b.effectiveAt) - Number(a.effectiveAt))[0].plateNo
+              : undefined,
+            bookNo: v.registrations && v.registrations.length > 0
+              ? v.registrations.sort((a: any, b: any) => Number(b.registeredAt) - Number(a.registeredAt))[0].greenBookNo
+              : undefined
           },
           warranty: { terms: { years: 0, mileageKm: 0, coverage: [] } },
-          flags: { 
-            stolen: v.activeFlags?.includes('STOLEN') || false, 
-            seized: v.activeFlags?.includes('SEIZED') || false, 
-            majorAccident: v.activeFlags?.includes('MAJOR_ACCIDENT') || false, 
-            flood: v.activeFlags?.includes('FLOOD') || false, 
-            totalLoss: v.activeFlags?.includes('TOTAL_LOSS') || false, 
-            scrapped: v.activeFlags?.includes('SCRAPPED') || false 
+          flags: {
+            stolen: v.activeFlags?.includes('STOLEN') || false,
+            seized: v.activeFlags?.includes('SEIZED') || false,
+            majorAccident: v.activeFlags?.includes('MAJOR_ACCIDENT') || false,
+            flood: v.activeFlags?.includes('FLOOD') || false,
+            totalLoss: v.activeFlags?.includes('TOTAL_LOSS') || false,
+            scrapped: v.activeFlags?.includes('SCRAPPED') || false
           },
           lien: { status: 'none', transferLocked: v.transferLocked || false }
         }));
-        
+
         // Re-apply events to construct full dynamic state if needed, or rely on mapped initial state
         let state = mappedVehicles;
         // Optimization: In a real app we might only apply events occurring *after* the DB snapshot.
         // For prototype, we recalculate state over the loaded vehicles, but SKIP events the backend already baked into Vehicle props
         const backendHandledEvents = [
-          'MANUFACTURER_MINTED', 
-          'OWNERSHIP_TRANSFERRED', 
-          'DLT_REGISTRATION_UPDATED', 
-          'FLAG_UPDATED', 
-          'LIEN_CREATED', 
-          'LIEN_RELEASED', 
+          'MANUFACTURER_MINTED',
+          'OWNERSHIP_TRANSFERRED',
+          'DLT_REGISTRATION_UPDATED',
+          'FLAG_UPDATED',
+          'LIEN_CREATED',
+          'LIEN_RELEASED',
           'REPOSSESSION_RECORDED'
         ];
-        
+
         mappedEvents.forEach(e => {
-            if (!backendHandledEvents.includes(e.type)) {
-                state = applyEventToState(state, e);
-            }
+          if (!backendHandledEvents.includes(e.type)) {
+            state = applyEventToState(state, e);
+          }
         });
 
         setVehicles(state);
@@ -284,7 +289,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         console.error("Failed to fetch initial data", err);
       }
     };
-    
+
     fetchInitialData();
   }, []);
 
@@ -298,31 +303,10 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     // Keep optimistic update for speed on most events
     setEvents(prev => [...prev, newEvent]);
     setVehicles(prev => applyEventToState(prev, newEvent));
-    
+
     try {
       // Sync to backend
-      const responseEvent = await createEvent(newEvent);
-
-      // IMPORTANT: If backend generated unique data (like plateNo during issue),
-      // we need to re-sync our local state with the backend's response payload.
-      if ((newEvent.type === 'PLATE_EVENT_RECORDED' && newEvent.payload.action === 'issue') || 
-          newEvent.type === 'DLT_REGISTRATION_UPDATED') {
-         // Convert backend event to frontend format
-         const mappedResponseEvent: VehicleEvent = {
-            id: responseEvent.eventId,
-            tokenId: responseEvent.tokenId,
-            timestamp: new Date(Number(responseEvent.occurredAt)).toISOString(),
-            actor: responseEvent.actorAddress || 'UNKNOWN',
-            type: responseEvent.type,
-            payload: responseEvent.payload,
-         };
-
-         // Replace the optimistic event in the array
-         setEvents(prev => prev.map(e => e.id === newEvent.id ? mappedResponseEvent : e));
-         // Re-apply to state specifically to capture the generated plateNo
-         setVehicles(prev => applyEventToState(prev, mappedResponseEvent));
-      }
-
+      await createEvent(newEvent);
     } catch (err: any) {
       console.error("Failed to sync event with backend", err);
       // Reverting optimistic UI for prototype is complex, so we log it
