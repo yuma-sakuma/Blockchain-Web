@@ -45,10 +45,10 @@ export class AppService {
       
       // Need to use the deployer to grant roles if the current wallet doesn't have them
       // In this setup, the admin wallet usually HAS the DEFAULT_ADMIN_ROLE
-      const isManufacturer = await this.blockchainService.vehicleNFTContract.hasRole(MANUFACTURER_ROLE, this.blockchainService.wallet.address);
+      const isManufacturer = await this.blockchainService.vehicleNFTContract.hasRole(MANUFACTURER_ROLE, this.blockchainService.walletAddress);
       if (!isManufacturer) {
         this.logger.log('Granting MANUFACTURER_ROLE to self...');
-        const tx = await this.blockchainService.vehicleNFTContract.grantRole(MANUFACTURER_ROLE, this.blockchainService.wallet.address);
+        const tx = await this.blockchainService.vehicleNFTContract.grantRole(MANUFACTURER_ROLE, this.blockchainService.walletAddress);
         await tx.wait();
       }
 
@@ -93,7 +93,7 @@ export class AppService {
           const manufacturedAt = v.manufacturedAt ? BigInt(v.manufacturedAt) : BigInt(Date.now());
 
           const tx = await this.blockchainService.vehicleNFTContract.mintVehicle(
-            this.blockchainService.wallet.address,
+            this.blockchainService.walletAddress,
             vinHash,
             manufacturedAt,
             modelHash,

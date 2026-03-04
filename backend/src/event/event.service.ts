@@ -99,7 +99,7 @@ export class EventService {
 
           // Use the admin wallet to mint
           const tx = await this.blockchainService.vehicleNFTContract.mintVehicle(
-            process.env.ADMIN_WALLET_ADDRESS || this.blockchainService.wallet.address, 
+            process.env.ADMIN_WALLET_ADDRESS || this.blockchainService.walletAddress, 
             vinHash,
             manufacturedAt,
             modelHash,
@@ -162,7 +162,6 @@ export class EventService {
             vehicleUpdated = true;
 
             const transfer = this.ownershipTransferRepository.create({
-              tokenId: vehicle.tokenId,
               tokenId: vehicle.tokenId,
               fromAddress: payload.from || createEventDto.actor,
               toAddress: payload.to,

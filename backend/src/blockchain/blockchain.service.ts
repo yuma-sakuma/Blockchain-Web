@@ -7,7 +7,8 @@ import * as path from 'path';
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private provider: ethers.JsonRpcProvider;
-  public wallet: ethers.Wallet;
+  public wallet: ethers.Signer;
+  public walletAddress: string;
 
   public vehicleRegistryContract: ethers.Contract;
   public vehicleNFTContract: ethers.Contract;
@@ -15,7 +16,31 @@ export class BlockchainService implements OnModuleInit {
   public vehicleLienContract: ethers.Contract;
   public vehicleConsentContract: ethers.Contract;
 
+  /**
+   * Simple promise-chain mutex to serialize blockchain transactions.
+   * Prevents nonce mismatch errors when multiple event handlers send tx concurrently.
+   */
+  private txLock: Promise<void> = Promise.resolve();
+
   constructor(private configService: ConfigService) { }
+
+  /**
+   * Execute a callback while holding the transaction lock.
+   * All blockchain write operations should go through this to avoid nonce collisions.
+   */
+  async withTxLock<T>(fn: () => Promise<T>): Promise<T> {
+    let release: () => void;
+    const nextLock = new Promise<void>(resolve => { release = resolve; });
+    const prevLock = this.txLock;
+    this.txLock = nextLock;
+
+    await prevLock; // wait for previous tx to complete
+    try {
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
 
   async onModuleInit() {
     const rpcUrl = this.configService.get<string>('GANACHE_RPC_URL') || 'http://127.0.0.1:7545';
@@ -31,7 +56,10 @@ export class BlockchainService implements OnModuleInit {
     });
 
     if (privateKey) {
-      this.wallet = new ethers.Wallet(privateKey, this.provider);
+      const rawWallet = new ethers.Wallet(privateKey, this.provider);
+      this.walletAddress = rawWallet.address;
+      // Wrap in NonceManager to auto-track nonces and prevent nonce collision errors
+      this.wallet = new ethers.NonceManager(rawWallet);
     }
 
     // Use process.cwd() instead of __dirname to ensure it finds the src folder even if compiled to dist
@@ -103,12 +131,12 @@ export class BlockchainService implements OnModuleInit {
    * The deployer has DEFAULT_ADMIN_ROLE on all contracts, which allows granting other roles.
    */
   private async ensureRoles() {
-    if (!this.wallet) {
+    if (!this.wallet || !this.walletAddress) {
       console.warn('[BlockchainService] No wallet configured, skipping role setup.');
       return;
     }
 
-    const adminAddress = this.wallet.address;
+    const adminAddress = this.walletAddress;
 
     const roleGrants: { contract: ethers.Contract; contractName: string; roleName: string; roleHash: string }[] = [
       // VehicleRegistry roles
