@@ -8,6 +8,7 @@ import { EventLog } from '../database/entities/event-log.entity';
 import { Inspection } from '../database/entities/inspection.entity';
 import { InsuranceClaim } from '../database/entities/insurance-claim.entity';
 import { InsurancePolicy } from '../database/entities/insurance-policy.entity';
+import { ActorRole, PlateEventType, RegistrationStatus, TaxStatus } from '../database/entities/enums';
 import { MaintenanceLog } from '../database/entities/maintenance-log.entity';
 import { OwnershipTransfer } from '../database/entities/ownership-transfer.entity';
 import { PlateRecord } from '../database/entities/plate-record.entity';
@@ -47,6 +48,11 @@ export class EventService {
     return this.eventLogRepository.find({
       order: { occurredAt: 'DESC' },
     });
+  }
+
+  async checkPlateExists(plateNo: string): Promise<{ exists: boolean }> {
+    const existing = await this.plateRecordRepository.findOne({ where: { plateNo } });
+    return { exists: !!existing };
   }
 
   async create(createEventDto: any): Promise<EventLog> {
@@ -147,6 +153,7 @@ export class EventService {
             vehicleUpdated = true;
 
             const transfer = this.ownershipTransferRepository.create({
+              tokenId: vehicle.tokenId,
               fromAddress: payload.from || createEventDto.actor,
               toAddress: payload.to,
               reason: 'RESALE' as any, // Mock default reason
@@ -183,10 +190,13 @@ export class EventService {
           vehicle.registrationStatus = 'REGISTERED' as any;
           vehicleUpdated = true;
 
+          const assignedBookNo = payload.bookNo || `BOOK-${Date.now()}`;
+          payload.bookNo = assignedBookNo; // Update payload for storage and blockchain
+
           const reg = this.registrationRepository.create({
             tokenId: vehicle.tokenId,
             status: 'REGISTERED' as any,
-            greenBookNo: payload.bookNo || `BOOK-${Date.now()}`,
+            greenBookNo: assignedBookNo,
             greenBookNoHash: 'mockHash',
             registeredAt: Date.now().toString(),
             registrationDocHash: 'mockHash',
@@ -208,31 +218,16 @@ export class EventService {
           }
           break;
         case 'PLATE_EVENT_RECORDED':
-          let assignedPlateNo = payload.plateNo;
+          const assignedPlateNo = payload.plateNo;
 
-          if (payload.action === 'issue') {
-            // 3. License Plate Randomizer (Issue new plate)
-            let isUnique = false;
-            while (!isUnique) {
-              const prefix = Math.floor(Math.random() * 9) + 1;
-              const lettersTh = "กขคฆงจฉชซญฎฏฐฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ";
-              const char1 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
-              const char2 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
-              const digits = Math.floor(Math.random() * 9000) + 1000;
-              assignedPlateNo = `${prefix}${char1}${char2}-${digits}`;
+          if (!assignedPlateNo) {
+            throw new Error('plateNo is required. Frontend must generate and validate the plate number before sending.');
+          }
 
-              // ตรวจสอบว่าป้ายซ้ำหรือไม่ ถ้าซ้ำ (เจอ existingPlate) loop จะทำงานต่อและ gen ใหม่
-              const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
-              if (!existingPlate) {
-                isUnique = true; // ไม่ซ้ำ ออกจาก loop ได้
-              }
-            }
-          } else if (payload.action === 'change') {
-            // 4. Check for duplicate if manually changing
-            const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo, eventType: 'ISSUE' as any } });
-            if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
-              throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
-            }
+          // Duplicate check for both issue and change actions
+          const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
+          if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
+            throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
           }
 
           const plate = this.plateRecordRepository.create({
@@ -253,7 +248,7 @@ export class EventService {
               createEventDto.tokenId,
               ethers.id(payload.plateNo),
               10,
-              typeMap[payload.type] || 0,
+              typeMap[payload.action] || 0,
               ethers.id('plate-doc-hash'),
               Math.floor(Date.now() / 1000)
             );
@@ -275,16 +270,21 @@ export class EventService {
           });
           await this.taxPaymentRepository.save(tax);
 
-          // Blockchain Interaction
+          // Blockchain Interaction — contract requires a passing inspection on-chain first
           try {
-            const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
-              createEventDto.tokenId,
-              new Date().getFullYear(),
-              Math.floor(new Date(payload.validUntil).getTime() / 1000),
-              ethers.id('tax-receipt-hash')
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
+            const lastInspection = await this.blockchainService.vehicleRegistryContract.lastInspectionPassAt(createEventDto.tokenId);
+            if (Number(lastInspection) > 0) {
+              const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
+                createEventDto.tokenId,
+                new Date().getFullYear(),
+                Math.floor(new Date(payload.validUntil).getTime() / 1000),
+                ethers.id('tax-receipt-hash')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+            } else {
+              console.warn('Blockchain Tax Payment Skipped: No on-chain inspection record yet for tokenId', createEventDto.tokenId);
+            }
           } catch (err) {
             console.error('Blockchain Tax Payment Failed:', err);
           }
@@ -578,11 +578,11 @@ export class EventService {
       ...createEventDto,
       actorAddress: createEventDto.actor || '0x00',
       actorRole: createEventDto.actorRole ||
-        (createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' :
-          createEventDto.actor?.startsWith('DLT') ? 'REGULATORY' :
-            createEventDto.actor?.startsWith('WORKSHOP') ? 'SERVICE' :
-              createEventDto.actor?.startsWith('INSURER') ? 'INSURANCE' :
-                createEventDto.actor?.startsWith('FINANCE') ? 'FINANCIAL' : 'CONSUMER'),
+        (createEventDto.actor?.startsWith('MANUFACTURER') ? ActorRole.MANUFACTURER :
+          createEventDto.actor?.startsWith('DLT') ? ActorRole.DLT :
+            createEventDto.actor?.startsWith('WORKSHOP') ? ActorRole.WORKSHOP :
+              createEventDto.actor?.startsWith('INSURER') ? ActorRole.INSURER :
+                createEventDto.actor?.startsWith('FINANCE') ? ActorRole.FINANCE : ActorRole.OWNER),
       occurredAt: createEventDto.occurredAt || Date.now().toString(),
       payloadHash: payloadHash,
       txHash: txHash,
