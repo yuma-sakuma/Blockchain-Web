@@ -307,7 +307,13 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       // Sync to backend
-      await createEvent(newEvent);
+      const response = await createEvent(newEvent);
+
+      // If the backend returned a different tokenId (e.g. from blockchain mint), update state
+      if (response && response.tokenId && response.tokenId !== newEvent.tokenId) {
+        setEvents(prev => prev.map(e => e.id === newEvent.id ? { ...e, tokenId: response.tokenId } : e));
+        setVehicles(prev => prev.map(v => v.tokenId === newEvent.tokenId ? { ...v, tokenId: response.tokenId } : v));
+      }
     } catch (err: any) {
       console.error("Failed to sync event with backend", err);
       // Reverting optimistic UI for prototype is complex, so we log it

@@ -113,6 +113,8 @@ export class EventService {
           if (transferEvent) {
             const parsed = this.blockchainService.vehicleNFTContract.interface.parseLog(transferEvent);
             createEventDto.tokenId = parsed?.args.tokenId.toString();
+            // Important: ensure payload also reflects the real ID
+            if (payload) payload.tokenId = createEventDto.tokenId;
           }
 
         } catch (err) {
@@ -167,7 +169,12 @@ export class EventService {
             // Blockchain Interaction
             try {
               const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
-              const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+              const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : null;
+
+              if (!toAddress || toAddress === ethers.ZeroAddress) {
+                throw new Error(`Invalid or missing 'to' address for transfer: ${payload.to}`);
+              }
+
               const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
                 createEventDto.tokenId,
                 toAddress,
@@ -218,16 +225,30 @@ export class EventService {
           }
           break;
         case 'PLATE_EVENT_RECORDED':
-          const assignedPlateNo = payload.plateNo;
+          let assignedPlateNo = payload.plateNo;
 
-          if (!assignedPlateNo) {
-            throw new Error('plateNo is required. Frontend must generate and validate the plate number before sending.');
-          }
+          if (payload.action === 'issue') {
+            // 3. License Plate Randomizer (Issue new plate)
+            let isUnique = false;
+            while (!isUnique) {
+              const prefix = Math.floor(Math.random() * 9) + 1;
+              const lettersTh = "กขคฆงจฉชซญฎฏฐฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ";
+              const char1 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
+              const char2 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
+              const digits = Math.floor(Math.random() * 9000) + 1000;
+              assignedPlateNo = `${prefix}${char1}${char2}-${digits}`;
 
-          // Duplicate check for both issue and change actions
-          const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
-          if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
-            throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
+              const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
+              if (!existingPlate) {
+                isUnique = true;
+              }
+            }
+          } else if (payload.action === 'change') {
+            // 4. Check for duplicate if manually changing
+            const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo, eventType: 'ISSUE' as any } });
+            if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
+              throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
+            }
           }
 
           const plate = this.plateRecordRepository.create({
@@ -246,7 +267,7 @@ export class EventService {
             const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
             const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
               createEventDto.tokenId,
-              ethers.id(payload.plateNo),
+              ethers.id(assignedPlateNo),
               10,
               typeMap[payload.action] || 0,
               ethers.id('plate-doc-hash'),
@@ -270,21 +291,16 @@ export class EventService {
           });
           await this.taxPaymentRepository.save(tax);
 
-          // Blockchain Interaction — contract requires a passing inspection on-chain first
+          // Blockchain Interaction
           try {
-            const lastInspection = await this.blockchainService.vehicleRegistryContract.lastInspectionPassAt(createEventDto.tokenId);
-            if (Number(lastInspection) > 0) {
-              const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
-                createEventDto.tokenId,
-                new Date().getFullYear(),
-                Math.floor(new Date(payload.validUntil).getTime() / 1000),
-                ethers.id('tax-receipt-hash')
-              );
-              const receipt = await tx.wait();
-              txHash = receipt.hash;
-            } else {
-              console.warn('Blockchain Tax Payment Skipped: No on-chain inspection record yet for tokenId', createEventDto.tokenId);
-            }
+            const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
+              createEventDto.tokenId,
+              new Date().getFullYear(),
+              Math.floor(new Date(payload.validUntil).getTime() / 1000),
+              ethers.id('tax-receipt-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
           } catch (err) {
             console.error('Blockchain Tax Payment Failed:', err);
           }
@@ -395,7 +411,7 @@ export class EventService {
               const scopeMask = 1;
               const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
                 createEventDto.tokenId,
-                ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress,
+                payload.grantTo.startsWith('0x') ? payload.grantTo : '0x0000000000000000000000000000000000000000',
                 scopeMask,
                 Math.floor(new Date(payload.expiresAt).getTime() / 1000),
                 false,
@@ -422,7 +438,7 @@ export class EventService {
               try {
                 const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
                   createEventDto.tokenId,
-                  ethers.isAddress(payload.revokeFrom) ? ethers.getAddress(payload.revokeFrom) : ethers.ZeroAddress
+                  payload.revokeFrom.startsWith('0x') ? payload.revokeFrom : '0x0000000000000000000000000000000000000000'
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;

@@ -4,15 +4,15 @@ import { useVehicleStore } from '../store';
 import { EventType } from '../types/vehicle';
 
 const getEventIcon = (type: EventType) => {
-    switch(type) {
-        case 'MANUFACTURER_MINTED': return <Car size={16} color="var(--accent-primary)" />;
-        case 'DLT_REGISTRATION_UPDATED': return <FileText size={16} color="var(--success)" />;
-        case 'OWNERSHIP_TRANSFERRED': return <Activity size={16} color="var(--accent-secondary)" />;
-        case 'LIEN_CREATED': return <Lock size={16} color="var(--danger)" />;
-        case 'CLAIM_FILED': return <AlertTriangle size={16} color="var(--danger)" />;
-        case 'MAINTENANCE_RECORDED': return <Zap size={16} color="var(--accent-primary)" />;
-        default: return <Clipboard size={16} color="var(--text-secondary)" />;
-    }
+  switch (type) {
+    case 'MANUFACTURER_MINTED': return <Car size={16} color="var(--accent-primary)" />;
+    case 'DLT_REGISTRATION_UPDATED': return <FileText size={16} color="var(--success)" />;
+    case 'OWNERSHIP_TRANSFERRED': return <Activity size={16} color="var(--accent-secondary)" />;
+    case 'LIEN_CREATED': return <Lock size={16} color="var(--danger)" />;
+    case 'CLAIM_FILED': return <AlertTriangle size={16} color="var(--danger)" />;
+    case 'MAINTENANCE_RECORDED': return <Zap size={16} color="var(--accent-primary)" />;
+    default: return <Clipboard size={16} color="var(--text-secondary)" />;
+  }
 };
 
 export const OverviewPage = () => {
@@ -20,13 +20,13 @@ export const OverviewPage = () => {
   const [search, setSearch] = useState('');
   const [selectedVin, setSelectedVin] = useState<string | null>(null);
 
-  const filteredVehicles = vehicles.filter(v => 
-    v.vin.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredVehicles = vehicles.filter(v =>
+    v.vin.toLowerCase().includes(search.toLowerCase()) ||
     v.tokenId.includes(search)
   );
 
   const selectedVehicle = selectedVin ? vehicles.find(v => v.vin === selectedVin) : null;
-  const vehicleEvents = selectedVehicle 
+  const vehicleEvents = selectedVehicle
     ? events.filter(e => e.tokenId === selectedVehicle.tokenId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     : [];
 
@@ -34,13 +34,13 @@ export const OverviewPage = () => {
     <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem', overflowX: 'hidden' }}>
       <header style={{ marginBottom: '4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-           <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', background: 'linear-gradient(to right, #fff, var(--accent-primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', background: 'linear-gradient(to right, #fff, var(--accent-primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Chain Explorer
           </h1>
           <p className="text-secondary" style={{ fontSize: '1.2rem' }}>Unified registry protocol for high-fidelity vehicle lifecycle assets.</p>
         </div>
         <div className="badge badge-info" style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
-            <Activity size={14} style={{ marginRight: '8px' }} /> Network Online: 3 Nodes
+          <Activity size={14} style={{ marginRight: '8px' }} /> Network Online: 3 Nodes
         </div>
       </header>
 
@@ -48,29 +48,29 @@ export const OverviewPage = () => {
       <div className="card" style={{ padding: '2rem', marginBottom: '3rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ position: 'relative' }}>
           <Search style={{ position: 'absolute', left: '1.5rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} size={24} />
-          <input 
-            type="text" 
-            placeholder="Search VIN, Chassis Number or NFT ID..." 
+          <input
+            type="text"
+            placeholder="Search VIN, Chassis Number or NFT ID..."
             style={{ paddingLeft: '4rem', fontSize: '1.25rem', paddingRight: '1.5rem', height: '70px', borderRadius: '20px', background: 'rgba(0,0,0,0.3)' }}
             value={search}
             onChange={(e) => {
-               setSearch(e.target.value);
-               if (selectedVin) setSelectedVin(null);
+              setSearch(e.target.value);
+              if (selectedVin) setSelectedVin(null);
             }}
           />
         </div>
-        
+
         {!search && (
-            <div style={{ marginTop: '2rem' }}>
-                <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '1rem' }}>Recently Tracked Assets</p>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    {vehicles.slice(0, 3).map(v => (
-                        <button key={v.tokenId} onClick={() => setSelectedVin(v.vin)} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
-                            <Car size={16} color="var(--accent-primary)" /> {v.vin}
-                        </button>
-                    ))}
-                </div>
+          <div style={{ marginTop: '2rem' }}>
+            <p className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '1rem' }}>Recently Tracked Assets</p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              {vehicles.slice(0, 3).map(v => (
+                <button key={v.tokenId} onClick={() => setSelectedVin(v.vin)} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
+                  <Car size={16} color="var(--accent-primary)" /> {v.vin}
+                </button>
+              ))}
             </div>
+          </div>
         )}
       </div>
 
@@ -84,16 +84,16 @@ export const OverviewPage = () => {
               </div>
               <h3 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem 0' }}>{v.makeModelTrim}</h3>
               <p className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {v.vin}</p>
-              
+
               <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1.5rem' }}>
-                    <div>
-                        <div className="text-secondary" style={{ fontSize: '0.7rem' }}>REGISTERED</div>
-                        <div style={{ fontWeight: 700 }}>{v.registration.isRegistered ? 'YES' : 'NO'}</div>
-                    </div>
-                    <div>
-                        <div className="text-secondary" style={{ fontSize: '0.7rem' }}>ODOMETER</div>
-                        <div style={{ fontWeight: 700 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
-                    </div>
+                <div>
+                  <div className="text-secondary" style={{ fontSize: '0.7rem' }}>REGISTERED</div>
+                  <div style={{ fontWeight: 700 }}>{v.registration.isRegistered ? 'YES' : 'NO'}</div>
+                </div>
+                <div>
+                  <div className="text-secondary" style={{ fontSize: '0.7rem' }}>ODOMETER</div>
+                  <div style={{ fontWeight: 700 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                </div>
               </div>
             </div>
           ))}
@@ -103,13 +103,13 @@ export const OverviewPage = () => {
           {/* Main Visualizer */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 0 }}>
             <div>
-                <button onClick={() => setSelectedVin(null)} className="btn" style={{ padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                    &larr; Back to Results
-                </button>
+              <button onClick={() => setSelectedVin(null)} className="btn" style={{ padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                &larr; Back to Results
+              </button>
             </div>
             <div className="card" style={{ padding: '3rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, right: 0, padding: '2rem', opacity: 0.1 }}>
-                  <Car size={180} />
+                <Car size={180} />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem' }}>
@@ -158,9 +158,9 @@ export const OverviewPage = () => {
                 {vehicleEvents.map((e) => (
                   <div key={e.id} className="timeline-item" style={{ borderLeft: '2px solid rgba(255,255,255,0.05)', paddingLeft: '2rem', paddingBottom: '2.5rem', position: 'relative' }}>
                     <div style={{ position: 'absolute', left: '-13px', top: '0', background: '#0f172a', padding: '4px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {getEventIcon(e.type)}
-                        </div>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {getEventIcon(e.type)}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'white' }}>{e.type.replace(/_/g, ' ')}</div>
@@ -171,14 +171,14 @@ export const OverviewPage = () => {
                     </div>
                     <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                          {Object.entries(e.payload as object).map(([key, value]) => (
-                               typeof value !== 'object' && (
-                                  <div key={key}>
-                                      <span className="text-secondary" style={{ textTransform: 'capitalize' }}>{key}: </span>
-                                      <span style={{ color: 'white' }}>{String(value)}</span>
-                                  </div>
-                               )
-                          ))}
+                        {Object.entries(e.payload as object).map(([key, value]) => (
+                          typeof value !== 'object' && (
+                            <div key={key}>
+                              <span className="text-secondary" style={{ textTransform: 'capitalize' }}>{key}: </span>
+                              <span style={{ color: 'white' }}>{String(value)}</span>
+                            </div>
+                          )
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -191,17 +191,17 @@ export const OverviewPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 0 }}>
             <div className="card">
               <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                 <ShieldCheck size={20} color="var(--success)" />
-                 Ownership Authority
+                <ShieldCheck size={20} color="var(--success)" />
+                Ownership Authority
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ padding: '1.25rem', background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '16px' }}>
-                    <div className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>LEGAL REGISTERED OWNER</div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem', wordBreak: 'break-all' }}>{selectedVehicle.currentOwner}</div>
+                  <div className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>LEGAL REGISTERED OWNER</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.1rem', wordBreak: 'break-all' }}>{selectedVehicle.currentOwner}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                    <Info size={16} className="text-secondary" />
-                    <span className="text-secondary">Identity verified via DLT Provincial Link.</span>
+                  <Info size={16} className="text-secondary" />
+                  <span className="text-secondary">Identity verified via DLT Provincial Link.</span>
                 </div>
               </div>
             </div>
@@ -209,48 +209,48 @@ export const OverviewPage = () => {
             <div className="card" style={{ border: selectedVehicle.flags.majorAccident ? '1px solid var(--danger)' : '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ margin: 0 }}>Safety Integrity</h3>
-                 {selectedVehicle.flags.majorAccident ? <AlertTriangle size={24} color="var(--danger)" /> : <CheckCircle2 size={24} color="var(--success)" />}
+                {selectedVehicle.flags.majorAccident ? <AlertTriangle size={24} color="var(--danger)" /> : <CheckCircle2 size={24} color="var(--success)" />}
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="text-secondary">Clean Title</span>
-                    {selectedVehicle.flags.totalLoss ? <span color="var(--danger)">No</span> : <span style={{ color: 'var(--success)' }}>Yes</span>}
+                  <span className="text-secondary">Clean Title</span>
+                  {selectedVehicle.flags.totalLoss ? <span color="var(--danger)">No</span> : <span style={{ color: 'var(--success)' }}>Yes</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="text-secondary">Odo Integrity</span>
-                    <span style={{ color: 'var(--success)' }}>Verified</span>
+                  <span className="text-secondary">Odo Integrity</span>
+                  <span style={{ color: 'var(--success)' }}>Verified</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="text-secondary">Theft Flags</span>
-                    {selectedVehicle.flags.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
+                  <span className="text-secondary">Theft Flags</span>
+                  {selectedVehicle.flags.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
                 </div>
               </div>
             </div>
 
             <div className="card" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent)' }}>
-                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <Zap size={20} color="var(--accent-primary)" />
-                    Asset Specifications
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="text-secondary">Model Year</span>
-                        <span>{new Date(selectedVehicle.production.manufacturedAt).getFullYear()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="text-secondary">Color</span>
-                        <span>{selectedVehicle.spec.color}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="text-secondary">Engine Serial</span>
-                        <span style={{ fontFamily: 'monospace' }}>{selectedVehicle.spec.engineSerial}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="text-secondary">Battery Cap</span>
-                        <span>{(selectedVehicle.spec as any).batteryCapacity || 'N/A'}</span>
-                    </div>
+              <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Zap size={20} color="var(--accent-primary)" />
+                Asset Specifications
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="text-secondary">Model Year</span>
+                  <span>{new Date(selectedVehicle.production.manufacturedAt).getFullYear()}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="text-secondary">Color</span>
+                  <span>{selectedVehicle.spec.color}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="text-secondary">Engine Serial</span>
+                  <span>{selectedVehicle.spec.engine}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="text-secondary">Battery Cap</span>
+                  <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
