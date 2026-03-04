@@ -144,7 +144,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Plate No.</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || 'PENDING'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || (selectedVehicle.spec as any).plateNo || 'PENDING'}</div>
                 </div>
               </div>
             </div>
@@ -229,28 +229,28 @@ export const OverviewPage = () => {
             </div>
 
             <div className="card" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent)' }}>
-              <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Zap size={20} color="var(--accent-primary)" />
-                Asset Specifications
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="text-secondary">Model Year</span>
-                  <span>{new Date(selectedVehicle.production.manufacturedAt).getFullYear()}</span>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Zap size={20} color="var(--accent-primary)" />
+                    Asset Specifications
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="text-secondary">Model Year</span>
+                        <span>{new Date(selectedVehicle.production.manufacturedAt).getFullYear()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="text-secondary">Color</span>
+                        <span>{selectedVehicle.spec.color}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="text-secondary">Engine Serial</span>
+                        <span>{selectedVehicle.spec.engine}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="text-secondary">Battery Cap</span>
+                        <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
+                    </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="text-secondary">Color</span>
-                  <span>{selectedVehicle.spec.color}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="text-secondary">Engine Serial</span>
-                  <span>{selectedVehicle.spec.engine}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className="text-secondary">Battery Cap</span>
-                  <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>

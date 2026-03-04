@@ -301,8 +301,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Keep optimistic update for speed on most events
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
+    setEvents(prev => [...prev, newEvent]);
     setVehicles(prev => applyEventToState(prev, newEvent));
 
     try {

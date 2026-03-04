@@ -4,11 +4,11 @@ import { ethers } from 'ethers';
 import { Repository } from 'typeorm';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { ConsentGrant } from '../database/entities/consent-grant.entity';
+import { ActorRole } from '../database/entities/enums';
 import { EventLog } from '../database/entities/event-log.entity';
 import { Inspection } from '../database/entities/inspection.entity';
 import { InsuranceClaim } from '../database/entities/insurance-claim.entity';
 import { InsurancePolicy } from '../database/entities/insurance-policy.entity';
-import { ActorRole, PlateEventType, RegistrationStatus, TaxStatus } from '../database/entities/enums';
 import { MaintenanceLog } from '../database/entities/maintenance-log.entity';
 import { OwnershipTransfer } from '../database/entities/ownership-transfer.entity';
 import { PlateRecord } from '../database/entities/plate-record.entity';
@@ -91,10 +91,15 @@ export class EventService {
           const specHash = ethers.id(JSON.stringify(payload.spec));
           const manufacturedAt = Math.floor(new Date(payload.production?.manufacturedAt || Date.now()).getTime() / 1000);
 
-          // Use the admin wallet to mint (or the actor address if it's a valid one)
-          // For the demo, we use the Admin Wallet configured in BlockchainService
+          // 3. On-chain Uniqueness Check (Prevent "missing revert data" error)
+          const isVinUsed = await this.blockchainService.vehicleNFTContract.isVinUsed(vinHash);
+          if (isVinUsed) {
+             throw new Error(`VIN ${payload.vin} is already registered on the blockchain.`);
+          }
+
+          // Use the admin wallet to mint
           const tx = await this.blockchainService.vehicleNFTContract.mintVehicle(
-            process.env.ADMIN_WALLET_ADDRESS || this.blockchainService.wallet.address, // To admin first or specific actor
+            process.env.ADMIN_WALLET_ADDRESS || this.blockchainService.walletAddress, 
             vinHash,
             manufacturedAt,
             modelHash,
@@ -113,13 +118,15 @@ export class EventService {
           if (transferEvent) {
             const parsed = this.blockchainService.vehicleNFTContract.interface.parseLog(transferEvent);
             createEventDto.tokenId = parsed?.args.tokenId.toString();
-            // Important: ensure payload also reflects the real ID
-            if (payload) payload.tokenId = createEventDto.tokenId;
+          }
+
+          if (!createEventDto.tokenId) {
+            throw new Error('Failed to retrieve Token ID from blockchain transaction.');
           }
 
         } catch (err) {
           console.error('Blockchain Minting Failed:', err);
-          // Still save to DB for prototype fallback
+          throw err; // Stop process if blockchain fails
         }
 
         vehicle = this.vehicleRepository.create({
@@ -160,34 +167,46 @@ export class EventService {
               toAddress: payload.to,
               reason: 'RESALE' as any, // Mock default reason
               transferredAt: new Date(payload.date || Date.now()).getTime().toString(),
-              docHash: 'mockHash',
+              docHash: ethers.id(payload.docRef || 'none'),
               salePrice: payload.price ? (payload.price * 100).toString() : null,
               currency: 'THB'
             });
-            await this.ownershipTransferRepository.save(transfer);
+             await this.ownershipTransferRepository.save(transfer);
 
-            // Blockchain Interaction
-            try {
-              const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
-              const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : null;
+             // Save vehicle state immediately before blockchain interaction
+             await this.vehicleRepository.save(vehicle);
+             vehicleUpdated = false;
 
-              if (!toAddress || toAddress === ethers.ZeroAddress) {
-                throw new Error(`Invalid or missing 'to' address for transfer: ${payload.to}`);
+              // Blockchain Interaction
+              try {
+                // Quick check if provider is reachable
+                await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                // 2. On-chain Token Existence Check
+                try {
+                    await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                } catch (e) {
+                    throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+                }
+
+                const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
+                const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+                const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
+                  createEventDto.tokenId,
+                  toAddress,
+                  reasonMap[payload.reason] || 2,
+                  ethers.id(payload.docRef || 'none'),
+                  ethers.id(payload.to),
+                  ethers.id('payment-ref')
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+              } catch (err) {
+                console.error('Blockchain Transfer Recording Failed:', err.message || err);
               }
-
-              const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
-                createEventDto.tokenId,
-                toAddress,
-                reasonMap[payload.reason] || 2,
-                ethers.id(payload.docRef || 'none'),
-                ethers.id(payload.to),
-                ethers.id('payment-ref')
-              );
-              const receipt = await tx.wait();
-              txHash = receipt.hash;
-            } catch (err) {
-              console.error('Blockchain Transfer Recording Failed:', err);
-            }
           }
           break;
         case 'SALE_CONTRACT_CREATED':
@@ -206,13 +225,30 @@ export class EventService {
             greenBookNo: assignedBookNo,
             greenBookNoHash: 'mockHash',
             registeredAt: Date.now().toString(),
-            registrationDocHash: 'mockHash',
+            registrationDocHash: ethers.id('reg-doc-hash'),
             dltOfficerAddress: createEventDto.actor
           });
           await this.registrationRepository.save(reg);
 
-          // Blockchain Interaction
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false; // Reset to avoid double save at the end
+
+          // Blockchain Interaction (Registration)
           try {
+            // Quick check if provider is reachable to avoid long ethers hang
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const tx = await this.blockchainService.vehicleRegistryContract.registerVehicle(
               createEventDto.tokenId,
               ethers.id(payload.bookNo || 'none'),
@@ -221,7 +257,7 @@ export class EventService {
             const receipt = await tx.wait();
             txHash = receipt.hash;
           } catch (err) {
-            console.error('Blockchain Registration Failed:', err);
+            console.error('Blockchain Registration Failed or Timed out:', err.message || err);
           }
           break;
         case 'PLATE_EVENT_RECORDED':
@@ -250,24 +286,46 @@ export class EventService {
               throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
             }
           }
+          
+          payload.plateNo = assignedPlateNo; // Update the payload so it's returned to frontend
+          vehicle.specJson = { ...(vehicle.specJson || {}), plateNo: assignedPlateNo }; // Robust update
+          vehicle.specHash = ethers.id(JSON.stringify(vehicle.specJson)); // Sync Hash
+          vehicleUpdated = true;
 
           const plate = this.plateRecordRepository.create({
             tokenId: vehicle.tokenId,
             eventType: payload.action === 'issue' ? 'ISSUE' : payload.action === 'change' ? 'CHANGE' : 'LOST' as any,
             plateNo: assignedPlateNo,
-            plateNoHash: 'mockHash',
+            plateNoHash: ethers.id(assignedPlateNo || 'no-plate'),
             provinceCode: 10, // Mock for Bangkok
             effectiveAt: Date.now().toString(),
-            plateEventDocHash: 'mockHash'
+            plateEventDocHash: ethers.id('plate-doc-hash')
           });
           await this.plateRecordRepository.save(plate);
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+
           // Blockchain Interaction
           try {
+            // Quick check if provider is reachable
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
             const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
               createEventDto.tokenId,
-              ethers.id(assignedPlateNo),
+              ethers.id(assignedPlateNo || 'no-plate'),
               10,
               typeMap[payload.action] || 0,
               ethers.id('plate-doc-hash'),
@@ -276,7 +334,7 @@ export class EventService {
             const receipt = await tx.wait();
             txHash = receipt.hash;
           } catch (err) {
-            console.error('Blockchain Plate Event Failed:', err);
+            console.error('Blockchain Plate Event Failed or Timed out:', err.message || err);
           }
           break;
         case 'TAX_STATUS_UPDATED':
@@ -314,33 +372,67 @@ export class EventService {
             } else {
               flagsSet.delete(flagKey as any);
             }
-            vehicle.activeFlags = Array.from(flagsSet);
-            vehicleUpdated = true;
+             vehicle.activeFlags = Array.from(flagsSet);
+             vehicleUpdated = true;
 
-            // Blockchain Interaction
-            try {
-              const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
-              if (flagMap[payload.flag]) {
-                const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                  createEventDto.tokenId,
-                  flagMap[payload.flag],
-                  payload.value,
-                  ethers.id('flag-ref-hash')
-                );
-                const receipt = await tx.wait();
-                txHash = receipt.hash;
-              }
-            } catch (err) {
-              console.error('Blockchain Flag Update Failed:', err);
-            }
+             // Save vehicle state immediately before blockchain interaction
+             await this.vehicleRepository.save(vehicle);
+             vehicleUpdated = false;
+
+              // Blockchain Interaction
+              try {
+                // Quick check
+                await Promise.race([
+                  this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+ 
+                // 2. On-chain Token Existence Check
+                try {
+                    await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                } catch (e) {
+                    throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+                }
+ 
+                const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
+               if (flagMap[payload.flag]) {
+                 const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                   createEventDto.tokenId,
+                   flagMap[payload.flag],
+                   payload.value,
+                   ethers.id('flag-ref-hash')
+                 );
+                 const receipt = await tx.wait();
+                 txHash = receipt.hash;
+               }
+             } catch (err) {
+               console.error('Blockchain Flag Update Failed:', err.message || err);
+             }
           }
           break;
         case 'LIEN_CREATED':
           vehicle.transferLocked = true;
           vehicleUpdated = true;
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+ 
           // Blockchain Interaction
           try {
+            // Quick check
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+ 
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+ 
             const tx = await this.blockchainService.vehicleLienContract.createLien(
               createEventDto.tokenId,
               ethers.id('loan-contract-hash'),
@@ -349,45 +441,76 @@ export class EventService {
             const receipt = await tx.wait();
             txHash = receipt.hash;
           } catch (err) {
-            console.error('Blockchain Lien Creation Failed:', err);
+            console.error('Blockchain Lien Creation Failed:', err.message || err);
           }
           break;
         case 'LIEN_RELEASED':
           vehicle.transferLocked = false;
-          vehicleUpdated = true;
+           await this.vehicleRepository.save(vehicle);
+           vehicleUpdated = false;
 
-          // Blockchain Interaction
-          try {
-            const tx = await this.blockchainService.vehicleLienContract.releaseLien(
-              createEventDto.tokenId
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
-          } catch (err) {
-            console.error('Blockchain Lien Release Failed:', err);
-          }
+           // Blockchain Interaction
+           try {
+             // Quick check
+             await Promise.race([
+               this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+               new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+             ]);
+
+             // 2. On-chain Token Existence Check
+             try {
+                 await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+             } catch (e) {
+                 throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+             }
+ 
+             const tx = await this.blockchainService.vehicleLienContract.releaseLien(
+               createEventDto.tokenId
+             );
+             const receipt = await tx.wait();
+             txHash = receipt.hash;
+           } catch (err) {
+             console.error('Blockchain Lien Release Failed or Timed out:', err.message || err);
+           }
           break;
         case 'REPOSSESSION_RECORDED':
           vehicle.transferLocked = true;
           const repossessionFlagsSet = new Set(vehicle.activeFlags || []);
           repossessionFlagsSet.add('SEIZED' as any);
           vehicle.activeFlags = Array.from(repossessionFlagsSet);
-          vehicleUpdated = true;
+           vehicleUpdated = true;
 
-          // Blockchain Interaction
-          try {
-            const FLAG_SEIZED = 1 << 1;
-            const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-              createEventDto.tokenId,
-              FLAG_SEIZED,
-              true,
-              ethers.id('repossession-ref-hash')
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
-          } catch (err) {
-            console.error('Blockchain Repocession Recording Failed:', err);
-          }
+           // Save vehicle state immediately before blockchain interaction
+           await this.vehicleRepository.save(vehicle);
+           vehicleUpdated = false;
+
+           // Blockchain Interaction
+           try {
+             // Quick check
+             await Promise.race([
+               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+               new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+             ]);
+
+             // 2. On-chain Token Existence Check
+             try {
+                 await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+             } catch (e) {
+                 throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+             }
+ 
+             const FLAG_SEIZED = 1 << 1;
+             const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+               createEventDto.tokenId,
+               FLAG_SEIZED,
+               true,
+               ethers.id('repossession-ref-hash')
+             );
+             const receipt = await tx.wait();
+             txHash = receipt.hash;
+           } catch (err) {
+             console.error('Blockchain Repocession Recording Failed or Timed out:', err.message || err);
+           }
           break;
         case 'INSTALLMENT_MILESTONE_RECORDED':
           // Specific handling could be adding to Financial log
@@ -404,11 +527,28 @@ export class EventService {
               grantHash: 'mockHash',
               nonce: Date.now().toString()
             });
-            await this.consentGrantRepository.save(grant);
+             await this.consentGrantRepository.save(grant);
 
-            // Blockchain Interaction
-            try {
-              const scopeMask = 1;
+             // Save vehicle state immediately before blockchain interaction
+             await this.vehicleRepository.save(vehicle);
+             vehicleUpdated = false;
+
+             // Blockchain Interaction
+             try {
+               // Quick check
+               await Promise.race([
+                 this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                 new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+               ]);
+
+               // 2. On-chain Token Existence Check
+               try {
+                   await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+               } catch (e) {
+                   throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+               }
+
+               const scopeMask = 1;
               const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
                 createEventDto.tokenId,
                 payload.grantTo.startsWith('0x') ? payload.grantTo : '0x0000000000000000000000000000000000000000',
@@ -434,8 +574,25 @@ export class EventService {
               grants[0].revoked = true;
               await this.consentGrantRepository.save(grants[0]);
 
+              // Save vehicle state (not strictly necessary for consent but good for pattern)
+              await this.vehicleRepository.save(vehicle);
+              vehicleUpdated = false;
+
               // Blockchain Interaction
               try {
+                // Quick check
+                await Promise.race([
+                  this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                // 2. On-chain Token Existence Check
+                try {
+                    await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                } catch (e) {
+                    throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+                }
+
                 const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
                   createEventDto.tokenId,
                   payload.revokeFrom.startsWith('0x') ? payload.revokeFrom : '0x0000000000000000000000000000000000000000'
@@ -463,8 +620,25 @@ export class EventService {
           });
           await this.insurancePolicyRepository.save(policy);
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+
           // Blockchain Interaction
           try {
+            // Quick check
+            await Promise.race([
+              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const actionMap = { 'new': 0, 'renew': 1, 'change': 2, 'cancel': 3 };
             const tx = await this.blockchainService.vehicleLifecycleContract.recordInsurancePolicy(
               createEventDto.tokenId,
@@ -494,8 +668,25 @@ export class EventService {
           });
           await this.insuranceClaimRepository.save(claim);
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+
           // Blockchain Interaction
           try {
+            // Quick check
+            await Promise.race([
+              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const severityMap = { 'minor': 0, 'major': 1, 'structural': 2, 'total_loss': 3 };
             const tx = await this.blockchainService.vehicleLifecycleContract.fileClaim(
               createEventDto.tokenId,
@@ -524,8 +715,25 @@ export class EventService {
           });
           await this.inspectionRepository.save(inspection);
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+
           // Blockchain Interaction
           try {
+            // Quick check
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const tx = await this.blockchainService.vehicleRegistryContract.recordInspection(
               createEventDto.tokenId,
               payload.passed ? 1 : 0,
@@ -553,8 +761,25 @@ export class EventService {
           });
           await this.maintenanceLogRepository.save(maintenance);
 
+          // Save vehicle state immediately before blockchain interaction
+          await this.vehicleRepository.save(vehicle);
+          vehicleUpdated = false;
+
           // Blockchain Interaction
           try {
+            // Quick check
+            await Promise.race([
+              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            // 2. On-chain Token Existence Check
+            try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+                throw new Error(`Vehicle Token ${createEventDto.tokenId} does not exist on-chain. Database may be desynchronized with Blockchain.`);
+            }
+
             const tx = await this.blockchainService.vehicleLifecycleContract.logMaintenance(
               createEventDto.tokenId,
               ethers.id('consent-ref-hash'),
@@ -580,6 +805,7 @@ export class EventService {
         case 'SPECIFICATION_UPDATED':
           if (payload.changes) {
             vehicle.specJson = { ...vehicle.specJson, ...payload.changes };
+            vehicle.specHash = ethers.id(JSON.stringify(vehicle.specJson));
             vehicleUpdated = true;
           }
           break;

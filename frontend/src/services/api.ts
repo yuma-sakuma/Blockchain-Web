@@ -12,6 +12,12 @@ export const checkBackendStatus = async () => {
   }
 };
 
+export const repairRegistry = async () => {
+  const response = await fetch(`${API_URL}/status/repair-registry`);
+  if (!response.ok) throw new Error('Failed to repair registry');
+  return response.json();
+};
+
 export const getVehicles = async () => {
   const response = await fetch(`${API_URL}/vehicles`);
   if (!response.ok) throw new Error('Failed to fetch vehicles');

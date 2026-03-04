@@ -196,7 +196,7 @@ export const ManufacturerPage = () => {
 
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Engine/Motor Serial</label>
-            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" />
+            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" required />
           </div>
 
           <div>
