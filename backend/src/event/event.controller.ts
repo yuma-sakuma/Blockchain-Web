@@ -25,7 +25,6 @@ export class EventController {
 
   @Post()
   async create(@Body() createEventDto: any): Promise<EventLog> {
-    // Serialize all event creation to prevent blockchain nonce collisions
-    return this.blockchainService.withTxLock(() => this.eventService.create(createEventDto));
+    return this.eventService.create(createEventDto);
   }
 }
