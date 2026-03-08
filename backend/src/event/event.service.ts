@@ -267,16 +267,30 @@ export class EventService {
           }
           break;
         case 'PLATE_EVENT_RECORDED':
-          const assignedPlateNo = payload.plateNo;
+          let assignedPlateNo = payload.plateNo;
 
-          if (!assignedPlateNo) {
-            throw new Error('plateNo is required. Frontend must generate and validate the plate number before sending.');
-          }
+          if (payload.action === 'issue') {
+            // 3. License Plate Randomizer (Issue new plate)
+            let isUnique = false;
+            while (!isUnique) {
+              const prefix = Math.floor(Math.random() * 9) + 1;
+              const lettersTh = "กขคฆงจฉชซญฎฏฐฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ";
+              const char1 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
+              const char2 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
+              const digits = Math.floor(Math.random() * 9000) + 1000;
+              assignedPlateNo = `${prefix}${char1}${char2}-${digits}`;
 
-          // Duplicate check for both issue and change actions
-          const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
-          if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
-            throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
+              const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
+              if (!existingPlate) {
+                isUnique = true;
+              }
+            }
+          } else if (payload.action === 'change') {
+            // 4. Check for duplicate if manually changing
+            const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo, eventType: 'ISSUE' as any } });
+            if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
+              throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
+            }
           }
           
           payload.plateNo = assignedPlateNo; // Update the payload so it's returned to frontend
@@ -344,7 +358,7 @@ export class EventService {
           });
           await this.taxPaymentRepository.save(tax);
 
-          // Blockchain Interaction — contract requires a passing inspection on-chain first
+          // Blockchain Interaction
           try {
             const lastInspection = await this.blockchainService.vehicleRegistryContract.lastInspectionPassAt(createEventDto.tokenId);
             if (Number(lastInspection) > 0) {
@@ -554,7 +568,7 @@ export class EventService {
                const scopeMask = 1;
               const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
                 createEventDto.tokenId,
-                ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress,
+                payload.grantTo.startsWith('0x') ? payload.grantTo : '0x0000000000000000000000000000000000000000',
                 scopeMask,
                 Math.floor(new Date(payload.expiresAt).getTime() / 1000),
                 false,
@@ -601,7 +615,7 @@ export class EventService {
 
                 const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
                   createEventDto.tokenId,
-                  ethers.isAddress(payload.revokeFrom) ? ethers.getAddress(payload.revokeFrom) : ethers.ZeroAddress
+                  payload.revokeFrom.startsWith('0x') ? payload.revokeFrom : '0x0000000000000000000000000000000000000000'
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
