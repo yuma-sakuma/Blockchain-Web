@@ -12,9 +12,9 @@ export const FinancePage = () => {
     
     const targetVehicle = vehicles.find(v => v.vin === vin);
 
-    const handleCreateLien = () => {
+    const handleCreateLien = async () => {
         if (!targetVehicle) return;
-        addEvent({
+        await addEvent({
             type: 'LIEN_CREATED',
             actor: lender,
             tokenId: targetVehicle.tokenId,
@@ -25,12 +25,11 @@ export const FinancePage = () => {
                 rules: { transferLocked: true }
             }
         });
-        alert("Encumbrance registered. Ownership transfer is now LOCKED.");
     };
 
-    const handleReleaseLien = () => {
+    const handleReleaseLien = async () => {
         if (!targetVehicle) return;
-        addEvent({
+        await addEvent({
             type: 'LIEN_RELEASED',
             actor: lender,
             tokenId: targetVehicle.tokenId,
@@ -39,13 +38,12 @@ export const FinancePage = () => {
                 receiptHash: "L-PAY-" + Date.now()
             }
         });
-        alert("Lien discharged. Asset is now transferable.");
     };
 
-    const handleRepossess = () => {
+    const handleRepossess = async () => {
         if (!targetVehicle) return;
         if (confirm("Executing seizure protocol. Confirming legal default?")) {
-            addEvent({
+            await addEvent({
                 type: 'REPOSSESSION_RECORDED',
                 actor: lender,
                 tokenId: targetVehicle.tokenId,
@@ -54,13 +52,12 @@ export const FinancePage = () => {
                     legalRefHash: "DLT-NOTICE-" + Date.now()
                 }
             });
-            alert("Vehicle REPOSSESSED. System flags updated.");
         }
     };
 
-    const handleMilestone = (num: number) => {
+    const handleMilestone = async (num: number) => {
         if (!targetVehicle) return;
-        addEvent({
+        await addEvent({
             type: 'INSTALLMENT_MILESTONE_RECORDED',
             actor: lender,
             tokenId: targetVehicle.tokenId,
@@ -71,7 +68,6 @@ export const FinancePage = () => {
                 proofHash: "TXN_" + Math.random().toString(36).substring(7)
             }
         });
-        alert(`Installment #${num} acknowledged and certified.`);
     };
 
     return (

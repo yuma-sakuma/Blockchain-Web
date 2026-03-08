@@ -77,45 +77,52 @@ export const ManufacturerPage = () => {
     const actorId = `MANUFACTURER:${address?.substring(0, 6)}...`;
 
     // 1. Mint Event
-    addEvent({
-      type: 'MANUFACTURER_MINTED',
-      actor: actorId,
-      tokenId: tokenId,
-      payload: {
+    try {
+      const response = await addEvent({
+        type: 'MANUFACTURER_MINTED',
+        actor: actorId,
         tokenId: tokenId,
-        vin: formData.vin,
-        makeModelTrim: formData.model,
-        spec: {
-          color: formData.color,
-          engine: formData.engineNo,
-          batteryKwh: Number(formData.batteryKwh),
-          options: formData.options.split(',').map(o => o.trim()).filter(o => o)
-        },
-        production: {
-          manufacturedAt: new Date().toISOString(),
-          plantId: address || 'UNKNOWN_PLANT'
-        },
-        manufacturerSignature: signature
-      }
-    });
-
-    // 2. Warranty Definition
-    addEvent({
-      type: 'WARRANTY_DEFINED',
-      actor: actorId,
-      tokenId: tokenId,
-      payload: {
-        startPolicy: "at_first_registration",
-        terms: {
-          years: Number(formData.warrantyYears),
-          mileageKm: Number(formData.warrantyMileage),
-          coverage: ["powertrain", "battery", "chassis"]
+        payload: {
+          tokenId: tokenId,
+          vin: formData.vin,
+          makeModelTrim: formData.model,
+          spec: {
+            color: formData.color,
+            engine: formData.engineNo,
+            batteryKwh: Number(formData.batteryKwh),
+            options: formData.options.split(',').map(o => o.trim()).filter(o => o)
+          },
+          production: {
+            manufacturedAt: new Date().toISOString(),
+            plantId: address || 'UNKNOWN_PLANT'
+          },
+          manufacturerSignature: signature
         }
-      }
-    });
+      });
+      
+      const actualTokenId = response?.tokenId || tokenId;
 
-    setIsSigning(false);
-    setFormData({ vin: '', model: '', color: '', engineNo: '', batteryKwh: '60', options: '', warrantyYears: '3', warrantyMileage: '100000' });
+      // 2. Warranty Definition
+      await addEvent({
+        type: 'WARRANTY_DEFINED',
+        actor: actorId,
+        tokenId: actualTokenId,
+        payload: {
+          startPolicy: "at_first_registration",
+          terms: {
+            years: Number(formData.warrantyYears),
+            mileageKm: Number(formData.warrantyMileage),
+            coverage: ["powertrain", "battery", "chassis"]
+          }
+        }
+      });
+
+      setFormData({ vin: '', model: '', color: '', engineNo: '', batteryKwh: '60', options: '', warrantyYears: '3', warrantyMileage: '100000' });
+    } catch (err) {
+      console.error("Failed executing minting flow", err);
+    } finally {
+      setIsSigning(false);
+    }
   };
 
   const handleTransferToDealer = (tokenId: string) => {
@@ -196,7 +203,7 @@ export const ManufacturerPage = () => {
 
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Engine/Motor Serial</label>
-            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" />
+            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" required />
           </div>
 
           <div>

@@ -1,7 +1,28 @@
 import { Book, History, Search, Settings, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { checkPlateExists } from '../services/api';
 import { useVehicleStore } from '../store';
+
+// ── Thai Plate Generator ──
+const LETTERS_TH = "กขคฆงจฉชซญฎฏฐฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ";
+
+function randomPlateNo(): string {
+    const prefix = Math.floor(Math.random() * 9) + 1;
+    const char1 = LETTERS_TH.charAt(Math.floor(Math.random() * LETTERS_TH.length));
+    const char2 = LETTERS_TH.charAt(Math.floor(Math.random() * LETTERS_TH.length));
+    const digits = Math.floor(Math.random() * 9000) + 1000;
+    return `${prefix}${char1}${char2}-${digits}`;
+}
+
+async function generateUniquePlate(): Promise<string> {
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const plate = randomPlateNo();
+        const { exists } = await checkPlateExists(plate);
+        if (!exists) return plate;
+    }
+    throw new Error('ไม่สามารถสุ่มเลขทะเบียนที่ไม่ซ้ำได้ กรุณาลองใหม่อีกครั้ง');
+}
 
 export const DLTPage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -9,37 +30,65 @@ export const DLTPage = () => {
     const [searchVin, setSearchVin] = useState('');
     const [plateNumber, setPlateNumber] = useState('');
     const [newColor, setNewColor] = useState('');
+    const [isRepairing, setIsRepairing] = useState(false);
 
     // Dynamic Actor ID
     const actorId = address ? `DLT:${address}` : 'DLT:System';
+
+    const handleRepair = async () => {
+        if (!confirm("This will attempt to re-mint database vehicles onto the blockchain if they are missing. Use this after a Ganache reset. Proceed?")) return;
+        setIsRepairing(true);
+        try {
+            const { repairRegistry } = await import('../services/api');
+            const result = await repairRegistry();
+            const count = result.results.filter((r: any) => r.status === 'recovered').length;
+            alert(`Repair complete. Recovered ${count} vehicles. Please refresh your inventory.`);
+            window.location.reload(); // Refresh to get new tokenIds
+        } catch (err: any) {
+            alert("Repair failed: " + err.message);
+        } finally {
+            setIsRepairing(false);
+        }
+    };
 
     const searchResult = vehicles.find(v => v.vin === searchVin);
     const vehicleEvents = searchResult ? events.filter(e => e.tokenId === searchResult.tokenId) : [];
     const plateEvents = vehicleEvents.filter(e => e.type === 'PLATE_EVENT_RECORDED');
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!searchResult) return;
-        addEvent({
-            type: 'DLT_REGISTRATION_UPDATED',
-            actor: actorId,
-            tokenId: searchResult.tokenId,
-            payload: {
-                status: 'registered',
-                registeredAt: new Date().toISOString(),
-                bookNo: 'GB-' + Math.floor(Math.random() * 1000000)
-            }
-        });
 
-        addEvent({
-            type: 'PLATE_EVENT_RECORDED',
-            actor: actorId,
-            tokenId: searchResult.tokenId,
-            payload: { action: 'issue', province: 'Bangkok', date: new Date().toISOString() }
-        });
-        alert("Registration complete. Digital Green Book issued.");
+        try {
+            // 1. สุ่มป้ายทะเบียนและเช็คซ้ำผ่าน API
+            const generatedPlate = await generateUniquePlate();
+
+            // 2. บันทึกการจดทะเบียน
+            await addEvent({
+                type: 'DLT_REGISTRATION_UPDATED',
+                actor: actorId,
+                tokenId: searchResult.tokenId,
+                payload: {
+                    status: 'registered',
+                    registeredAt: new Date().toISOString(),
+                    bookNo: 'GB-' + Math.floor(Math.random() * 1000000)
+                }
+            });
+
+            // 3. บันทึกป้ายทะเบียนที่สุ่มได้ (พร้อมเลขป้าย)
+            await addEvent({
+                type: 'PLATE_EVENT_RECORDED',
+                actor: actorId,
+                tokenId: searchResult.tokenId,
+                payload: { action: 'issue', plateNo: generatedPlate, province: 'Bangkok', date: new Date().toISOString() }
+            });
+
+            alert(`Registration complete. Plate: ${generatedPlate}`);
+        } catch (err: any) {
+            alert(`Registration failed: ${err.message}`);
+        }
     };
 
-    const handleUpdateTax = () => {
+    const handleUpdateTax = async () => {
         if (!searchResult) return;
 
         const age = new Date().getFullYear() - new Date(searchResult.production.manufacturedAt).getFullYear();
@@ -51,7 +100,7 @@ export const DLTPage = () => {
             }
         }
 
-        addEvent({
+        await addEvent({
             type: 'TAX_STATUS_UPDATED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -64,9 +113,9 @@ export const DLTPage = () => {
         alert("Tax status updated successfully.");
     };
 
-    const handleUpdateColor = () => {
+    const handleUpdateColor = async () => {
         if (!searchResult || !newColor) return;
-        addEvent({
+        await addEvent({
             type: 'SPECIFICATION_UPDATED',
             actor: actorId,
             tokenId: searchResult.tokenId,
@@ -85,8 +134,27 @@ export const DLTPage = () => {
             <header>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Land Transport Authority</h1>
                 <p className="text-secondary">Official registry for vehicle identities, license plates, and legal flags.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="badge badge-info">Logged in as {actorId}</span>
+                    <button
+                        onClick={handleRepair}
+                        disabled={isRepairing}
+                        style={{
+                            fontSize: '0.8rem',
+                            padding: '0.4rem 0.8rem',
+                            border: '1px solid var(--warning)',
+                            color: 'var(--warning)',
+                            background: isRepairing ? 'rgba(255,193,7,0.1)' : 'transparent',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}
+                    >
+                        {isRepairing ? 'Repairing Registry...' : 'Repair Central Registry'}
+                        <Settings size={14} />
+                    </button>
                 </div>
             </header>
 
@@ -124,7 +192,7 @@ export const DLTPage = () => {
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>License Plate</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || 'None'}</div>
+                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || searchResult.spec.plateNo || 'None'}</div>
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registered Color</div>
@@ -173,10 +241,10 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Loss/Theft</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.stolen ? <span className="badge badge-danger">STOLEN</span> : <span className="badge badge-success">CLEAN</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             const reason = prompt("Enter Police Report / Case Number:");
                                             if (!reason) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -191,10 +259,10 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Legal Seizure</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.seized ? <span className="badge badge-danger">SEIZED</span> : <span className="badge badge-success">NONE</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             const reason = prompt("Enter Court Order Number:");
                                             if (!reason) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -209,9 +277,9 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Salvage Only</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.totalLoss ? <span className="badge badge-danger">TOTAL LOSS</span> : <span className="badge badge-success">NO</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             if (!confirm("Confirm Total Loss? This action significantly devalues the asset.")) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -235,11 +303,11 @@ export const DLTPage = () => {
                                 <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Assign New Plate No.</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                                     <input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} placeholder="e.g. 7กพ-9999" style={{ marginBottom: 0 }} />
-                                    <button onClick={() => {
+                                    <button onClick={async () => {
                                         if (!plateNumber) return;
-                                        addEvent({
+                                        await addEvent({
                                             type: 'PLATE_EVENT_RECORDED',
-                                            actor: actorId, // Dynamic
+                                            actor: actorId,
                                             tokenId: searchResult.tokenId,
                                             payload: { action: 'change', plateNo: plateNumber, province: 'Bangkok', date: new Date().toISOString() }
                                         });

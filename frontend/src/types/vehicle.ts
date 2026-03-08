@@ -11,6 +11,7 @@ export interface Specification {
   batteryKwh?: number;
   batteryCapacity?: string;
   options: string[];
+  plateNo?: string;
 }
 
 export interface Warranty {
@@ -133,4 +134,5 @@ export interface VehicleEvent {
   type: EventType;
   payload: any;
   signature?: string;
+  txHash?: string;
 }

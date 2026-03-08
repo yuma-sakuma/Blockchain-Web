@@ -26,11 +26,11 @@ export const ConsumerPage = () => {
              ownerLower === `person:${normalizedAddress}`;
   });
 
-  const handleGrantConsent = (tokenId: string, granteeOverride?: string) => {
+  const handleGrantConsent = async (tokenId: string, granteeOverride?: string) => {
     const grantee = granteeOverride || prompt("Target Entity ID (e.g. DEALER:0x... or INSURER:0x...):");
     if (!grantee) return;
 
-    addEvent({
+    await addEvent({
       type: 'CONSENT_UPDATED',
       actor: currentUser,
       tokenId: tokenId,
@@ -42,16 +42,15 @@ export const ConsumerPage = () => {
           showFullMaintenance: true,
           showClaims: true
         },
-        expiresAt: new Date(Date.now() + 86400000 * 30).toISOString() // 30 days
+        expiresAt: new Date(Date.now() + 86400000 * 30).toISOString()
       }
     });
-    // alert(`Privacy permissions updated for ${grantee}`);
   };
 
-  const handleRevokeConsent = (tokenId: string, grantee: string) => {
+  const handleRevokeConsent = async (tokenId: string, grantee: string) => {
       if (!confirm(`Revoke access for ${grantee}?`)) return;
-      addEvent({
-          type: 'CONSENT_REVOKED', // Custom event type for prototype (or reuse UPDATED with empty perms/expired)
+      await addEvent({
+          type: 'CONSENT_REVOKED',
           actor: currentUser,
           tokenId: tokenId,
           payload: {
@@ -62,7 +61,7 @@ export const ConsumerPage = () => {
       });
   };
 
-  const handleTransferVehicle = (tokenId: string) => {
+  const handleTransferVehicle = async (tokenId: string) => {
       const buyerId = prompt("Recipient Wallet Address:", "0x...");
       if (!buyerId) return;
 
@@ -77,8 +76,7 @@ export const ConsumerPage = () => {
 
       const fullBuyerId = buyerId.startsWith('0x') ? `CONSUMER:${buyerId}` : buyerId;
 
-      // Simulate Payment
-      addEvent({
+      await addEvent({
           type: 'PAYMENT_PROOF_SUBMITTED',
           actor: currentUser,
           tokenId: tokenId,
@@ -91,7 +89,7 @@ export const ConsumerPage = () => {
           }
       });
 
-      addEvent({
+      await addEvent({
           type: 'OWNERSHIP_TRANSFERRED',
           actor: currentUser,
           tokenId: tokenId,
@@ -103,7 +101,6 @@ export const ConsumerPage = () => {
               date: new Date().toISOString()
           }
       });
-      alert("Asset transfer protocol complete.");
   };
 
   const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy || showHistory));
@@ -158,8 +155,8 @@ export const ConsumerPage = () => {
                           <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.registration?.plateNo || 'PENDING'}</div>
                           <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Book No: {selectedVehicle.registration?.bookNo || 'N/A'}</div>
                           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                              <span className="badge badge-success">TAX VALID</span>
-                              <span className="badge badge-info">INSURED</span>
+                              <span className={`badge ${selectedVehicle.registration?.taxStatus === 'paid' ? 'badge-success' : 'badge-danger'}`}>{selectedVehicle.registration?.taxStatus === 'paid' ? 'TAX VALID' : 'TAX DUE'}</span>
+                              <span className={`badge ${selectedVehicle.insurance ? 'badge-info' : 'badge-danger'}`}>{selectedVehicle.insurance ? 'INSURED' : 'UNINSURED'}</span>
                           </div>
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
@@ -249,6 +246,11 @@ export const ConsumerPage = () => {
                               <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
                                   Actor: {e.actor}
                               </div>
+                              {(e as any).txHash && (
+                                  <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--accent-primary)', marginTop: '0.25rem', wordBreak: 'break-all' }}>
+                                      TX: {(e as any).txHash}
+                                  </div>
+                              )}
                           </div>
                       ))}
                       {events.filter(e => e.tokenId === selectedVehicle.tokenId).length === 0 && (

@@ -14,4 +14,9 @@ export class AppController {
   async getStatus() {
     return this.appService.getStatus();
   }
+
+  @Get('status/repair-registry')
+  async repairRegistry() {
+    return this.appService.syncBlockchain(); // Logic is already solid
+  }
 }

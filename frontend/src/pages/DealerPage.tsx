@@ -19,7 +19,7 @@ export const DealerPage = () => {
     // But strict check is better:
     const myStock = vehicles.filter(v => v.currentOwner === dealerId || v.currentOwner === `DEALER:${address?.toLowerCase()}` || (v.currentOwner.includes('DEALER') && v.currentOwner.includes(address || '')));
 
-    const handleSellToCustomer = (tokenId: string) => {
+    const handleSellToCustomer = async (tokenId: string) => {
         const vehicle = vehicles.find(v => v.tokenId === tokenId);
         if (!vehicle) return;
 
@@ -39,7 +39,7 @@ export const DealerPage = () => {
 
         const buyerId = customerName.startsWith('0x') ? `CONSUMER:${customerName}` : `PERSON:${customerName}`;
 
-        addEvent({
+        await addEvent({
             type: 'SALE_CONTRACT_CREATED',
             actor: dealerId,
             tokenId: tokenId,
@@ -51,7 +51,7 @@ export const DealerPage = () => {
             }
         });
 
-        addEvent({
+        await addEvent({
             type: 'OWNERSHIP_TRANSFERRED',
             actor: dealerId,
             tokenId: tokenId,
@@ -64,9 +64,9 @@ export const DealerPage = () => {
         });
     };
 
-    const handleApplyDisclosure = () => {
+    const handleApplyDisclosure = async () => {
         if (!showDisclosure || !disclosures) return;
-        addEvent({
+        await addEvent({
              type: 'DISCLOSURE_SIGNED',
              actor: dealerId,
              tokenId: showDisclosure,
@@ -78,21 +78,18 @@ export const DealerPage = () => {
         });
         setShowDisclosure(null);
         setDisclosures('');
-        alert("Disclosure certified and signed by buyer.");
     };
 
-    const handleEvaluateTradeIn = () => {
+    const handleEvaluateTradeIn = async () => {
         const vehicle = vehicles.find(v => v.vin === tradeInVin);
         if (!vehicle) {
             alert("Vehicle not found!");
             return;
         }
         
-        // In reality, we'd check if we are allowed to evaluate it (e.g. user presented it)
+        const evaluationPrice = 500000;
         
-        const evaluationPrice = 500000; // Mock valuation
-        
-        addEvent({
+        await addEvent({
             type: 'TRADEIN_EVALUATED',
             actor: dealerId,
             tokenId: vehicle.tokenId,
@@ -105,7 +102,7 @@ export const DealerPage = () => {
         });
         
         if (confirm(`Market Evaluation: ${evaluationPrice.toLocaleString()} THB. Buyback this asset into inventory?`)) {
-             addEvent({
+             await addEvent({
                 type: 'OWNERSHIP_TRANSFERRED',
                 actor: dealerId,
                 tokenId: vehicle.tokenId,

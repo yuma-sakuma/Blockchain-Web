@@ -12,6 +12,12 @@ export const checkBackendStatus = async () => {
   }
 };
 
+export const repairRegistry = async () => {
+  const response = await fetch(`${API_URL}/status/repair-registry`);
+  if (!response.ok) throw new Error('Failed to repair registry');
+  return response.json();
+};
+
 export const getVehicles = async () => {
   const response = await fetch(`${API_URL}/vehicles`);
   if (!response.ok) throw new Error('Failed to fetch vehicles');
@@ -39,6 +45,12 @@ export const createEvent = async (eventData: any) => {
 export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> => {
   const response = await fetch(`${API_URL}/vehicles/check-vin?vin=${encodeURIComponent(vin)}`);
   if (!response.ok) throw new Error('Failed to check VIN');
+  return response.json();
+};
+
+export const checkPlateExists = async (plateNo: string): Promise<{ exists: boolean }> => {
+  const response = await fetch(`${API_URL}/events/check-plate?plateNo=${encodeURIComponent(plateNo)}`);
+  if (!response.ok) throw new Error('Failed to check plate');
   return response.json();
 };
 

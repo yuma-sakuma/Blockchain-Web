@@ -19,6 +19,13 @@ export const OverviewPage = () => {
   const { vehicles, events } = useVehicleStore();
   const [search, setSearch] = useState('');
   const [selectedVin, setSelectedVin] = useState<string | null>(null);
+  const [networkStatus, setNetworkStatus] = useState<any>(null);
+
+  useState(() => {
+    import('../services/api').then(api => {
+      api.checkBackendStatus().then(status => setNetworkStatus(status)).catch(console.error);
+    });
+  });
 
   const filteredVehicles = vehicles.filter(v =>
     v.vin.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,8 +46,9 @@ export const OverviewPage = () => {
           </h1>
           <p className="text-secondary" style={{ fontSize: '1.2rem' }}>Unified registry protocol for high-fidelity vehicle lifecycle assets.</p>
         </div>
-        <div className="badge badge-info" style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
-          <Activity size={14} style={{ marginRight: '8px' }} /> Network Online: 3 Nodes
+        <div className={`badge ${networkStatus?.status === 'ok' ? 'badge-info' : 'badge-danger'}`} style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
+          <Activity size={14} style={{ marginRight: '8px' }} />
+          {networkStatus?.status === 'ok' ? `Network Online: ${networkStatus?.network?.peers || 3} Nodes` : 'Network Offline'}
         </div>
       </header>
 
@@ -144,7 +152,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Plate No.</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || 'PENDING'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || (selectedVehicle.spec as any).plateNo || 'PENDING'}</div>
                 </div>
               </div>
             </div>
@@ -180,6 +188,12 @@ export const OverviewPage = () => {
                           )
                         ))}
                       </div>
+                      {e.txHash && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>TX Hash:</span>
+                          <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--success)', wordBreak: 'break-all' }}>{e.txHash}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -223,7 +237,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Theft Flags</span>
-                  {selectedVehicle.flags.stolen ? <span style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '1.2rem' }}>✕</span> : <span style={{ color: 'var(--success)' }}>None</span>}
+                  {selectedVehicle.flags.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
                 </div>
               </div>
             </div>
@@ -244,17 +258,31 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Engine Serial</span>
-                  <span style={{ fontFamily: 'monospace' }}>{selectedVehicle.spec.engineSerial}</span>
+                  <span>{selectedVehicle.spec.engine}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Battery Cap</span>
-                  <span>{(selectedVehicle.spec as any).batteryCapacity || 'N/A'}</span>
+                  <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
                 </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="text-secondary">Color</span>
+                <span>{selectedVehicle.spec.color}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="text-secondary">Engine Serial</span>
+                <span style={{ fontFamily: 'monospace' }}>{selectedVehicle.spec.engineSerial}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="text-secondary">Battery Cap</span>
+                <span>{(selectedVehicle.spec as any).batteryCapacity || 'N/A'}</span>
               </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+        </div>
+  )
+}
+    </div >
   );
 };

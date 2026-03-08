@@ -14,7 +14,7 @@ export class VehicleService {
     const whereClause = owner ? { currentOwnerAddress: owner } : {};
     return this.vehicleRepository.find({
       where: whereClause,
-      relations: ['events'],
+      relations: ['events', 'registrations', 'plateRecords', 'taxPayments', 'insurancePolicies'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -22,7 +22,7 @@ export class VehicleService {
   async findOne(tokenId: string): Promise<Vehicle> {
     const vehicle = await this.vehicleRepository.findOne({
       where: { tokenId },
-      relations: ['events'],
+      relations: ['events', 'registrations', 'plateRecords', 'taxPayments', 'insurancePolicies'],
     });
 
     if (!vehicle) {
