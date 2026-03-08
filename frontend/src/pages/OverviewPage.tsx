@@ -280,9 +280,7 @@ export const OverviewPage = () => {
             </div>
           </div>
         </div>
-        </div>
-  )
-}
+      )}
     </div >
   );
 };
