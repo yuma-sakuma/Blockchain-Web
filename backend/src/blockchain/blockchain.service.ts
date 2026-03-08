@@ -4,6 +4,26 @@ import { ethers } from 'ethers';
 import * as fs from 'fs';
 import * as path from 'path';
 
+class SafeNonceManager extends ethers.NonceManager {
+  async sendTransaction(tx: ethers.TransactionRequest): Promise<ethers.TransactionResponse> {
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await super.sendTransaction(tx);
+        } catch (err: any) {
+            const msg = (err.message || err.toString()).toLowerCase();
+            if (msg.includes('nonce') || msg.includes('replacement') || msg.includes('already known')) {
+                console.warn(`[SafeNonceManager] Nonce desync detected. Resetting internal nonce tracker and retrying (${i + 1}/${maxRetries})...`);
+                this.reset();
+                continue;
+            }
+            throw err;
+        }
+    }
+    return super.sendTransaction(tx);
+  }
+}
+
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private provider: ethers.JsonRpcProvider;
@@ -58,10 +78,9 @@ export class BlockchainService implements OnModuleInit {
     if (privateKey) {
       const rawWallet = new ethers.Wallet(privateKey, this.provider);
       this.walletAddress = rawWallet.address;
-      // Use rawWallet directly. Since transactions are serialized via EventController withTxLock, 
-      // ethers will dynamically fetch the correct nonce for every transaction. 
-      // NonceManager caches nonces and causes sync errors if external scripts or resets occur.
-      this.wallet = rawWallet;
+      // Wrap the wallet in our custom robust SafeNonceManager to auto-recover from any desyncs
+      // caused by local Ganache cache delays or external script interference
+      this.wallet = new SafeNonceManager(rawWallet);
     }
 
     // Use process.cwd() instead of __dirname to ensure it finds the src folder even if compiled to dist
@@ -128,10 +147,6 @@ export class BlockchainService implements OnModuleInit {
     await this.ensureRoles();
   }
 
-  /**
-   * Grant all required roles to the admin wallet if not already granted.
-   * The deployer has DEFAULT_ADMIN_ROLE on all contracts, which allows granting other roles.
-   */
   private async ensureRoles() {
     if (!this.wallet || !this.walletAddress) {
       console.warn('[BlockchainService] No wallet configured, skipping role setup.');
@@ -140,28 +155,38 @@ export class BlockchainService implements OnModuleInit {
 
     const adminAddress = this.walletAddress;
 
-    const roleGrants: { contract: ethers.Contract; contractName: string; roleName: string; roleHash: string }[] = [
-      // VehicleRegistry roles
-      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'DLT_OFFICER_ROLE', roleHash: ethers.id('DLT_OFFICER_ROLE') },
-      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'INSPECTOR_ROLE', roleHash: ethers.id('INSPECTOR_ROLE') },
-      // VehicleLifecycle roles
-      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'WORKSHOP_ROLE', roleHash: ethers.id('WORKSHOP_ROLE') },
-      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'INSURER_ROLE', roleHash: ethers.id('INSURER_ROLE') },
-      // VehicleLien roles
-      { contract: this.vehicleLienContract, contractName: 'VehicleLien', roleName: 'FINANCE_ROLE', roleHash: ethers.id('FINANCE_ROLE') },
-      // VehicleNFT roles (needed for setTransferLock from Registry/Lien)
-      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'REGISTRY_ROLE', roleHash: ethers.id('REGISTRY_ROLE') },
-      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'LIEN_ROLE', roleHash: ethers.id('LIEN_ROLE') },
+    // We must grant specific roles to the contract addresses so they can call each other,
+    // and some roles to the admin address so it can execute transactions.
+    const registryAddress = await this.vehicleRegistryContract.getAddress();
+    const lienAddress = await this.vehicleLienContract.getAddress();
+
+    const roleGrants: { contract: ethers.Contract; contractName: string; roleName: string; roleHash: string; grantTo: string }[] = [
+      // VehicleRegistry roles to admin so backend can register
+      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'DLT_OFFICER_ROLE', roleHash: ethers.id('DLT_OFFICER_ROLE'), grantTo: adminAddress },
+      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'INSPECTOR_ROLE', roleHash: ethers.id('INSPECTOR_ROLE'), grantTo: adminAddress },
+      // VehicleLifecycle roles to admin
+      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'WORKSHOP_ROLE', roleHash: ethers.id('WORKSHOP_ROLE'), grantTo: adminAddress },
+      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'INSURER_ROLE', roleHash: ethers.id('INSURER_ROLE'), grantTo: adminAddress },
+      // VehicleLien roles to admin so backend can create liens
+      { contract: this.vehicleLienContract, contractName: 'VehicleLien', roleName: 'FINANCE_ROLE', roleHash: ethers.id('FINANCE_ROLE'), grantTo: adminAddress },
+      
+      // CRITICAL CROSS-CONTRACT ROLES:
+      // VehicleRegistry and VehicleLien MUST have roles on VehicleNFT to lock transfers
+      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'REGISTRY_ROLE', roleHash: ethers.id('REGISTRY_ROLE'), grantTo: registryAddress },
+      { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'LIEN_ROLE', roleHash: ethers.id('LIEN_ROLE'), grantTo: lienAddress },
     ];
 
-    for (const { contract, contractName, roleName, roleHash } of roleGrants) {
+    for (const { contract, contractName, roleName, roleHash, grantTo } of roleGrants) {
       try {
-        const hasRole = await contract.hasRole(roleHash, adminAddress);
+        const hasRole = await contract.hasRole(roleHash, grantTo);
         if (!hasRole) {
-          console.log(`[BlockchainService] Granting ${roleName} on ${contractName} to ${adminAddress}...`);
-          const tx = await contract.grantRole(roleHash, adminAddress);
-          await tx.wait();
-          console.log(`[BlockchainService] ✅ ${roleName} granted on ${contractName}`);
+          console.log(`[BlockchainService] Granting ${roleName} on ${contractName} to ${grantTo}...`);
+          // Use withTxLock to prevent nonce collisions during startup!
+          await this.withTxLock(async () => {
+             const tx = await contract.grantRole(roleHash, grantTo);
+             await tx.wait();
+          });
+          console.log(`[BlockchainService] ✅ ${roleName} granted on ${contractName} to ${grantTo}`);
         }
       } catch (err) {
         console.warn(`[BlockchainService] ⚠️ Could not grant ${roleName} on ${contractName}: ${err.message || err}`);
