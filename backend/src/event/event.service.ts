@@ -204,6 +204,9 @@ export class EventService {
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
+                // Save txHash back to domain entity
+                transfer.txHash = txHash;
+                await this.ownershipTransferRepository.save(transfer);
               } catch (err) {
                 console.error('Blockchain Transfer Recording Failed:', err.message || err);
               }
@@ -223,7 +226,7 @@ export class EventService {
             tokenId: vehicle.tokenId,
             status: 'REGISTERED' as any,
             greenBookNo: assignedBookNo,
-            greenBookNoHash: 'mockHash',
+            greenBookNoHash: ethers.id(assignedBookNo),
             registeredAt: Date.now().toString(),
             registrationDocHash: ethers.id('reg-doc-hash'),
             dltOfficerAddress: createEventDto.actor
@@ -256,6 +259,9 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            reg.txHash = txHash;
+            await this.registrationRepository.save(reg);
           } catch (err) {
             console.error('Blockchain Registration Failed or Timed out:', err.message || err);
           }
@@ -283,7 +289,7 @@ export class EventService {
             eventType: payload.action === 'issue' ? 'ISSUE' : payload.action === 'change' ? 'CHANGE' : 'LOST' as any,
             plateNo: assignedPlateNo,
             plateNoHash: ethers.id(assignedPlateNo || 'no-plate'),
-            provinceCode: 10, // Mock for Bangkok
+            provinceCode: payload.provinceCode || 10,
             effectiveAt: Date.now().toString(),
             plateEventDocHash: ethers.id('plate-doc-hash')
           });
@@ -319,6 +325,9 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            plate.txHash = txHash;
+            await this.plateRecordRepository.save(plate);
           } catch (err) {
             console.error('Blockchain Plate Event Failed or Timed out:', err.message || err);
           }
@@ -327,7 +336,7 @@ export class EventService {
           const tax = this.taxPaymentRepository.create({
             tokenId: vehicle.tokenId,
             taxYear: new Date().getFullYear(),
-            receiptHash: 'mockHash',
+            receiptHash: ethers.id('tax-receipt-' + vehicle.tokenId + '-' + Date.now()),
             paidAt: Date.now().toString(),
             validUntil: new Date(payload.validUntil).getTime().toString(),
             status: 'PAID' as any,
@@ -347,6 +356,9 @@ export class EventService {
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+              // Save txHash back to domain entity
+              tax.txHash = txHash;
+              await this.taxPaymentRepository.save(tax);
             } else {
               console.warn('Blockchain Tax Payment Skipped: No on-chain inspection record yet for tokenId', createEventDto.tokenId);
             }
@@ -515,7 +527,7 @@ export class EventService {
               scopes: ['PII' as any], // Mock mapping
               scopeMask: '1',
               expiresAt: new Date(payload.expiresAt).getTime().toString(),
-              grantHash: 'mockHash',
+              grantHash: ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, grantTo: payload.grantTo, expiresAt: payload.expiresAt })),
               nonce: Date.now().toString()
             });
              await this.consentGrantRepository.save(grant);
@@ -550,6 +562,9 @@ export class EventService {
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+              // Save txHash back to domain entity
+              grant.txHash = txHash;
+              await this.consentGrantRepository.save(grant);
             } catch (err) {
               console.error('Blockchain Consent Grant Failed:', err);
             }
@@ -590,6 +605,9 @@ export class EventService {
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
+                // Save txHash back to domain entity
+                grants[0].txHash = txHash;
+                await this.consentGrantRepository.save(grants[0]);
               } catch (err) {
                 console.error('Blockchain Consent Revoke Failed:', err);
               }
@@ -598,16 +616,18 @@ export class EventService {
           break;
 
         case 'INSURANCE_POLICY_UPDATED':
+          const policyNo = payload.policyNumber || `POL-${Date.now()}`;
+          const coverageDetails = { type: payload.coverageType, class: '1', coverageItems: [] };
           const policy = this.insurancePolicyRepository.create({
             tokenId: vehicle.tokenId,
             insurerAddress: createEventDto.actor,
-            policyNo: payload.policyNumber || `POL-${Date.now()}`,
-            policyNoHash: 'mockHash',
+            policyNo: policyNo,
+            policyNoHash: ethers.id(policyNo),
             action: 'NEW' as any,
             validFrom: Date.now().toString(),
             validTo: new Date(payload.validUntil).getTime().toString(),
-            coverageDetails: { type: payload.coverageType, class: '1', coverageItems: [] },
-            coverageHash: 'mockHash',
+            coverageDetails: coverageDetails,
+            coverageHash: ethers.id(JSON.stringify(coverageDetails)),
           });
           await this.insurancePolicyRepository.save(policy);
 
@@ -641,21 +661,25 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            policy.txHash = txHash;
+            await this.insurancePolicyRepository.save(policy);
           } catch (err) {
             console.error('Blockchain Insurance Policy Failed:', err);
           }
           break;
 
         case 'CLAIM_FILED':
+          const severityMapping = { 'minor': 'MINOR', 'major': 'MAJOR', 'structural': 'STRUCTURAL', 'total_loss': 'TOTAL_LOSS' };
           const claim = this.insuranceClaimRepository.create({
             tokenId: vehicle.tokenId,
             claimNo: payload.claimId,
-            claimNoHash: 'mockHash',
+            claimNoHash: ethers.id(payload.claimId || 'none'),
             filedAt: new Date(payload.date || Date.now()).getTime().toString(),
             status: 'FILED' as any,
-            severity: 'MINOR' as any, // Mock mapping
+            severity: (severityMapping[payload.severity] || 'MINOR') as any,
             evidenceFiles: [],
-            evidenceHashes: []
+            evidenceHashes: payload.evidenceHashes || []
           });
           await this.insuranceClaimRepository.save(claim);
 
@@ -687,21 +711,25 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            claim.txHash = txHash;
+            await this.insuranceClaimRepository.save(claim);
           } catch (err) {
             console.error('Blockchain Claim Filing Failed:', err);
           }
           break;
 
         case 'INSPECTION_RESULT_RECORDED':
+          const inspMetrics = payload.metrics || {};
           const inspection = this.inspectionRepository.create({
             tokenId: vehicle.tokenId,
             stationAddress: createEventDto.actor,
-            stationName: 'Authorized Station',
+            stationName: payload.stationId || 'Authorized Station',
             vinVerified: true,
             result: payload.passed ? 'PASS' as any : 'FAIL' as any,
-            metrics: payload.metrics || {},
-            metricsHash: 'mockHash',
-            certHash: 'mockHash',
+            metrics: inspMetrics,
+            metricsHash: ethers.id(JSON.stringify(inspMetrics)),
+            certHash: ethers.id('cert-' + vehicle.tokenId + '-' + Date.now()),
             issuedAt: Date.now().toString(),
           });
           await this.inspectionRepository.save(inspection);
@@ -733,22 +761,26 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            inspection.txHash = txHash;
+            await this.inspectionRepository.save(inspection);
           } catch (err) {
             console.error('Blockchain Inspection Record Failed:', err);
           }
           break;
 
         case 'MAINTENANCE_RECORDED':
+          const maintJobs = payload.jobs || payload.parts || [];
           const maintenance = this.maintenanceLogRepository.create({
             tokenId: vehicle.tokenId,
             workshopAddress: createEventDto.actor,
-            writeConsentRefHash: 'mockHash',
+            writeConsentRefHash: ethers.id('consent-ref-' + vehicle.tokenId),
             occurredAt: Date.now().toString(),
             mileageKm: payload.mileageKm || 0,
-            jobs: payload.parts || [],
+            jobs: maintJobs,
             symptoms: payload.description,
-            maintenanceHash: 'mockHash',
-            partsHash: 'mockHash'
+            maintenanceHash: ethers.id(JSON.stringify({ jobs: maintJobs, mileage: payload.mileageKm, date: Date.now() })),
+            partsHash: ethers.id(JSON.stringify(maintJobs))
           });
           await this.maintenanceLogRepository.save(maintenance);
 
@@ -782,6 +814,9 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            // Save txHash back to domain entity
+            maintenance.txHash = txHash;
+            await this.maintenanceLogRepository.save(maintenance);
           } catch (err) {
             console.error('Blockchain Maintenance Log Failed:', err);
           }
@@ -792,6 +827,15 @@ export class EventService {
           break;
         case 'CRITICAL_PART_REPLACED':
           // Mock structure for part replacements inside Maintenance Log or as pure Event
+          break;
+        case 'WARRANTY_DEFINED':
+        case 'DISCLOSURE_SIGNED':
+        case 'TRADEIN_EVALUATED':
+        case 'PAYMENT_PROOF_SUBMITTED':
+        case 'WORKSHOP_ESTIMATE_SUBMITTED':
+        case 'INSURER_APPROVED_ESTIMATE':
+        case 'CLAIM_STATUS_CHANGED':
+          // These events are valid but currently only recorded as EventLogs without domain entity updates
           break;
         case 'SPECIFICATION_UPDATED':
           if (payload.changes) {

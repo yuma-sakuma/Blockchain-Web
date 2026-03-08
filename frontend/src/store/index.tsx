@@ -5,7 +5,7 @@ import { VehicleEvent, VehicleNFT } from '../types/vehicle';
 interface VehicleContextType {
   vehicles: VehicleNFT[];
   events: VehicleEvent[];
-  addEvent: (event: Omit<VehicleEvent, 'id' | 'timestamp'>) => void;
+  addEvent: (event: Omit<VehicleEvent, 'id' | 'timestamp'>) => Promise<any>;
   getVehicle: (tokenId: string) => VehicleNFT | undefined;
 }
 
@@ -208,6 +208,12 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
 export const VehicleProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<VehicleNFT[]>([]);
   const [events, setEvents] = useState<VehicleEvent[]>([]);
+  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 8000);
+  };
 
   // Load from backend API on mount
   useEffect(() => {
@@ -226,6 +232,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           actor: e.actorAddress || 'UNKNOWN',
           type: e.type,
           payload: e.payload,
+          txHash: e.txHash || undefined,
         }));
         setEvents(mappedEvents);
 
@@ -244,7 +251,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           ownerCount: v.ownerCount || 0,
           registration: {
             isRegistered: v.registrationStatus === 'REGISTERED',
-            taxStatus: 'unpaid',
+            taxStatus: v.taxPayments && v.taxPayments.length > 0 ? 'paid' : 'unpaid' as any,
             plateNo: v.plateRecords && v.plateRecords.length > 0
               ? v.plateRecords.sort((a: any, b: any) => Number(b.effectiveAt) - Number(a.effectiveAt))[0].plateNo
               : undefined,
@@ -261,7 +268,14 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             totalLoss: v.activeFlags?.includes('TOTAL_LOSS') || false,
             scrapped: v.activeFlags?.includes('SCRAPPED') || false
           },
-          lien: { status: 'none', transferLocked: v.transferLocked || false }
+          lien: { status: v.transferLocked ? 'active' : 'none' as any, transferLocked: v.transferLocked || false },
+          insurance: v.insurancePolicies && v.insurancePolicies.length > 0 ? {
+            insurer: v.insurancePolicies[0].insurerAddress,
+            policyNumber: v.insurancePolicies[0].policyNo,
+            coverageType: v.insurancePolicies[0].coverageDetails?.type || 'unknown',
+            validUntil: new Date(Number(v.insurancePolicies[0].validTo)).toISOString(),
+            status: 'active' as any
+          } : undefined
         }));
 
         // Re-apply events to construct full dynamic state if needed, or rely on mapped initial state
@@ -306,16 +320,52 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       // Sync to backend
-      await createEvent(newEvent);
+      const response = await createEvent(newEvent);
+      if (response && response.txHash) {
+        showToast(`Smart Contract interaction successful\n\nTxHash: ${response.txHash}`);
+      }
+      
+      // Update real token ID in state if it changed from backend (e.g. minting returns real on-chain ID)
+      if (response && response.tokenId && response.tokenId !== newEvent.tokenId) {
+          setVehicles(prev => prev.map(v => v.tokenId === newEvent.tokenId ? { ...v, tokenId: response.tokenId } : v));
+          setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, tokenId: response.tokenId, txHash: response.txHash || undefined } : e)));
+      } else if (response && response.txHash) {
+          // Update txHash on the event in local state
+          setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
+      }
+
+      return response;
     } catch (err: any) {
       console.error("Failed to sync event with backend", err);
       // Reverting optimistic UI for prototype is complex, so we log it
+      showToast(`Smart Contract interaction failed: ${err.message}`, 'error');
+      throw err;
     }
   };
 
   return (
     <VehicleContext.Provider value={{ vehicles, events, addEvent, getVehicle: (id) => vehicles.find(v => v.tokenId === id) }}>
       {children}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          backgroundColor: toastMessage.type === 'success' ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)',
+          color: '#ffffff',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+          zIndex: 9999,
+          maxWidth: '450px',
+          fontFamily: 'monospace',
+          fontSize: '0.85rem',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all'
+        }}>
+          {toastMessage.message}
+        </div>
+      )}
     </VehicleContext.Provider>
   );
 };

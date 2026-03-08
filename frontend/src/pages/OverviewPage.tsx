@@ -19,6 +19,13 @@ export const OverviewPage = () => {
   const { vehicles, events } = useVehicleStore();
   const [search, setSearch] = useState('');
   const [selectedVin, setSelectedVin] = useState<string | null>(null);
+  const [networkStatus, setNetworkStatus] = useState<any>(null);
+
+  useState(() => {
+    import('../services/api').then(api => {
+        api.checkBackendStatus().then(status => setNetworkStatus(status)).catch(console.error);
+    });
+  });
 
   const filteredVehicles = vehicles.filter(v => 
     v.vin.toLowerCase().includes(search.toLowerCase()) || 
@@ -39,8 +46,9 @@ export const OverviewPage = () => {
           </h1>
           <p className="text-secondary" style={{ fontSize: '1.2rem' }}>Unified registry protocol for high-fidelity vehicle lifecycle assets.</p>
         </div>
-        <div className="badge badge-info" style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
-            <Activity size={14} style={{ marginRight: '8px' }} /> Network Online: 3 Nodes
+        <div className={`badge ${networkStatus?.status === 'ok' ? 'badge-info' : 'badge-danger'}`} style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
+            <Activity size={14} style={{ marginRight: '8px' }} /> 
+            {networkStatus?.status === 'ok' ? `Network Online: ${networkStatus?.network?.peers || 3} Nodes` : 'Network Offline'}
         </div>
       </header>
 
@@ -180,6 +188,12 @@ export const OverviewPage = () => {
                                )
                           ))}
                       </div>
+                      {e.txHash && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>TX Hash:</span>
+                          <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--success)', wordBreak: 'break-all' }}>{e.txHash}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

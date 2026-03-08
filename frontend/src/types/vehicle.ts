@@ -134,4 +134,5 @@ export interface VehicleEvent {
   type: EventType;
   payload: any;
   signature?: string;
+  txHash?: string;
 }

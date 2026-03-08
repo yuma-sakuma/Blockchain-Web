@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
 
 export const ServicePage = () => {
-    const { vehicles, addEvent } = useVehicleStore();
+    const { vehicles, events, addEvent } = useVehicleStore();
     const { address } = useAuth();
     const [vin, setVin] = useState('');
     const [mileage, setMileage] = useState<number>(0);
@@ -21,7 +21,7 @@ export const ServicePage = () => {
     const garageId = address ? `WORKSHOP:${address}` : "WORKSHOP:KDT-Service-01";
     const targetVehicle = vehicles.find(v => v.vin === vin);
 
-    const handleRecordService = () => {
+    const handleRecordService = async () => {
         if (!targetVehicle) return;
         
         if (mileage < targetVehicle.warranty.terms.mileageKm) {
@@ -29,7 +29,7 @@ export const ServicePage = () => {
             return;
         }
 
-        addEvent({
+        await addEvent({
             type: 'MAINTENANCE_RECORDED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
@@ -42,22 +42,20 @@ export const ServicePage = () => {
             }
         });
 
-        // Also record a snapshot
-        addEvent({
+        await addEvent({
             type: 'ODOMETER_SNAPSHOT',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
             payload: { mileageKm: mileage, date: new Date().toISOString() }
         });
 
-        alert("Validated service record committed to ledger.");
         setJobs('');
         setMileage(0);
     };
 
-    const handleRegisterPart = () => {
+    const handleRegisterPart = async () => {
         if (!targetVehicle || !newPartNo) return;
-        addEvent({
+        await addEvent({
             type: 'CRITICAL_PART_REPLACED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
@@ -69,13 +67,12 @@ export const ServicePage = () => {
                 reason: "Replacement/Upgrade"
             }
         });
-        alert(`Critical asset ${partType} updated in specific registry.`);
         setNewPartNo('');
     };
 
-    const handleSubmitEstimate = () => {
+    const handleSubmitEstimate = async () => {
         if (!targetVehicle || !estimateJobs || !estimateTotal) return;
-        addEvent({
+        await addEvent({
             type: 'WORKSHOP_ESTIMATE_SUBMITTED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
@@ -86,7 +83,6 @@ export const ServicePage = () => {
                 total: Number(estimateTotal)
             }
         });
-        alert("Estimate submitted for Insurer approval.");
         setEstimateJobs('');
         setEstimateTotal(0);
     };
@@ -115,7 +111,7 @@ export const ServicePage = () => {
                             <div style={{ fontWeight: 700 }}>{targetVehicle.makeModelTrim}</div>
                             <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Current Mileage: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
                         </div>
-                        <div className="badge badge-success">Consent Granted</div>
+                        <div className={`badge ${events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'badge-success' : 'badge-danger'}`}>{events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'Consent Granted' : 'No Consent'}</div>
                     </div>
                 )}
             </div>

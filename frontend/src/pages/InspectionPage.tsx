@@ -14,27 +14,22 @@ export const InspectionPage = () => {
     
     const vehicle = vehicles.find(v => v.vin === searchVin);
 
-    const handleSubmitResult = () => {
+    const handleSubmitResult = async () => {
         if (!vehicle) return;
 
-        addEvent({
+        await addEvent({
             type: 'INSPECTION_RESULT_RECORDED',
             actor: inspectorId,
             tokenId: vehicle.tokenId,
             payload: {
                 stationId: inspectorId,
                 result: result,
+                passed: result === 'pass',
                 metrics: { co2_g_km: co2, brake_efficiency: '90%' },
-                validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year validity
+                validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
                 certHash: "CERT-" + Date.now()
             }
         });
-
-        if (result === 'pass') {
-            alert("Inspection Passed! Certificate Issued.");
-        } else {
-            alert("Inspection Failed. Repair required.");
-        }
     };
 
     return (

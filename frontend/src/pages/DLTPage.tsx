@@ -241,10 +241,10 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Loss/Theft</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.stolen ? <span className="badge badge-danger">STOLEN</span> : <span className="badge badge-success">CLEAN</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             const reason = prompt("Enter Police Report / Case Number:");
                                             if (!reason) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -259,10 +259,10 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Legal Seizure</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.seized ? <span className="badge badge-danger">SEIZED</span> : <span className="badge badge-success">NONE</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             const reason = prompt("Enter Court Order Number:");
                                             if (!reason) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -277,9 +277,9 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Salvage Only</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.totalLoss ? <span className="badge badge-danger">TOTAL LOSS</span> : <span className="badge badge-success">NO</span>}
-                                        <button onClick={() => {
+                                        <button onClick={async () => {
                                             if (!confirm("Confirm Total Loss? This action significantly devalues the asset.")) return;
-                                            addEvent({
+                                            await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
@@ -303,11 +303,11 @@ export const DLTPage = () => {
                                 <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Assign New Plate No.</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                                     <input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} placeholder="e.g. 7กพ-9999" style={{ marginBottom: 0 }} />
-                                    <button onClick={() => {
+                                    <button onClick={async () => {
                                         if (!plateNumber) return;
-                                        addEvent({
+                                        await addEvent({
                                             type: 'PLATE_EVENT_RECORDED',
-                                            actor: actorId, // Dynamic
+                                            actor: actorId,
                                             tokenId: searchResult.tokenId,
                                             payload: { action: 'change', plateNo: plateNumber, province: 'Bangkok', date: new Date().toISOString() }
                                         });

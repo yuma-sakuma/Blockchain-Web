@@ -58,8 +58,10 @@ export class BlockchainService implements OnModuleInit {
     if (privateKey) {
       const rawWallet = new ethers.Wallet(privateKey, this.provider);
       this.walletAddress = rawWallet.address;
-      // Wrap in NonceManager to auto-track nonces and prevent nonce collision errors
-      this.wallet = new ethers.NonceManager(rawWallet);
+      // Use rawWallet directly. Since transactions are serialized via EventController withTxLock, 
+      // ethers will dynamically fetch the correct nonce for every transaction. 
+      // NonceManager caches nonces and causes sync errors if external scripts or resets occur.
+      this.wallet = rawWallet;
     }
 
     // Use process.cwd() instead of __dirname to ensure it finds the src folder even if compiled to dist

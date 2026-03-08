@@ -22,13 +22,13 @@ export const InsurancePage = () => {
     // Pending Estimates from workshops
     const pendingEstimates = events.filter(e => e.type === 'WORKSHOP_ESTIMATE_SUBMITTED' && !events.some(ae => ae.type === 'INSURER_APPROVED_ESTIMATE' && ae.payload.estimateId === e.payload.id));
 
-    const handleIssuePolicy = () => {
+    const handleIssuePolicy = async () => {
         if (!targetVehicle) {
             alert("Vehicle not found");
             return;
         }
 
-        addEvent({
+        await addEvent({
             type: 'INSURANCE_POLICY_UPDATED',
             actor: insurerId,
             tokenId: targetVehicle.tokenId,
@@ -41,17 +41,16 @@ export const InsurancePage = () => {
             }
         });
 
-        alert("Insurance policy issued!");
         setPolicyNo('');
     };
 
-    const handleFileClaim = () => {
+    const handleFileClaim = async () => {
         if (!claimVehicle) {
             alert("Vehicle not found");
             return;
         }
 
-        addEvent({
+        await addEvent({
             type: 'CLAIM_FILED',
             actor: insurerId,
             tokenId: claimVehicle.tokenId,
@@ -64,24 +63,22 @@ export const InsurancePage = () => {
             }
         });
 
-        alert("Critical Claim certified. Vehicle flags updated.");
         setDescription('');
     };
 
-    const handleApproveEstimate = (estimate: any) => {
-        addEvent({
+    const handleApproveEstimate = async (estimate: any) => {
+        await addEvent({
             type: 'INSURER_APPROVED_ESTIMATE',
             actor: insurerId,
             tokenId: estimate.tokenId,
             payload: {
                 estimateId: estimate.payload.id,
-                amount: estimate.payload.total, // Reducer expects 'amount'
+                amount: estimate.payload.total,
                 approvedAmount: estimate.payload.total,
                 approvalCode: "APP-" + Math.floor(Math.random()*10000),
                 notes: "Standard labor rates applied."
             }
         });
-        alert("Repair estimate approved. Workshop notified.");
     };
 
     return (
