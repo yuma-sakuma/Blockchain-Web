@@ -62,19 +62,19 @@ export class EventService {
         // 1. VIN Uniqueness Check
         const existingVin = await this.vehicleRepository.findOne({ where: { vinNumber: payload.vin } });
         if (existingVin) {
-           throw new Error(`VIN ${payload.vin} already exists in the database.`);
+          throw new Error(`VIN ${payload.vin} already exists in the database.`);
         }
 
         // 2. Engine/Motor Serial Uniqueness Check
         if (payload.spec && payload.spec.engine) {
-            // Find all vehicles and check inside specJson.
-            // (Using pure JS for cross-db compatibility since specJson is a simple object)
-            const allVehicles = await this.vehicleRepository.find({ select: ['tokenId', 'specJson'] });
-            for (const v of allVehicles) {
-                if (v.specJson && v.specJson.engine === payload.spec.engine) {
-                    throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
-                }
+          // Find all vehicles and check inside specJson.
+          // (Using pure JS for cross-db compatibility since specJson is a simple object)
+          const allVehicles = await this.vehicleRepository.find({ select: ['tokenId', 'specJson'] });
+          for (const v of allVehicles) {
+            if (v.specJson && v.specJson.engine === payload.spec.engine) {
+              throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
             }
+          }
         }
 
         // Blockchain Interaction
@@ -219,7 +219,7 @@ export class EventService {
               const char2 = lettersTh.charAt(Math.floor(Math.random() * lettersTh.length));
               const digits = Math.floor(Math.random() * 9000) + 1000;
               assignedPlateNo = `${prefix}${char1}${char2}-${digits}`;
-              
+
               // ตรวจสอบว่าป้ายซ้ำหรือไม่ ถ้าซ้ำ (เจอ existingPlate) loop จะทำงานต่อและ gen ใหม่
               const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo } });
               if (!existingPlate) {
@@ -227,11 +227,11 @@ export class EventService {
               }
             }
           } else if (payload.action === 'change') {
-             // 4. Check for duplicate if manually changing
-             const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo, eventType: 'ISSUE' as any } });
-             if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
-                throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
-             }
+            // 4. Check for duplicate if manually changing
+            const existingPlate = await this.plateRecordRepository.findOne({ where: { plateNo: assignedPlateNo, eventType: 'ISSUE' as any } });
+            if (existingPlate && existingPlate.tokenId !== vehicle.tokenId) {
+              throw new Error(`License Plate ${assignedPlateNo} is already in use by another vehicle.`);
+            }
           }
 
           const plate = this.plateRecordRepository.create({
@@ -250,7 +250,7 @@ export class EventService {
             const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
             const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
               createEventDto.tokenId,
-              ethers.id(payload.plateNo),
+              ethers.id(assignedPlateNo || payload.plateNo || 'none'),
               10,
               typeMap[payload.type] || 0,
               ethers.id('plate-doc-hash'),

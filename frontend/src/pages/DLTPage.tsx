@@ -9,7 +9,7 @@ export const DLTPage = () => {
     const [searchVin, setSearchVin] = useState('');
     const [plateNumber, setPlateNumber] = useState('');
     const [newColor, setNewColor] = useState('');
-    
+
     // Dynamic Actor ID
     const actorId = address ? `DLT:${address}` : 'DLT:System';
 
@@ -41,7 +41,7 @@ export const DLTPage = () => {
 
     const handleUpdateTax = () => {
         if (!searchResult) return;
-        
+
         const age = new Date().getFullYear() - new Date(searchResult.production.manufacturedAt).getFullYear();
         if (age >= 7) {
             const hasInspection = events.some(e => e.tokenId === searchResult.tokenId && e.type === 'INSPECTION_RESULT_RECORDED' && e.payload.result === 'pass');
@@ -96,7 +96,7 @@ export const DLTPage = () => {
                     Lookup Central Registry
                 </h2>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input 
+                    <input
                         value={searchVin}
                         onChange={(e) => setSearchVin(e.target.value)}
                         placeholder="Enter Chassis Number (VIN)..."
@@ -114,7 +114,7 @@ export const DLTPage = () => {
                                 <Book color="var(--success)" size={20} />
                                 Registration Status
                             </h3>
-                            
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Current State</div>
@@ -192,14 +192,14 @@ export const DLTPage = () => {
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.seized ? <span className="badge badge-danger">SEIZED</span> : <span className="badge badge-success">NONE</span>}
                                         <button onClick={() => {
-                                             const reason = prompt("Enter Court Order Number:");
-                                             if (!reason) return;
-                                             addEvent({
-                                                 type: 'FLAG_UPDATED',
-                                                 actor: actorId,
-                                                 tokenId: searchResult.tokenId,
-                                                 payload: { flagType: 'seized', value: !searchResult.flags.seized, reason, ref: 'CRT-' + Date.now() }
-                                             });
+                                            const reason = prompt("Enter Court Order Number:");
+                                            if (!reason) return;
+                                            addEvent({
+                                                type: 'FLAG_UPDATED',
+                                                actor: actorId,
+                                                tokenId: searchResult.tokenId,
+                                                payload: { flagType: 'seized', value: !searchResult.flags.seized, reason, ref: 'CRT-' + Date.now() }
+                                            });
                                         }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
                                             {searchResult.flags.seized ? 'RELEASE' : 'SEIZE'}
                                         </button>
@@ -210,13 +210,13 @@ export const DLTPage = () => {
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.totalLoss ? <span className="badge badge-danger">TOTAL LOSS</span> : <span className="badge badge-success">NO</span>}
                                         <button onClick={() => {
-                                             if (!confirm("Confirm Total Loss? This action significantly devalues the asset.")) return;
-                                             addEvent({
-                                                 type: 'FLAG_UPDATED',
-                                                 actor: actorId,
-                                                 tokenId: searchResult.tokenId,
-                                                 payload: { flagType: 'totalLoss', value: !searchResult.flags.totalLoss, reason: 'Insurance/Inspection Report', ref: 'DMG-' + Date.now() }
-                                             });
+                                            if (!confirm("Confirm Total Loss? This action significantly devalues the asset.")) return;
+                                            addEvent({
+                                                type: 'FLAG_UPDATED',
+                                                actor: actorId,
+                                                tokenId: searchResult.tokenId,
+                                                payload: { flagType: 'totalLoss', value: !searchResult.flags.totalLoss, reason: 'Insurance/Inspection Report', ref: 'DMG-' + Date.now() }
+                                            });
                                         }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
                                             {searchResult.flags.totalLoss ? 'REVERT' : 'DECLARE'}
                                         </button>
@@ -230,13 +230,13 @@ export const DLTPage = () => {
                                 <Settings size={20} color="var(--warning)" />
                                 Legal Modification
                             </h3>
-                            
+
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Assign New Plate No.</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                    <input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} placeholder="e.g. 7กพ-9999" style={{marginBottom:0}} />
+                                    <input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} placeholder="e.g. 7กพ-9999" style={{ marginBottom: 0 }} />
                                     <button onClick={() => {
-                                        if(!plateNumber) return;
+                                        if (!plateNumber) return;
                                         addEvent({
                                             type: 'PLATE_EVENT_RECORDED',
                                             actor: actorId, // Dynamic
@@ -250,7 +250,7 @@ export const DLTPage = () => {
                             <div>
                                 <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Update Vehicle Attributes</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                    <input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="New Color..." style={{marginBottom:0}} />
+                                    <input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="New Color..." style={{ marginBottom: 0 }} />
                                     <button onClick={handleUpdateColor} style={{ fontSize: '0.8rem' }}>Update Spec</button>
                                 </div>
                             </div>
@@ -259,8 +259,8 @@ export const DLTPage = () => {
                 </div>
             ) : (
                 <div className="card" style={{ textAlign: 'center', padding: '4rem', opacity: 0.5 }}>
-                   <Book size={48} style={{ margin: '0 auto 1.5rem auto' }} />
-                   <p>Enter a valid VIN to retrieve official registration records.</p>
+                    <Book size={48} style={{ margin: '0 auto 1.5rem auto' }} />
+                    <p>Enter a valid VIN to retrieve official registration records.</p>
                 </div>
             )}
         </div>

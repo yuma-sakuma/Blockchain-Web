@@ -25,6 +25,9 @@ export class BlockchainService implements OnModuleInit {
 
     if (privateKey) {
       this.wallet = new ethers.Wallet(privateKey, this.provider);
+      console.log(`[BlockchainService] Wallet loaded: ${this.wallet.address}`);
+    } else {
+      console.warn('[BlockchainService] WARNING: ADMIN_PRIVATE_KEY is not set. Transactions will fail!');
     }
 
     // Use process.cwd() instead of __dirname to ensure it finds the src folder even if compiled to dist
