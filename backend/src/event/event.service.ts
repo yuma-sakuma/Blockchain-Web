@@ -49,6 +49,11 @@ export class EventService {
     });
   }
 
+  async checkPlateExists(plateNo: string): Promise<{ exists: boolean }> {
+    const existing = await this.plateRecordRepository.findOne({ where: { plateNo } });
+    return { exists: !!existing };
+  }
+
   async create(createEventDto: any): Promise<EventLog> {
     let vehicle = await this.vehicleRepository.findOne({ where: { tokenId: createEventDto.tokenId } });
 
