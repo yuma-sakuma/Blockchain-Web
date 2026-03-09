@@ -9,7 +9,7 @@ export class AppService {
   constructor(
     private dataSource: DataSource,
     private blockchainService: BlockchainService
-  ) {}
+  ) { }
 
   getHello(): string {
     return 'Hello World!';
@@ -36,16 +36,16 @@ export class AppService {
 
   async syncBlockchain() {
     this.logger.log('Starting Blockchain Sync and Recovery...');
-    
+
     // 1. Ensure Roles are granted (Self-healing)
     try {
       this.logger.log('Checking and granting roles...');
       const MANUFACTURER_ROLE = ethers.id("MANUFACTURER_ROLE");
       const REGISTRY_ROLE = ethers.id("REGISTRY_ROLE");
-      const isManufacturer = await this.blockchainService.vehicleNFTContract.hasRole(MANUFACTURER_ROLE, this.blockchainService.wallet.address);
+      const isManufacturer = await this.blockchainService.vehicleNFTContract.hasRole(MANUFACTURER_ROLE, this.blockchainService.walletAddress);
       if (!isManufacturer) {
         this.logger.log('Granting MANUFACTURER_ROLE to self...');
-        const tx = await this.blockchainService.vehicleNFTContract.grantRole(MANUFACTURER_ROLE, this.blockchainService.wallet.address);
+        const tx = await this.blockchainService.vehicleNFTContract.grantRole(MANUFACTURER_ROLE, this.blockchainService.walletAddress);
         await tx.wait();
       }
 
@@ -75,10 +75,10 @@ export class AppService {
           results.push({ tokenId: v.tokenId, vin: v.vinNumber, status: 'exists' });
         } catch (err) {
           this.logger.warn(`Token ${v.tokenId} missing on-chain. Attempting re-mint...`);
-          
+
           const vinHash = ethers.id(v.vinNumber);
           const isUsed = await this.blockchainService.vehicleNFTContract.isVinUsed(vinHash);
-          
+
           if (isUsed) {
             results.push({ tokenId: v.tokenId, vin: v.vinNumber, status: 'error', message: 'VIN already used on-chain under different ID' });
             continue;
@@ -90,20 +90,20 @@ export class AppService {
           const manufacturedAt = v.manufacturedAt ? BigInt(v.manufacturedAt) : BigInt(Date.now());
 
           const tx = await this.blockchainService.vehicleNFTContract.mintVehicle(
-            this.blockchainService.wallet.address,
+            this.blockchainService.walletAddress,
             vinHash,
             manufacturedAt,
             modelHash,
             specHash
           );
           const receipt = await tx.wait();
-          
+
           const transferEvent = receipt.logs.find((log: any) => {
             try {
               return this.blockchainService.vehicleNFTContract.interface.parseLog(log)?.name === 'Transfer';
             } catch (e) { return false; }
           });
-          
+
           if (!transferEvent) throw new Error('No Transfer event found');
           const parsedLog = this.blockchainService.vehicleNFTContract.interface.parseLog(transferEvent);
           if (!parsedLog) throw new Error('Failed to parse Transfer log');
@@ -111,8 +111,8 @@ export class AppService {
 
           // Update ALL tables
           const tables = [
-            'vehicles', 'registrations', 'plate_records', 'tax_payments', 
-            'ownership_transfers', 'maintenance_logs', 'insurance_policies', 
+            'vehicles', 'registrations', 'plate_records', 'tax_payments',
+            'ownership_transfers', 'maintenance_logs', 'insurance_policies',
             'insurance_claims', 'inspections', 'consent_grants', 'vehicle_flags'
           ];
 

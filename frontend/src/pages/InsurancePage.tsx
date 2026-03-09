@@ -9,7 +9,7 @@ export const InsurancePage = () => {
     const [vin, setVin] = useState('');
     const [policyNo, setPolicyNo] = useState('');
     const [coverage, setCoverage] = useState('1st_class');
-    
+
     // Claim state
     const [claimVin, setClaimVin] = useState('');
     const [description, setDescription] = useState('');
@@ -75,7 +75,7 @@ export const InsurancePage = () => {
                 estimateId: estimate.payload.id,
                 amount: estimate.payload.total,
                 approvedAmount: estimate.payload.total,
-                approvalCode: "APP-" + Math.floor(Math.random()*10000),
+                approvalCode: "APP-" + Math.floor(Math.random() * 10000),
                 notes: "Standard labor rates applied."
             }
         });
@@ -103,14 +103,14 @@ export const InsurancePage = () => {
                             <div>
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Target Asset (VIN)</label>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <input value={vin} onChange={e => setVin(e.target.value)} placeholder="Enter VIN to link policy..." style={{marginBottom:0}} />
-                                    <button className="btn" onClick={() => {/* Search trigger implied by state change for now */}}><Search size={18}/></button>
+                                    <input value={vin} onChange={e => setVin(e.target.value)} placeholder="Enter VIN to link policy..." style={{ marginBottom: 0 }} />
+                                    <button className="btn" onClick={() => {/* Search trigger implied by state change for now */ }}><Search size={18} /></button>
                                 </div>
                             </div>
-                            
+
                             {targetVehicle && (
                                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
-                                    <div style={{fontWeight: 700}}>{targetVehicle.makeModelTrim}</div>
+                                    <div style={{ fontWeight: 700 }}>{targetVehicle.makeModelTrim}</div>
                                     <div className="text-secondary">Current Owner: {targetVehicle.currentOwner}</div>
                                     {targetVehicle.insurance ? (
                                         <div style={{ marginTop: '0.5rem', color: 'var(--success)' }}>
@@ -173,14 +173,14 @@ export const InsurancePage = () => {
                             Filing Critical Incident
                         </h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                             <div>
+                            <div>
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Accident Vehicle (VIN)</label>
                                 <input value={claimVin} onChange={e => setClaimVin(e.target.value)} placeholder="Type VIN..." />
                             </div>
-                            
+
                             {claimVehicle && (
-                                 <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
-                                    <div style={{fontWeight: 700}}>{claimVehicle.makeModelTrim}</div>
+                                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
+                                    <div style={{ fontWeight: 700 }}>{claimVehicle.makeModelTrim}</div>
                                     {claimVehicle.activeClaim ? (
                                         <div style={{ color: 'var(--danger)', marginTop: '0.5rem' }}>
                                             ⚠️ Active Claim: {claimVehicle.activeClaim.claimId} ({claimVehicle.activeClaim.status})
@@ -188,7 +188,7 @@ export const InsurancePage = () => {
                                     ) : (
                                         <div style={{ color: 'var(--success)', marginTop: '0.5rem' }}>No Active Claims</div>
                                     )}
-                                 </div>
+                                </div>
                             )}
 
                             <div>
@@ -203,7 +203,7 @@ export const InsurancePage = () => {
                                     <option value="total_loss">Catastrophic: Declared Total Loss</option>
                                 </select>
                             </div>
-                            
+
                             <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--danger)', display: 'flex', gap: '0.75rem' }}>
                                 <AlertCircle size={32} />
                                 <span>Warning: Filing a Major or Total Loss claim will permanently flag this NFT in the global registry.</span>

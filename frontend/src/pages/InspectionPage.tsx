@@ -9,9 +9,9 @@ export const InspectionPage = () => {
     const [searchVin, setSearchVin] = useState('');
     const [result, setResult] = useState<'pass' | 'fail'>('pass');
     const [co2, setCo2] = useState(120);
-    
+
     const inspectorId = address ? `INSPECTION:${address}` : "INSPECTION:Tor-Ror-Or-099";
-    
+
     const vehicle = vehicles.find(v => v.vin === searchVin);
 
     const handleSubmitResult = async () => {
@@ -43,13 +43,13 @@ export const InspectionPage = () => {
             </header>
 
             <div className="card">
-                 <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Search size={20} color="var(--accent-primary)" />
                     Inspect Vehicle
                 </h2>
-                
+
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <input 
+                    <input
                         value={searchVin}
                         onChange={e => setSearchVin(e.target.value)}
                         placeholder="Enter VIN..."
@@ -64,8 +64,8 @@ export const InspectionPage = () => {
                         <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Emission (CO2 g/km)</label>
-                                <input 
-                                    type="number" 
+                                <input
+                                    type="number"
                                     value={co2}
                                     onChange={e => setCo2(Number(e.target.value))}
                                 />
@@ -74,10 +74,10 @@ export const InspectionPage = () => {
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Result</label>
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button 
+                                    <button
                                         onClick={() => setResult('pass')}
-                                        style={{ 
-                                            flex: 1, 
+                                        style={{
+                                            flex: 1,
                                             background: result === 'pass' ? 'var(--success)' : 'transparent',
                                             border: '1px solid var(--success)',
                                             color: result === 'pass' ? 'black' : 'var(--success)'
@@ -86,10 +86,10 @@ export const InspectionPage = () => {
                                         <CheckCircle size={16} style={{ display: 'inline', marginRight: '5px' }} />
                                         PASS
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setResult('fail')}
-                                        style={{ 
-                                            flex: 1, 
+                                        style={{
+                                            flex: 1,
                                             background: result === 'fail' ? 'var(--danger)' : 'transparent',
                                             border: '1px solid var(--danger)',
                                             color: result === 'fail' ? 'white' : 'var(--danger)'

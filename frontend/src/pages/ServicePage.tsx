@@ -9,7 +9,7 @@ export const ServicePage = () => {
     const [vin, setVin] = useState('');
     const [mileage, setMileage] = useState<number>(0);
     const [jobs, setJobs] = useState('');
-    
+
     // Part Registry state
     const [partType, setPartType] = useState('ECU');
     const [newPartNo, setNewPartNo] = useState('');
@@ -23,7 +23,7 @@ export const ServicePage = () => {
 
     const handleRecordService = async () => {
         if (!targetVehicle) return;
-        
+
         if (mileage < targetVehicle.warranty.terms.mileageKm) {
             alert(`Odometer Rollback Warning! New value ${mileage} < current ${targetVehicle.warranty.terms.mileageKm}. Action Blocked.`);
             return;
@@ -90,9 +90,9 @@ export const ServicePage = () => {
     return (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1200px', margin: '0 auto' }}>
             <header>
-                 <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Service & Maintenance Registry</h1>
-                 <p className="text-secondary">Official workshop logs for vehicle lifecycle maintenance and parts certification.</p>
-                 <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Service & Maintenance Registry</h1>
+                <p className="text-secondary">Official workshop logs for vehicle lifecycle maintenance and parts certification.</p>
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
                     <span className="badge badge-info">Registered Workshop: {garageId}</span>
                 </div>
             </header>
