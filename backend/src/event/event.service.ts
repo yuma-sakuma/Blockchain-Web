@@ -167,28 +167,39 @@ export class EventService {
             });
             await this.ownershipTransferRepository.save(transfer);
 
-            // Blockchain Interaction
-            // 1. Quick check if provider is reachable
-            await Promise.race([
-              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-            ]);
+            // Blockchain Interaction (Wrapped in try-catch for failure resilience)
+            try {
+              // 1. Quick check if provider is reachable
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
 
-            // 2. On-chain Token Existence Check
-            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              // 2. On-chain Existence Check
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Transfer.`);
+                throw new Error('STOP_SYNC'); // Internal signal to stop sync but not log as error
+              }
 
-            const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
-            const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
-            const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
-              createEventDto.tokenId,
-              toAddress,
-              reasonMap[payload.reason] || 2,
-              ethers.id(payload.docRef || 'none'),
-              ethers.id(payload.to),
-              ethers.id('payment-ref')
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
+              const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
+              const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+              const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
+                createEventDto.tokenId,
+                toAddress,
+                reasonMap[payload.reason] || 2,
+                ethers.id(payload.docRef || 'none'),
+                ethers.id(payload.to),
+                ethers.id('payment-ref')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Transfer Sync failed: ${err.message || err}`);
+              }
+            }
           }
           break;
         }
@@ -214,20 +225,31 @@ export class EventService {
           await this.registrationRepository.save(reg);
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for DLT Registration.`);
+              throw new Error('STOP_SYNC');
+            }
 
-          const tx = await this.blockchainService.vehicleRegistryContract.registerVehicle(
-            createEventDto.tokenId,
-            ethers.id(payload.bookNo || 'none'),
-            ethers.id('reg-doc-hash')
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const tx = await this.blockchainService.vehicleRegistryContract.registerVehicle(
+              createEventDto.tokenId,
+              ethers.id(payload.bookNo || 'none'),
+              ethers.id('reg-doc-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Registration sync failed: ${err.message || err}`);
+            }
+          }
           break;
         }
         case 'PLATE_EVENT_RECORDED': {
@@ -258,24 +280,35 @@ export class EventService {
           await this.plateRecordRepository.save(plate);
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Plate Event.`);
+              throw new Error('STOP_SYNC');
+            }
 
-          const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
-          const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
-            createEventDto.tokenId,
-            ethers.id(assignedPlateNo || 'no-plate'),
-            10,
-            typeMap[payload.action] || 0,
-            ethers.id('plate-doc-hash'),
-            Math.floor(Date.now() / 1000)
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const typeMap = { 'issue': 0, 'change': 1, 'lost': 2 };
+            const tx = await this.blockchainService.vehicleRegistryContract.recordPlateEvent(
+              createEventDto.tokenId,
+              ethers.id(assignedPlateNo || 'no-plate'),
+              10,
+              typeMap[payload.action] || 0,
+              ethers.id('plate-doc-hash'),
+              Math.floor(Date.now() / 1000)
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Plate Event sync failed: ${err.message || err}`);
+            }
+          }
           break;
         }
         case 'TAX_STATUS_UPDATED': {
@@ -289,23 +322,36 @@ export class EventService {
             amount: payload.amount ? (payload.amount * 100).toString() : '200000',
           });
 
-          // Blockchain Interaction — contract requires a passing inspection on-chain first
-          const lastInspection = await this.blockchainService.vehicleRegistryContract.lastInspectionPassAt(createEventDto.tokenId);
-          if (Number(lastInspection) === 0) {
-            throw new Error(`Blockchain Tax Payment Skipped: No on-chain inspection record found for tokenId ${createEventDto.tokenId}. Please complete inspection first.`);
-          }
-
-          // If inspection exists, save to DB and proceed to blockchain
+          // Save to database first so we have the record even if blockchain sync fails
           await this.taxPaymentRepository.save(tax);
 
-          const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
-            createEventDto.tokenId,
-            new Date().getFullYear(),
-            Math.floor(new Date(payload.validUntil).getTime() / 1000),
-            ethers.id('tax-receipt-hash')
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+          // Blockchain Interaction
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Tax Payment.`);
+              throw new Error('STOP_SYNC');
+            }
+
+            const tx = await this.blockchainService.vehicleRegistryContract.recordTaxPayment(
+              createEventDto.tokenId,
+              new Date().getFullYear(),
+              Math.floor(new Date(payload.validUntil).getTime() / 1000),
+              ethers.id('tax-receipt-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Tax sync failed: ${err.message || err}`);
+            }
+          }
           break;
         }
         case 'FLAG_UPDATED': {
@@ -321,23 +367,27 @@ export class EventService {
             vehicleUpdated = true;
 
             // Blockchain Interaction
-            await Promise.race([
-              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-            ]);
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
 
-            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-            const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
-            if (flagMap[payload.flag]) {
-              const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                createEventDto.tokenId,
-                flagMap[payload.flag],
-                payload.value,
-                ethers.id('flag-ref-hash')
-              );
-              const receipt = await tx.wait();
-              txHash = receipt.hash;
+              const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
+              if (flagMap[payload.flag]) {
+                const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                  createEventDto.tokenId,
+                  flagMap[payload.flag],
+                  payload.value,
+                  ethers.id('flag-ref-hash')
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+              }
+            } catch (err) {
+              console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
             }
           }
           break;
@@ -347,20 +397,24 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-          const tx = await this.blockchainService.vehicleLienContract.createLien(
-            createEventDto.tokenId,
-            ethers.id('loan-contract-hash'),
-            ethers.id('release-condition-hash')
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const tx = await this.blockchainService.vehicleLienContract.createLien(
+              createEventDto.tokenId,
+              ethers.id('loan-contract-hash'),
+              ethers.id('release-condition-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Lien Creation sync failed: ${err.message || err}`);
+          }
           break;
         }
         case 'LIEN_RELEASED': {
@@ -368,18 +422,22 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-          const tx = await this.blockchainService.vehicleLienContract.releaseLien(
-            createEventDto.tokenId
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const tx = await this.blockchainService.vehicleLienContract.releaseLien(
+              createEventDto.tokenId
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Lien Release sync failed: ${err.message || err}`);
+          }
           break;
         }
         case 'REPOSSESSION_RECORDED': {
@@ -390,22 +448,26 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-          const FLAG_SEIZED = 1 << 1;
-          const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-            createEventDto.tokenId,
-            FLAG_SEIZED,
-            true,
-            ethers.id('repossession-ref-hash')
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const FLAG_SEIZED = 1 << 1;
+            const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+              createEventDto.tokenId,
+              FLAG_SEIZED,
+              true,
+              ethers.id('repossession-ref-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Repossession sync failed: ${err.message || err}`);
+          }
           break;
         }
         case 'INSTALLMENT_MILESTONE_RECORDED':
@@ -426,24 +488,28 @@ export class EventService {
             await this.consentGrantRepository.save(grant);
 
             // Blockchain Interaction
-            await Promise.race([
-              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-            ]);
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
 
-            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-            const scopeMask = 1;
-            const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
-              createEventDto.tokenId,
-              ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress,
-              scopeMask,
-              Math.floor(new Date(payload.expiresAt).getTime() / 1000),
-              false,
-              Date.now()
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
+              const scopeMask = 1;
+              const tx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
+                createEventDto.tokenId,
+                ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress,
+                scopeMask,
+                Math.floor(new Date(payload.expiresAt).getTime() / 1000),
+                false,
+                Date.now()
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+            } catch (err) {
+              console.warn(`[EventService] Blockchain Consent Update sync failed: ${err.message || err}`);
+            }
           }
           break;
         }
@@ -458,72 +524,75 @@ export class EventService {
               await this.consentGrantRepository.save(grants[0]);
 
               // Blockchain Interaction
-              await Promise.race([
-                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-              ]);
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
 
-              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
 
-              const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
-                createEventDto.tokenId,
-                ethers.isAddress(payload.revokeFrom) ? ethers.getAddress(payload.revokeFrom) : ethers.ZeroAddress
-              );
-              const receipt = await tx.wait();
-              txHash = receipt.hash;
+                const tx = await this.blockchainService.vehicleLifecycleContract.revokeWriteConsent(
+                  createEventDto.tokenId,
+                  ethers.isAddress(payload.revokeFrom) ? ethers.getAddress(payload.revokeFrom) : ethers.ZeroAddress
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+              } catch (err) {
+                console.warn(`[EventService] Blockchain Consent Revocation sync failed: ${err.message || err}`);
+              }
             }
           }
           break;
         }
 
         case 'INSURANCE_POLICY_UPDATED': {
-          if (payload.policyNo) {
+          const policyNumber = payload.policyNo || payload.policyNumber;
+          if (policyNumber) {
             const policy = this.insurancePolicyRepository.create({
               tokenId: vehicle.tokenId,
               insurerAddress: createEventDto.actor,
-              policyNo: payload.policyNo,
-              policyNoHash: ethers.id(payload.policyNo),
+              policyNo: policyNumber,
+              policyNoHash: ethers.id(policyNumber),
               action: 'NEW' as any,
               validFrom: Date.now().toString(),
-              validTo: new Date(payload.validUntil).getTime().toString(),
-              coverageDetails: { type: payload.coverageType, class: '1', coverageItems: [] },
+              validTo: new Date(payload.validUntil || payload.endDate || Date.now()).getTime().toString(),
+              coverageDetails: { type: payload.coverageType || payload.type, class: '1', coverageItems: [] },
               coverageHash: 'mockHash',
             });
             await this.insurancePolicyRepository.save(policy);
 
             // Blockchain Interaction
-            await Promise.race([
-              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-            ]);
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
 
-            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Insurance Policy.`);
+                throw new Error('STOP_SYNC');
+              }
 
-            // 3. Automated Write Consent Check
-            const adminAddress = this.blockchainService.walletAddress;
-            const hasConsent = await this.blockchainService.vehicleLifecycleContract.writeConsents(createEventDto.tokenId, adminAddress);
-            if (hasConsent === 0n) {
-              const owner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-              if (owner.toLowerCase() === adminAddress.toLowerCase()) {
-                console.log(`[EventService] Auto-granting write consent for Insurance to Admin...`);
-                const consentTx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
-                  createEventDto.tokenId, adminAddress, 1, Math.floor(Date.now() / 1000) + (365 * 24 * 3600), false, Date.now()
-                );
-                await consentTx.wait();
+              const actionMap = { 'new': 0, 'renew': 1, 'change': 2, 'cancel': 3 };
+              const tx = await this.blockchainService.vehicleLifecycleContract.recordInsurancePolicy(
+                createEventDto.tokenId,
+                ethers.id(policyNumber),
+                actionMap[payload.type?.toLowerCase()] || 0,
+                Math.floor(new Date(payload.startDate || payload.validFrom || Date.now()).getTime() / 1000),
+                Math.floor(new Date(payload.validUntil || payload.endDate || Date.now()).getTime() / 1000),
+                ethers.id('policy-doc-hash')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+              console.log(`[EventService] ✅ Insurance Policy synced to blockchain: ${txHash}`);
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Insurance sync failed: ${err.message || err}`);
               }
             }
-
-            const actionMap = { 'new': 0, 'renew': 1, 'change': 2, 'cancel': 3 };
-            const tx = await this.blockchainService.vehicleLifecycleContract.recordInsurancePolicy(
-              createEventDto.tokenId,
-              ethers.id(payload.policyNo || 'N/A'),
-              actionMap[payload.type?.toLowerCase()] || 0,
-              Math.floor(new Date(payload.startDate || Date.now()).getTime() / 1000),
-              Math.floor(new Date(payload.endDate || Date.now()).getTime() / 1000),
-              ethers.id('policy-doc-hash')
-            );
-            const receipt = await tx.wait();
-            txHash = receipt.hash;
           }
           break;
         }
@@ -542,36 +611,34 @@ export class EventService {
           await this.insuranceClaimRepository.save(claim);
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Claim.`);
+              throw new Error('STOP_SYNC');
+            }
 
-          // 3. Automated Write Consent Check
-          const adminAddress = this.blockchainService.walletAddress;
-          const hasConsent = await this.blockchainService.vehicleLifecycleContract.writeConsents(createEventDto.tokenId, adminAddress);
-          if (hasConsent === 0n) {
-            const owner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-            if (owner.toLowerCase() === adminAddress.toLowerCase()) {
-              console.log(`[EventService] Auto-granting write consent for Claim to Admin...`);
-              const consentTx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
-                createEventDto.tokenId, adminAddress, 1, Math.floor(Date.now() / 1000) + (365 * 24 * 3600), false, Date.now()
-              );
-              await consentTx.wait();
+            const severityMap = { 'minor': 0, 'major': 1, 'structural': 2, 'total_loss': 3 };
+            const tx = await this.blockchainService.vehicleLifecycleContract.fileClaim(
+              createEventDto.tokenId,
+              ethers.id(payload.claimId || 'none'),
+              [], // evidence hashes
+              severityMap[payload.severity?.toLowerCase()] || 0
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+            console.log(`[EventService] ✅ Insurance Claim synced to blockchain: ${txHash}`);
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Claim sync failed: ${err.message || err}`);
             }
           }
-
-          const severityMap = { 'minor': 0, 'major': 1, 'structural': 2, 'total_loss': 3 };
-          const tx = await this.blockchainService.vehicleLifecycleContract.fileClaim(
-            createEventDto.tokenId,
-            ethers.id(payload.claimId || 'none'),
-            [], // evidence hashes
-            severityMap[payload.severity?.toLowerCase()] || 0
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
           break;
         }
 
@@ -591,21 +658,32 @@ export class EventService {
           await this.inspectionRepository.save(inspection);
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Inspection.`);
+              throw new Error('STOP_SYNC');
+            }
 
-          const tx = await this.blockchainService.vehicleRegistryContract.recordInspection(
-            createEventDto.tokenId,
-            payload.passed ? 1 : 0,
-            ethers.id(JSON.stringify(payload.metrics || {})),
-            ethers.id('cert-hash')
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
+            const tx = await this.blockchainService.vehicleRegistryContract.recordInspection(
+              createEventDto.tokenId,
+              payload.passed ? 1 : 0,
+              ethers.id(JSON.stringify(payload.metrics || {})),
+              ethers.id('cert-hash')
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Inspection sync failed: ${err.message || err}`);
+            }
+          }
           break;
         }
 
@@ -625,53 +703,139 @@ export class EventService {
           await this.maintenanceLogRepository.save(maintenance);
 
           // Blockchain Interaction
-          await Promise.race([
-            this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-          ]);
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
 
-          await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            try {
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+            } catch (e) {
+              console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Maintenance.`);
+              throw new Error('STOP_SYNC');
+            }
 
-          // 3. Automated Write Consent Check (Prevent "No write consent" revert)
-          const adminAddress = this.blockchainService.walletAddress;
-          const hasConsent = await this.blockchainService.vehicleLifecycleContract.writeConsents(createEventDto.tokenId, adminAddress);
+            // 3. Automated Write Consent Check (Prevent "No write consent" revert)
+            const adminAddress = this.blockchainService.walletAddress;
+            const hasConsent = await this.blockchainService.vehicleLifecycleContract.writeConsents(createEventDto.tokenId, adminAddress);
 
-          if (hasConsent === 0n) { // ethers v6 returns BigInt for uint64
-            const owner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-            if (owner.toLowerCase() === adminAddress.toLowerCase()) {
-              console.log(`[EventService] Auto-granting write consent for Token ${createEventDto.tokenId} to Admin...`);
-              const consentTx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
-                createEventDto.tokenId,
-                adminAddress,
-                1, // scopeMask (1 = standard)
-                Math.floor(Date.now() / 1000) + (365 * 24 * 3600), // 1 year expiry
-                false, // isOneTime
-                Date.now() // nonce
-              );
-              await consentTx.wait();
+            if (hasConsent === 0n) { // ethers v6 returns BigInt for uint64
+              const owner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              if (owner.toLowerCase() === adminAddress.toLowerCase()) {
+                console.log(`[EventService] Auto-granting write consent for Token ${createEventDto.tokenId} to Admin...`);
+                const consentTx = await this.blockchainService.vehicleLifecycleContract.grantWriteConsent(
+                  createEventDto.tokenId,
+                  adminAddress,
+                  1, // scopeMask (1 = standard)
+                  Math.floor(Date.now() / 1000) + (365 * 24 * 3600), // 1 year expiry
+                  false, // isOneTime
+                  Date.now() // nonce
+                );
+                await consentTx.wait();
+              }
+            }
+
+            const tx = await this.blockchainService.vehicleLifecycleContract.logMaintenance(
+              createEventDto.tokenId,
+              ethers.id('consent-ref-hash'),
+              payload.mileageKm || 0,
+              ethers.id('maintenance-hash'),
+              ethers.id(JSON.stringify(payload.parts || [])),
+              0, // accident severity
+              Math.floor(Date.now() / 1000)
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+          } catch (err) {
+            if (err.message !== 'STOP_SYNC') {
+              console.warn(`[EventService] Blockchain Maintenance sync failed: ${err.message || err}`);
             }
           }
-
-          const tx = await this.blockchainService.vehicleLifecycleContract.logMaintenance(
-            createEventDto.tokenId,
-            ethers.id('consent-ref-hash'),
-            payload.mileageKm || 0,
-            ethers.id('maintenance-hash'),
-            ethers.id(JSON.stringify(payload.parts || [])),
-            0, // accident severity
-            Math.floor(Date.now() / 1000)
-          );
-          const receipt = await tx.wait();
-          txHash = receipt.hash;
           break;
         }
 
         case 'ODOMETER_SNAPSHOT':
           // Could save a mini maintenance log or just an event. The event handles it for now.
           break;
-        case 'CRITICAL_PART_REPLACED':
-          // Mock structure for part replacements inside Maintenance Log or as pure Event
+        case 'CRITICAL_PART_REPLACED': {
+          if (payload.partType && payload.newPartNo) {
+            // Update DB specification
+            const spec = vehicle.specJson || {};
+            spec[payload.partType.toLowerCase()] = payload.newPartNo;
+            vehicle.specJson = spec;
+            vehicleUpdated = true;
+
+            // Blockchain Interaction
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
+
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Part Certification.`);
+                throw new Error('STOP_SYNC');
+              }
+
+              // Use logEvent (Generic) to record the part certification
+              const PART_CERTIFICATION_EVENT_TYPE = 200;
+              const tx = await this.blockchainService.vehicleLifecycleContract.logEvent(
+                createEventDto.tokenId,
+                PART_CERTIFICATION_EVENT_TYPE,
+                Math.floor(Date.now() / 1000),
+                ethers.id(JSON.stringify({ type: payload.partType, sn: payload.newPartNo })),
+                ethers.id(payload.reason || 'Certification')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+              console.log(`[EventService] ✅ Critical Part Certification synced: ${txHash}`);
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Part Certification sync failed: ${err.message || err}`);
+              }
+            }
+          }
           break;
+        }
+        case 'WORKSHOP_ESTIMATE_SUBMITTED': {
+          if (payload.total) {
+            // Blockchain Interaction
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
+
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Appraisal.`);
+                throw new Error('STOP_SYNC');
+              }
+
+              // Use logEvent (Generic) to record the appraisal/estimate
+              const APPRAISAL_EVENT_TYPE = 201;
+              const tx = await this.blockchainService.vehicleLifecycleContract.logEvent(
+                createEventDto.tokenId,
+                APPRAISAL_EVENT_TYPE,
+                Math.floor(Date.now() / 1000),
+                ethers.id(JSON.stringify({ total: payload.total, jobs: payload.jobs })),
+                ethers.id(payload.id || 'Estimating')
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+              console.log(`[EventService] ✅ Repair Appraisal synced: ${txHash}`);
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Appraisal sync failed: ${err.message || err}`);
+              }
+            }
+          }
+          break;
+        }
         case 'SPECIFICATION_UPDATED':
           if (payload.changes) {
             vehicle.specJson = { ...vehicle.specJson, ...payload.changes };

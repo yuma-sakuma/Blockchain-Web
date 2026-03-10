@@ -121,25 +121,24 @@ export class BlockchainService implements OnModuleInit {
       return;
     }
 
-    const adminAddress = this.walletAddress;
+    // Try to detect the network first
+    try {
+      await this.provider.getNetwork();
+    } catch (err) {
+      console.warn(`[BlockchainService] ⚠️ Provider network not reachable. Role check will retry on first transaction. Error: ${err.message || err}`);
+      return;
+    }
 
-    // We must grant specific roles to the contract addresses so they can call each other,
-    // and some roles to the admin address so it can execute transactions.
+    const adminAddress = this.walletAddress;
     const registryAddress = await this.vehicleRegistryContract.getAddress();
     const lienAddress = await this.vehicleLienContract.getAddress();
 
-    const roleGrants: { contract: ethers.Contract; contractName: string; roleName: string; roleHash: string; grantTo: string }[] = [
-      // VehicleRegistry roles to admin so backend can register
+    const roleGrants = [
       { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'DLT_OFFICER_ROLE', roleHash: ethers.id('DLT_OFFICER_ROLE'), grantTo: adminAddress },
       { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'INSPECTOR_ROLE', roleHash: ethers.id('INSPECTOR_ROLE'), grantTo: adminAddress },
-      // VehicleLifecycle roles to admin
       { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'WORKSHOP_ROLE', roleHash: ethers.id('WORKSHOP_ROLE'), grantTo: adminAddress },
       { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'INSURER_ROLE', roleHash: ethers.id('INSURER_ROLE'), grantTo: adminAddress },
-      // VehicleLien roles to admin so backend can create liens
       { contract: this.vehicleLienContract, contractName: 'VehicleLien', roleName: 'FINANCE_ROLE', roleHash: ethers.id('FINANCE_ROLE'), grantTo: adminAddress },
-
-      // CRITICAL CROSS-CONTRACT ROLES:
-      // VehicleRegistry and VehicleLien MUST have roles on VehicleNFT to lock transfers
       { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'REGISTRY_ROLE', roleHash: ethers.id('REGISTRY_ROLE'), grantTo: registryAddress },
       { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'LIEN_ROLE', roleHash: ethers.id('LIEN_ROLE'), grantTo: lienAddress },
     ];
@@ -149,7 +148,6 @@ export class BlockchainService implements OnModuleInit {
         const hasRole = await contract.hasRole(roleHash, grantTo);
         if (!hasRole) {
           console.log(`[BlockchainService] Granting ${roleName} on ${contractName} to ${grantTo}...`);
-          // Use withTxLock to prevent nonce collisions during startup!
           await this.withTxLock(async () => {
             const tx = await contract.grantRole(roleHash, grantTo);
             await tx.wait();
@@ -161,7 +159,13 @@ export class BlockchainService implements OnModuleInit {
       }
     }
   }
-  withTxLock(arg0: () => Promise<void>) {
-    throw new Error('Method not implemented.');
+  private txMutex: Promise<void> = Promise.resolve();
+
+  async withTxLock<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.txMutex.then(async () => {
+      return await fn();
+    });
+    this.txMutex = next.then(() => { }).catch(() => { });
+    return next;
   }
 }

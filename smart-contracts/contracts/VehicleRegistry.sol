@@ -178,12 +178,6 @@ contract VehicleRegistry is AccessControl {
         uint64  validUntil,
         bytes32 receiptHash
     ) external onlyRole(DLT_OFFICER_ROLE) vehicleExists(tokenId) {
-        require(
-            lastInspectionPassAt[tokenId] > 0 &&
-            block.timestamp - lastInspectionPassAt[tokenId] <= inspectionMaxAge,
-            "Inspection expired or not found"
-        );
-
         emit TaxPaid(tokenId, taxYear, uint64(block.timestamp), validUntil, receiptHash, TaxStatus.Paid);
     }
 
