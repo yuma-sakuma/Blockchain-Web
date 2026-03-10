@@ -50,25 +50,25 @@ export interface Registration {
 }
 
 export interface WriteConsent {
-    grantee: string; // The garage ID
-    validUntil: string;
-    scope: string[];
+  grantee: string; // The garage ID
+  validUntil: string;
+  scope: string[];
 }
 
 export interface InsurancePolicy {
-    insurer: string;
-    policyNumber: string;
-    coverageType: string;
-    validUntil: string;
-    status: 'active' | 'expired' | 'cancelled';
+  insurer: string;
+  policyNumber: string;
+  coverageType: string;
+  validUntil: string;
+  status: 'active' | 'expired' | 'cancelled';
 }
 
 export interface InsuranceClaim {
-    claimId: string;
-    incidentDate: string;
-    description: string;
-    status: 'filed' | 'investigating' | 'approved' | 'rejected' | 'repaired';
-    estimateAmount?: number;
+  claimId: string;
+  incidentDate: string;
+  description: string;
+  status: 'filed' | 'investigating' | 'approved' | 'rejected' | 'repaired';
+  estimateAmount?: number;
 }
 
 export interface VehicleNFT {
@@ -78,23 +78,23 @@ export interface VehicleNFT {
   spec: Specification;
   production: ProductionData;
   manufacturerSignature: string;
-  
+
   // Mutable State
   currentOwner: string;
   ownerCount: number;
-  
+
   registration: Registration;
   warranty: Warranty;
   flags: VehicleFlags;
   lien: Lien;
   writeConsents?: WriteConsent[];
-  
+
   // Insurance
   insurance?: InsurancePolicy;
   activeClaim?: InsuranceClaim;
 }
 
-export type EventType = 
+export type EventType =
   | 'MANUFACTURER_MINTED'
   | 'WARRANTY_DEFINED'
   | 'SALE_CONTRACT_CREATED'
@@ -133,6 +133,12 @@ export interface VehicleEvent {
   actor: string;
   type: EventType;
   payload: any;
+  evidence?: Array<{
+    hash: string;
+    url: string;
+    mime: string;
+    size: number;
+  }>;
   signature?: string;
   txHash?: string;
 }

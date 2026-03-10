@@ -5,24 +5,27 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import {
-    ConsentGrant,
-    Disclosure,
-    EventLog,
-    Inspection,
-    InsuranceClaim,
-    InsurancePolicy,
-    LoanAccount,
-    MaintenanceLog,
-    OwnershipTransfer,
-    PartReplacement,
-    PlateRecord,
-    Registration,
-    TaxPayment,
-    TradeInEvaluation,
-    Vehicle,
-    VehicleFlagRecord,
+  ConsentGrant,
+  Disclosure,
+  EventLog,
+  Inspection,
+  InsuranceClaim,
+  InsurancePolicy,
+  LoanAccount,
+  MaintenanceLog,
+  OwnershipTransfer,
+  PartReplacement,
+  PlateRecord,
+  Registration,
+  TaxPayment,
+  TradeInEvaluation,
+  Vehicle,
+  VehicleFlagRecord,
 } from './database/entities';
 import { EventModule } from './event/event.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { FileModule } from './file/file.module';
 import { VehicleModule } from './vehicle/vehicle.module';
 
 @Module({
@@ -31,7 +34,7 @@ import { VehicleModule } from './vehicle/vehicle.module';
     TypeOrmModule.forRoot({
       type: 'mariadb',
       host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '3306') ,
+      port: parseInt(process.env.DB_PORT || '3306'),
       username: process.env.DB_USERNAME || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_DATABASE || 'blockchain_vin',
@@ -74,11 +77,19 @@ import { VehicleModule } from './vehicle/vehicle.module';
       Disclosure,
       TradeInEvaluation,
     ]),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+      serveStaticOptions: {
+        index: false,
+      },
+    }),
     VehicleModule,
     EventModule,
     BlockchainModule,
+    FileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

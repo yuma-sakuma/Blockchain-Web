@@ -194,6 +194,29 @@ export const OverviewPage = () => {
                           <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--success)', wordBreak: 'break-all' }}>{e.txHash}</span>
                         </div>
                       )}
+
+                      {e.evidence && e.evidence.length > 0 && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Attached Evidence:</div>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {e.evidence.map((ev, i) => {
+                              const backendOrigin = 'http://localhost:3000';
+                              const fullUrl = ev.url.startsWith('http') ? ev.url : `${backendOrigin}${ev.url}`;
+                              return (
+                                <a key={i} href={fullUrl} target="_blank" rel="noreferrer" style={{ display: 'block', width: '90px', height: '65px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.4)' }}>
+                                  {ev.mime.startsWith('image/') ? (
+                                    <img src={fullUrl} alt="Evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                                      <FileText size={20} color="var(--accent-primary)" />
+                                    </div>
+                                  )}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

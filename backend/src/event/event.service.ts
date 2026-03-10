@@ -624,11 +624,15 @@ export class EventService {
               throw new Error('STOP_SYNC');
             }
 
+            const evidenceHashes = createEventDto.evidence && createEventDto.evidence.length > 0
+              ? [createEventDto.evidence[0].hash]
+              : [];
+
             const severityMap = { 'minor': 0, 'major': 1, 'structural': 2, 'total_loss': 3 };
             const tx = await this.blockchainService.vehicleLifecycleContract.fileClaim(
               createEventDto.tokenId,
               ethers.id(payload.claimId || 'none'),
-              [], // evidence hashes
+              evidenceHashes,
               severityMap[payload.severity?.toLowerCase()] || 0
             );
             const receipt = await tx.wait();
@@ -860,6 +864,8 @@ export class EventService {
                 createEventDto.actor?.startsWith('FINANCE') ? 'FINANCIAL' : 'CONSUMER'),
       occurredAt: createEventDto.occurredAt || Date.now().toString(),
       payloadHash: payloadHash,
+      evidence: createEventDto.evidence || null,
+      evidenceHash: createEventDto.evidence && createEventDto.evidence.length > 0 ? createEventDto.evidence[0].hash : null,
       txHash: txHash,
     }) as any;
 

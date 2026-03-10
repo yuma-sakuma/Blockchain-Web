@@ -1,4 +1,5 @@
-const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3000/api';
+export const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = API_BASE_URL;
 
 export const checkBackendStatus = async () => {
   try {
@@ -51,6 +52,19 @@ export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> 
 export const checkPlateExists = async (plateNo: string): Promise<{ exists: boolean }> => {
   const response = await fetch(`${API_URL}/events/check-plate?plateNo=${encodeURIComponent(plateNo)}`);
   if (!response.ok) throw new Error('Failed to check plate');
+  return response.json();
+};
+
+export const uploadFile = async (file: File): Promise<any> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/files/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) throw new Error('Failed to upload file');
   return response.json();
 };
 

@@ -2,6 +2,7 @@ import { CheckCircle, ClipboardCheck, Search, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
+import { uploadFile } from '../services/api';
 
 export const InspectionPage = () => {
     const { vehicles, addEvent } = useVehicleStore();
@@ -9,10 +10,28 @@ export const InspectionPage = () => {
     const [searchVin, setSearchVin] = useState('');
     const [result, setResult] = useState<'pass' | 'fail'>('pass');
     const [co2, setCo2] = useState(120);
+    const [inspFile, setInspFile] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const inspectorId = address ? `INSPECTION:${address}` : "INSPECTION:Tor-Ror-Or-099";
 
     const vehicle = vehicles.find(v => v.vin === searchVin);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const result = await uploadFile(file);
+            setInspFile(result);
+        } catch (err) {
+            console.error("Upload failed", err);
+            alert("Upload failed");
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSubmitResult = async () => {
         if (!vehicle) return;
@@ -27,9 +46,16 @@ export const InspectionPage = () => {
                 passed: result === 'pass',
                 metrics: { co2_g_km: co2, brake_efficiency: '90%' },
                 validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                certHash: "CERT-" + Date.now()
-            }
+                certHash: inspFile?.hash || "CERT-" + Date.now()
+            },
+            evidence: inspFile ? [{
+                hash: inspFile.hash,
+                url: inspFile.path,
+                mime: inspFile.mime,
+                size: inspFile.size
+            }] : undefined
         });
+        setInspFile(null);
     };
 
     return (
@@ -99,6 +125,32 @@ export const InspectionPage = () => {
                                         FAIL
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Inspection Certificate Photo</label>
+                            <div
+                                onClick={() => document.getElementById('insp-upload')?.click()}
+                                style={{
+                                    border: '1px dashed var(--border-subtle)',
+                                    borderRadius: '8px',
+                                    padding: '1rem',
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    marginBottom: '1rem'
+                                }}
+                            >
+                                {isUploading ? (<span>Uploading...</span>) : inspFile ? (
+                                    <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                        <CheckCircle size={16} />
+                                        <span>{inspFile.originalname} Certified</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-secondary" style={{ fontSize: '0.85rem' }}>+ Click to upload Inspection result</span>
+                                )}
+                                <input id="insp-upload" type="file" hidden onChange={handleFileChange} />
                             </div>
                         </div>
 

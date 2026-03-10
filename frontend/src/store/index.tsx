@@ -232,6 +232,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           actor: e.actorAddress || 'UNKNOWN',
           type: e.type,
           payload: e.payload,
+          evidence: e.evidence || undefined,
           txHash: e.txHash || undefined,
         }));
         setEvents(mappedEvents);

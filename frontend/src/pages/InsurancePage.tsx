@@ -2,6 +2,7 @@ import { AlertCircle, ClipboardCheck, FileText, Search, ShieldCheck } from 'luci
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
+import { uploadFile } from '../services/api';
 
 export const InsurancePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -14,6 +15,9 @@ export const InsurancePage = () => {
     const [claimVin, setClaimVin] = useState('');
     const [description, setDescription] = useState('');
     const [severity, setSeverity] = useState('minor');
+    const [claimFile, setClaimFile] = useState<any>(null);
+    const [policyFile, setPolicyFile] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const insurerId = address ? `INSURER:${address}` : "INSURER:ABC-Insurance-Thailand";
     const targetVehicle = vehicles.find(v => v.vin === vin);
@@ -37,11 +41,36 @@ export const InsurancePage = () => {
                 policyNumber: policyNo,
                 validFrom: new Date().toISOString(),
                 validUntil: new Date(Date.now() + 86400000 * 365).toISOString(),
-                coverageType: coverage
-            }
+                coverageType: coverage,
+                evidenceHash: policyFile?.hash || "MOCK_POLICY_DOC"
+            },
+            evidence: policyFile ? [{
+                hash: policyFile.hash,
+                url: policyFile.path,
+                mime: policyFile.mime,
+                size: policyFile.size
+            }] : undefined
         });
 
         setPolicyNo('');
+        setPolicyFile(null);
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'claim' | 'policy') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const result = await uploadFile(file);
+            if (target === 'claim') setClaimFile(result);
+            if (target === 'policy') setPolicyFile(result);
+        } catch (err) {
+            console.error("Upload failed", err);
+            alert("File upload failed");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleFileClaim = async () => {
@@ -59,11 +88,18 @@ export const InsurancePage = () => {
                 date: new Date().toISOString(),
                 description,
                 severity,
-                evidenceHashes: ["HASH_ACCIDENT_PHOTO_01", "HASH_POLICE_REPORT"]
-            }
+                evidenceHashes: claimFile ? [claimFile.hash] : ["HASH_ACCIDENT_PHOTO_01", "HASH_POLICE_REPORT"]
+            },
+            evidence: claimFile ? [{
+                hash: claimFile.hash,
+                url: claimFile.path,
+                mime: claimFile.mime,
+                size: claimFile.size
+            }] : undefined
         });
 
         setDescription('');
+        setClaimFile(null);
     };
 
     const handleApproveEstimate = async (estimate: any) => {
@@ -133,6 +169,30 @@ export const InsurancePage = () => {
                                     <option value="2nd_class">Tier 2: Collision & Fire</option>
                                     <option value="3rd_class">Tier 3: Third Party Liability</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Policy Document (Application/Photo)</label>
+                                <div
+                                    onClick={() => document.getElementById('policy-upload')?.click()}
+                                    style={{
+                                        border: '1px dashed var(--border-subtle)',
+                                        borderRadius: '8px',
+                                        padding: '1rem',
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        background: 'rgba(255,255,255,0.02)'
+                                    }}
+                                >
+                                    {policyFile ? (
+                                        <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                            <ClipboardCheck size={18} />
+                                            <span>{policyFile.originalname} Ready</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-secondary" style={{ fontSize: '0.85rem' }}>+ Upload Policy Evidence</span>
+                                    )}
+                                    <input id="policy-upload" type="file" hidden onChange={(e) => handleFileChange(e, 'policy')} />
+                                </div>
                             </div>
                             <button className="premium-btn" onClick={handleIssuePolicy} disabled={!targetVehicle || !policyNo}>
                                 Bind Policy to Vehicle NFT
@@ -220,9 +280,67 @@ export const InsurancePage = () => {
                             <FileText size={18} color="var(--accent-primary)" />
                             Proof of Evidence
                         </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Photo_Event_Link_01.hash</div>
-                            <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Police_Report.hash</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div
+                                style={{
+                                    height: '100px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderRadius: '8px',
+                                    border: '1px dashed var(--border-subtle)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                }}
+                                className="text-secondary"
+                                onClick={() => document.getElementById('claim-file-input')?.click()}
+                            >
+                                {isUploading ? (
+                                    <span>Uploading...</span>
+                                ) : claimFile ? (
+                                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                        {claimFile.mime.startsWith('image/') ? (
+                                            <img
+                                                src={`http://localhost:3000${claimFile.path}`}
+                                                alt="Preview"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
+                                            />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <FileText size={48} />
+                                            </div>
+                                        )}
+                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
+                                            <ClipboardCheck size={28} color="var(--success)" style={{ marginBottom: '0.25rem' }} />
+                                            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.8rem' }}>{claimFile.originalname}</div>
+                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)' }}>{claimFile.hash.substring(0, 16)}...</div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setClaimFile(null); }}
+                                                style={{ marginTop: '0.5rem', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
+                                            >
+                                                Change File
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span>Click to upload accident photo or report</span>
+                                        <input
+                                            id="claim-file-input"
+                                            type="file"
+                                            hidden
+                                            onChange={(e) => handleFileChange(e, 'claim')}
+                                        />
+                                    </>
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Photo_Event_Link_01.hash</div>
+                                <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Police_Report.hash</div>
+                            </div>
                         </div>
                     </div>
                 </div>

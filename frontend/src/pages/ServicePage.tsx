@@ -2,6 +2,7 @@ import { AlertTriangle, Cpu, FileText, Gauge, Save, Search, Wrench } from 'lucid
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
+import { uploadFile } from '../services/api';
 
 export const ServicePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -18,8 +19,32 @@ export const ServicePage = () => {
     const [estimateJobs, setEstimateJobs] = useState('');
     const [estimateTotal, setEstimateTotal] = useState<number>(0);
 
+    // Upload states
+    const [maintFile, setMaintFile] = useState<any>(null);
+    const [partFile, setPartFile] = useState<any>(null);
+    const [estimateFile, setEstimateFile] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState<string | null>(null);
+
     const garageId = address ? `WORKSHOP:${address}` : "WORKSHOP:KDT-Service-01";
     const targetVehicle = vehicles.find(v => v.vin === vin);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(type);
+        try {
+            const result = await uploadFile(file);
+            if (type === 'maint') setMaintFile(result);
+            if (type === 'part') setPartFile(result);
+            if (type === 'estimate') setEstimateFile(result);
+        } catch (err) {
+            console.error("Upload failed", err);
+            alert("Upload failed");
+        } finally {
+            setIsUploading(null);
+        }
+    };
 
     const handleRecordService = async () => {
         if (!targetVehicle) return;
@@ -38,19 +63,37 @@ export const ServicePage = () => {
                 date: new Date().toISOString(),
                 mileageKm: mileage,
                 jobs: jobs.split(',').map(j => j.trim()),
-                cost: { total: 1500 }
-            }
+                cost: { total: 1500 },
+                evidenceHash: maintFile?.hash || "MOCK_SERVICE_HASH"
+            },
+            evidence: maintFile ? [{
+                hash: maintFile.hash,
+                url: maintFile.path,
+                mime: maintFile.mime,
+                size: maintFile.size
+            }] : undefined
         });
 
         await addEvent({
             type: 'ODOMETER_SNAPSHOT',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
-            payload: { mileageKm: mileage, date: new Date().toISOString() }
+            payload: {
+                mileageKm: mileage,
+                date: new Date().toISOString(),
+                evidenceHash: maintFile?.hash
+            },
+            evidence: maintFile ? [{
+                hash: maintFile.hash,
+                url: maintFile.path,
+                mime: maintFile.mime,
+                size: maintFile.size
+            }] : undefined
         });
 
         setJobs('');
         setMileage(0);
+        setMaintFile(null);
     };
 
     const handleRegisterPart = async () => {
@@ -64,10 +107,18 @@ export const ServicePage = () => {
                 partType,
                 newPartNo,
                 oldPartNo: (targetVehicle.spec as any)[partType.toLowerCase()] || "UNKNOWN",
-                reason: "Replacement/Upgrade"
-            }
+                reason: "Replacement/Upgrade",
+                evidenceHash: partFile?.hash || "MOCK_PART_CERT"
+            },
+            evidence: partFile ? [{
+                hash: partFile.hash,
+                url: partFile.path,
+                mime: partFile.mime,
+                size: partFile.size
+            }] : undefined
         });
         setNewPartNo('');
+        setPartFile(null);
     };
 
     const handleSubmitEstimate = async () => {
@@ -80,11 +131,19 @@ export const ServicePage = () => {
                 id: "EST-" + Date.now(),
                 workshop: garageId,
                 jobs: estimateJobs.split(',').map(j => j.trim()),
-                total: Number(estimateTotal)
-            }
+                total: Number(estimateTotal),
+                evidenceHash: estimateFile?.hash || "MOCK_APPRAISAL_HASH"
+            },
+            evidence: estimateFile ? [{
+                hash: estimateFile.hash,
+                url: estimateFile.path,
+                mime: estimateFile.mime,
+                size: estimateFile.size
+            }] : undefined
         });
         setEstimateJobs('');
         setEstimateTotal(0);
+        setEstimateFile(null);
     };
 
     return (
@@ -136,9 +195,15 @@ export const ServicePage = () => {
                                     <input type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} style={{ paddingLeft: '3rem' }} />
                                 </div>
                             </div>
-                            <button className="premium-btn" onClick={handleRecordService} disabled={!targetVehicle}>
-                                <Save size={18} /> Commit Service to Chain
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button className="btn" onClick={() => document.getElementById('maint-upload')?.click()} style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
+                                    {isUploading === 'maint' ? 'Uploading...' : maintFile ? '✓ Photo Ready' : '+ Upload Receipt/Odometer'}
+                                </button>
+                                <input id="maint-upload" type="file" hidden onChange={(e) => handleFileUpload(e, 'maint')} />
+                                <button className="premium-btn" onClick={handleRecordService} disabled={!targetVehicle} style={{ flex: 1 }}>
+                                    <Save size={18} /> Commit Service to Chain
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -155,9 +220,15 @@ export const ServicePage = () => {
                                 <option value="MOTOR">Main Drive Motor</option>
                             </select>
                             <input value={newPartNo} onChange={e => setNewPartNo(e.target.value)} placeholder="Enter New Serial Number (PartID)..." />
-                            <button onClick={handleRegisterPart} disabled={!targetVehicle || !newPartNo} style={{ border: '1px solid var(--accent-secondary)', color: 'var(--accent-secondary)' }}>
-                                Certify Component Swap
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button className="btn" onClick={() => document.getElementById('part-upload')?.click()} style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
+                                    {isUploading === 'part' ? 'Uploading...' : partFile ? '✓ Part SN Photo' : '+ Photo'}
+                                </button>
+                                <input id="part-upload" type="file" hidden onChange={(e) => handleFileUpload(e, 'part')} />
+                                <button onClick={handleRegisterPart} disabled={!targetVehicle || !newPartNo} style={{ border: '1px solid var(--accent-secondary)', color: 'var(--accent-secondary)', flex: 1 }}>
+                                    Certify Component Swap
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -182,9 +253,15 @@ export const ServicePage = () => {
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Total Appraisal Value (THB)</label>
                                 <input type="number" value={estimateTotal} onChange={e => setEstimateTotal(Number(e.target.value))} placeholder="0.00" />
                             </div>
-                            <button onClick={handleSubmitEstimate} disabled={!targetVehicle || !estimateTotal} className="premium-btn">
-                                Submit for Insurer Approval
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button className="btn" onClick={() => document.getElementById('estimate-upload')?.click()} style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
+                                    {isUploading === 'estimate' ? 'Uploading...' : estimateFile ? '✓ Estimate Proof' : '+ Upload Damage Photo'}
+                                </button>
+                                <input id="estimate-upload" type="file" hidden onChange={(e) => handleFileUpload(e, 'estimate')} />
+                                <button onClick={handleSubmitEstimate} disabled={!targetVehicle || !estimateTotal} className="premium-btn" style={{ flex: 1 }}>
+                                    Submit for Insurer Approval
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
