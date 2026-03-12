@@ -6,12 +6,12 @@ export interface ProductionData {
 
 export interface Specification {
   color: string;
+  mileageKm: number;
   engine?: string;
   engineSerial?: string;
   batteryKwh?: number;
   batteryCapacity?: string;
   options: string[];
-  plateNo?: string;
 }
 
 export interface Warranty {
@@ -81,6 +81,7 @@ export interface VehicleNFT {
 
   // Mutable State
   currentOwner: string;
+  currentHolder: string;
   ownerCount: number;
 
   registration: Registration;

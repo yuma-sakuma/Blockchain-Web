@@ -44,6 +44,14 @@ export class Vehicle {
   @Column({ type: 'bigint' })
   manufacturedAt: string;
 
+  // /** เลขไมล์ **/
+  // @Column({ type: 'bigint' })
+  // mileageKm: number;
+
+  // /** ผู้ถือกรรมสิทธิ์ **/
+  // @Column({ type: 'varchar', length: 100, nullable: true })
+  // currentOwnerAddress: string | null;
+
   /** ข้อมูลรุ่น */
   @Column({ type: 'json' })
   modelJson: { model: string; year: number };
@@ -83,6 +91,10 @@ export class Vehicle {
   /** Wallet address เจ้าของปัจจุบัน */
   @Column({ type: 'varchar', length: 100, nullable: true })
   currentOwnerAddress: string | null;
+
+  // /** ผู้ครอบครอง */
+  // @Column({ type: 'varchar', length: 100, nullable: true })
+  // currentHolderAddress: string | null;
 
   /** จำนวนเจ้าของทั้งหมด */
   @Column({ type: 'int', default: 0 })

@@ -100,7 +100,7 @@ export const OverviewPage = () => {
                 </div>
                 <div>
                   <div className="text-secondary" style={{ fontSize: '0.7rem' }}>ODOMETER</div>
-                  <div style={{ fontWeight: 700 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                  <div style={{ fontWeight: 700 }}>{v.spec.mileageKm.toLocaleString()} KM</div>
                 </div>
               </div>
             </div>
@@ -141,7 +141,7 @@ export const OverviewPage = () => {
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Mileage</div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
-                    <Zap size={16} /> {selectedVehicle.warranty.terms.mileageKm.toLocaleString()} KM
+                    <Zap size={16} /> {selectedVehicle.spec.mileageKm.toLocaleString()} KM
                   </div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
@@ -287,18 +287,6 @@ export const OverviewPage = () => {
                   <span className="text-secondary">Battery Cap</span>
                   <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
                 </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-secondary">Color</span>
-                <span>{selectedVehicle.spec.color}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-secondary">Engine Serial</span>
-                <span style={{ fontFamily: 'monospace' }}>{selectedVehicle.spec.engineSerial}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-secondary">Battery Cap</span>
-                <span>{(selectedVehicle.spec as any).batteryCapacity || 'N/A'}</span>
               </div>
             </div>
           </div>

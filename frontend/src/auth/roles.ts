@@ -1,3 +1,4 @@
+
 export enum UserRole {
   MANUFACTURER = 'MANUFACTURER',
   DEALER = 'DEALER',
@@ -31,30 +32,26 @@ export const RoleNames = {
   [UserRole.INSPECTOR]: 'Inspection Center (Tor-Ror-Or)',
 };
 
-// Mock Address Mapping for Prototype w/o Backend
-export const MOCK_ADDRESS_ROLE_MAP: Record<string, UserRole> = {
-  // Manufacturer (Deployer)
-  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': UserRole.MANUFACTURER, // Hardhat Account #0
-  '0x25597A530F44782098D7C8D11502f901878De243': UserRole.MANUFACTURER, // Demo Address 1
-
-  // Dealer
-  '0x70997970C51812dc3A010C7d01b50e0d17dc79C8': UserRole.DEALER, // Hardhat Account #1
+// Real Address Mapping for Roles via Environment Variables
+const buildRoleMap = (): Record<string, UserRole> => {
+  const map: Record<string, UserRole> = {};
   
-  // DLT
-  '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': UserRole.DLT_OFFICER, // Hardhat Account #2
+  const addIfValid = (address: string | undefined, role: UserRole) => {
+    if (address && address.trim() !== '') {
+      map[address.toLowerCase()] = role;
+    }
+  };
 
-  // Consumer
-  '0x90F79bf6EB2c4f870365E785982E1f101E93b906': UserRole.CONSUMER, // Hardhat Account #3
+  addIfValid(import.meta.env.VITE_MANUFACTURER_ADDRESS, UserRole.MANUFACTURER);
+  addIfValid(import.meta.env.VITE_DEALER_ADDRESS, UserRole.DEALER);
+  addIfValid(import.meta.env.VITE_DLT_OFFICER_ADDRESS, UserRole.DLT_OFFICER);
+  addIfValid(import.meta.env.VITE_CONSUMER_ADDRESS, UserRole.CONSUMER);
+  addIfValid(import.meta.env.VITE_LENDER_ADDRESS, UserRole.LENDER);
+  addIfValid(import.meta.env.VITE_INSURER_ADDRESS, UserRole.INSURER);
+  addIfValid(import.meta.env.VITE_SERVICE_PROVIDER_ADDRESS, UserRole.SERVICE_PROVIDER);
+  addIfValid(import.meta.env.VITE_INSPECTOR_ADDRESS, UserRole.INSPECTOR);
 
-   // Finance
-   '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65': UserRole.LENDER, // Hardhat Account #4
-
-  // Insurance
-  '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc': UserRole.INSURER, // Hardhat Account #5
-
-  // Service Center
-  '0x976EA74026E726554dB657fA54763abd0C3a0aa9': UserRole.SERVICE_PROVIDER, // Hardhat Account #6
-
-  // Inspector
-  '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955': UserRole.INSPECTOR, // Hardhat Account #7
+  return map;
 };
+
+export const REAL_ADDRESS_ROLE_MAP = buildRoleMap();

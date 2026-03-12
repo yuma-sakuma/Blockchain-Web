@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { MOCK_ADDRESS_ROLE_MAP, UserRole } from './roles';
+import { REAL_ADDRESS_ROLE_MAP, UserRole } from './roles';
 
 interface AuthContextType {
   address: string | null;
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         // 3. Resolve Role
         // Check hardcoded map first
-        let userRole = MOCK_ADDRESS_ROLE_MAP[userAddress] || MOCK_ADDRESS_ROLE_MAP[ethers.getAddress(userAddress)];
+        let userRole = REAL_ADDRESS_ROLE_MAP[userAddress.toLowerCase()];
         
         // If not in map, default to CONSUMER
         if (!userRole) {
@@ -161,8 +161,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const impersonate = (targetRole: UserRole) => {
       // Find a mock address for this role
-      const mockEntry = Object.entries(MOCK_ADDRESS_ROLE_MAP).find(([_, r]) => r === targetRole);
-      const mockAddress = mockEntry ? mockEntry[0] : '0x0000000000000000000000000000000000000000';
+      const realEntry = Object.entries(REAL_ADDRESS_ROLE_MAP).find(([_, r]) => r === targetRole);
+      const mockAddress = realEntry ? realEntry[0] : '0x0000000000000000000000000000000000000000';
       
       setAddress(mockAddress);
       setRole(targetRole);

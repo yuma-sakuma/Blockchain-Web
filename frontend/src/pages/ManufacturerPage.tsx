@@ -88,6 +88,7 @@ export const ManufacturerPage = () => {
           makeModelTrim: formData.model,
           spec: {
             color: formData.color,
+            mileageKm: 0,
             engine: formData.engineNo,
             batteryKwh: Number(formData.batteryKwh),
             options: formData.options.split(',').map(o => o.trim()).filter(o => o)

@@ -38,7 +38,9 @@ export class BlockchainService implements OnModuleInit {
   constructor(private configService: ConfigService) { }
 
   async onModuleInit() {
-    const rpcUrl = this.configService.get<string>('GANACHE_RPC_URL') || 'http://127.0.0.1:7545';
+    // Use GANACHE_RPC_URL for the Hardhat/Ganache URL (default to Hardhat 8545)
+    // You should probably rename this to BLOCKCHAIN_RPC_URL in .env later
+    const rpcUrl = this.configService.get<string>('GANACHE_RPC_URL') || 'http://127.0.0.1:8545';
     const privateKey = this.configService.get<string>('ADMIN_PRIVATE_KEY');
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
