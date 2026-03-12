@@ -31,6 +31,7 @@ export class AppService {
       status: 'ok',
       timestamp: new Date().toISOString(),
       database: dbStatus,
+      peerCount: await this.blockchainService.getPeerCount(),
     };
   }
 

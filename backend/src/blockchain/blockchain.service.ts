@@ -170,4 +170,14 @@ export class BlockchainService implements OnModuleInit {
     this.txMutex = next.then(() => { }).catch(() => { });
     return next;
   }
+
+  async getPeerCount(): Promise<number> {
+    try {
+      const peerCountHex = await this.provider.send('net_peerCount', []);
+      return parseInt(peerCountHex, 16);
+    } catch (err) {
+      console.warn(`[BlockchainService] Could not fetch peer count: ${err.message}`);
+      return 0;
+    }
+  }
 }

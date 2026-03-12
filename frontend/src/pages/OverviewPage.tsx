@@ -48,7 +48,7 @@ export const OverviewPage = () => {
         </div>
         <div className={`badge ${networkStatus?.status === 'ok' ? 'badge-info' : 'badge-danger'}`} style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
           <Activity size={14} style={{ marginRight: '8px' }} />
-          {networkStatus?.status === 'ok' ? `Network Online: ${networkStatus?.network?.peers || 3} Nodes` : 'Network Offline'}
+          {networkStatus?.status === 'ok' ? `Network Online: ${networkStatus?.peerCount ?? 0} Nodes` : 'Network Offline'}
         </div>
       </header>
 
