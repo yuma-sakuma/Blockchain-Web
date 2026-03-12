@@ -20,11 +20,11 @@ Before starting, ensure you have the following installed:
    ```
 
 2. **Environment Configuration**:
-   - Copy [.env.example](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env.example) to [.env](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env):
+   
      ```bash
      cp .env.example .env
      ```
-   - Open [.env](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env) and fill in the **Private Keys** from your Ganache instance. 
+   - Open [.env] and fill in the **Private Keys** from your Ganache instance. 
      > [!IMPORTANT]
      > Ensure the `DEPLOYER_PRIVATE_KEY` is the first account in Ganache as it will pay for refinements.
 
@@ -38,7 +38,7 @@ Before starting, ensure you have the following installed:
      npx hardhat run scripts/deploy.ts --network ganache
      ```
      > [!TIP]
-     > The deployment script is "smart" — it will automatically update the [.env](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env) files in both the `backend` and `frontend` folders with the new contract addresses.
+     > The deployment script is "smart" — it will automatically update the [.env] files in both the `backend` and `frontend` folders with the new contract addresses.
 
 ---
 
@@ -51,7 +51,7 @@ Before starting, ensure you have the following installed:
    ```
 
 2. **Database Configuration**:
-   - Copy [.env.example](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env.example) to [.env](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env):
+   - Copy [.env.example] to [.env]:
      ```bash
      cp .env.example .env
      ```
@@ -79,7 +79,7 @@ Before starting, ensure you have the following installed:
    ```
 
 2. **Run the Application**:
-   - The [.env](file:///c:/Programming-Workspace/Kmutnb/Blockchain/Blockchain_VIN/Blockchain-Web/backend/.env) file should already be updated with role addresses by the smart-contracts deploy script.
+   - The [.env] file should already be updated with role addresses by the smart-contracts deploy script.
    - Start the development server:
      ```bash
      npm run dev
