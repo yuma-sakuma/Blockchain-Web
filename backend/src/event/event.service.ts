@@ -57,7 +57,7 @@ export class EventService {
   async create(createEventDto: any): Promise<EventLog> {
     let vehicle = await this.vehicleRepository.findOne({ where: { tokenId: createEventDto.tokenId } });
 
-    let txHash = null;
+    let txHash = createEventDto.txHash || null;
     const payloadHash = ethers.id(JSON.stringify(createEventDto.payload));
 
     if (createEventDto.type === 'MANUFACTURER_MINTED') {
@@ -83,6 +83,7 @@ export class EventService {
         }
 
         // Blockchain Interaction
+        if (!createEventDto.txHash) {
         try {
           // Prepare hashes for blockchain
           const vinHash = ethers.id(payload.vin);
@@ -123,6 +124,7 @@ export class EventService {
           console.error('Blockchain Minting Failed:', err);
           // Still save to DB for prototype fallback
         }
+        } // end if (!createEventDto.txHash)
 
         vehicle = this.vehicleRepository.create({
           tokenId: createEventDto.tokenId,
@@ -168,6 +170,7 @@ export class EventService {
             await this.ownershipTransferRepository.save(transfer);
 
             // Blockchain Interaction (Wrapped in try-catch for failure resilience)
+            if (!createEventDto.txHash) {
             try {
               // 1. Quick check if provider is reachable
               await Promise.race([
@@ -200,6 +203,7 @@ export class EventService {
                 console.warn(`[EventService] Blockchain Transfer Sync failed: ${err.message || err}`);
               }
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
@@ -225,6 +229,7 @@ export class EventService {
           await this.registrationRepository.save(reg);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -250,6 +255,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Registration sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'PLATE_EVENT_RECORDED': {
@@ -280,6 +286,7 @@ export class EventService {
           await this.plateRecordRepository.save(plate);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -309,6 +316,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Plate Event sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'TAX_STATUS_UPDATED': {
@@ -326,6 +334,7 @@ export class EventService {
           await this.taxPaymentRepository.save(tax);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -352,6 +361,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Tax sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'FLAG_UPDATED': {
@@ -367,6 +377,7 @@ export class EventService {
             vehicleUpdated = true;
 
             // Blockchain Interaction
+            if (!createEventDto.txHash) {
             try {
               await Promise.race([
                 this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -389,6 +400,7 @@ export class EventService {
             } catch (err) {
               console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
@@ -397,6 +409,7 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
@@ -415,6 +428,7 @@ export class EventService {
           } catch (err) {
             console.warn(`[EventService] Blockchain Lien Creation sync failed: ${err.message || err}`);
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'LIEN_RELEASED': {
@@ -422,6 +436,7 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
@@ -438,6 +453,7 @@ export class EventService {
           } catch (err) {
             console.warn(`[EventService] Blockchain Lien Release sync failed: ${err.message || err}`);
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'REPOSSESSION_RECORDED': {
@@ -448,6 +464,7 @@ export class EventService {
           vehicleUpdated = true;
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -468,6 +485,7 @@ export class EventService {
           } catch (err) {
             console.warn(`[EventService] Blockchain Repossession sync failed: ${err.message || err}`);
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
         case 'INSTALLMENT_MILESTONE_RECORDED':
@@ -488,6 +506,7 @@ export class EventService {
             await this.consentGrantRepository.save(grant);
 
             // Blockchain Interaction
+            if (!createEventDto.txHash) {
             try {
               await Promise.race([
                 this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -510,6 +529,7 @@ export class EventService {
             } catch (err) {
               console.warn(`[EventService] Blockchain Consent Update sync failed: ${err.message || err}`);
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
@@ -524,6 +544,7 @@ export class EventService {
               await this.consentGrantRepository.save(grants[0]);
 
               // Blockchain Interaction
+              if (!createEventDto.txHash) {
               try {
                 await Promise.race([
                   this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -541,6 +562,7 @@ export class EventService {
               } catch (err) {
                 console.warn(`[EventService] Blockchain Consent Revocation sync failed: ${err.message || err}`);
               }
+              } // end if (!createEventDto.txHash)
             }
           }
           break;
@@ -563,6 +585,7 @@ export class EventService {
             await this.insurancePolicyRepository.save(policy);
 
             // Blockchain Interaction
+            if (!createEventDto.txHash) {
             try {
               await Promise.race([
                 this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -593,6 +616,7 @@ export class EventService {
                 console.warn(`[EventService] Blockchain Insurance sync failed: ${err.message || err}`);
               }
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
@@ -611,6 +635,7 @@ export class EventService {
           await this.insuranceClaimRepository.save(claim);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -643,6 +668,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Claim sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
 
@@ -662,6 +688,7 @@ export class EventService {
           await this.inspectionRepository.save(inspection);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
@@ -688,6 +715,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Inspection sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
 
@@ -707,6 +735,7 @@ export class EventService {
           await this.maintenanceLogRepository.save(maintenance);
 
           // Blockchain Interaction
+          if (!createEventDto.txHash) {
           try {
             await Promise.race([
               this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -756,6 +785,7 @@ export class EventService {
               console.warn(`[EventService] Blockchain Maintenance sync failed: ${err.message || err}`);
             }
           }
+          } // end if (!createEventDto.txHash)
           break;
         }
 
@@ -771,6 +801,7 @@ export class EventService {
             vehicleUpdated = true;
 
             // Blockchain Interaction
+            if (!createEventDto.txHash) {
             try {
               await Promise.race([
                 this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -801,12 +832,14 @@ export class EventService {
                 console.warn(`[EventService] Blockchain Part Certification sync failed: ${err.message || err}`);
               }
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
         case 'WORKSHOP_ESTIMATE_SUBMITTED': {
           if (payload.total) {
             // Blockchain Interaction
+            if (!createEventDto.txHash) {
             try {
               await Promise.race([
                 this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
@@ -837,6 +870,7 @@ export class EventService {
                 console.warn(`[EventService] Blockchain Appraisal sync failed: ${err.message || err}`);
               }
             }
+            } // end if (!createEventDto.txHash)
           }
           break;
         }
@@ -866,7 +900,7 @@ export class EventService {
       payloadHash: payloadHash,
       evidence: createEventDto.evidence || null,
       evidenceHash: createEventDto.evidence && createEventDto.evidence.length > 0 ? createEventDto.evidence[0].hash : null,
-      txHash: txHash,
+      txHash: createEventDto.txHash || txHash,
     }) as any;
 
     return this.eventLogRepository.save(event);

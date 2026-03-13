@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { createEvent, getEvents, getVehicles } from '../services/api';
+import { blockchainService } from '../services/blockchain';
 import { VehicleEvent, VehicleNFT } from '../types/vehicle';
 
 interface VehicleContextType {
@@ -320,9 +321,79 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     setVehicles(prev => applyEventToState(prev, newEvent));
 
     try {
-      // Sync to backend
+      // --- Direct Blockchain TX from role wallet ---
+      const role = sessionStorage.getItem('auth_role') || 'CONSUMER';
+      console.log('[DirectTX] Role:', role);
+      const roleWallet = blockchainService.getRoleWallet(role);
+      console.log('[DirectTX] Wallet:', roleWallet ? roleWallet.address : 'NULL');
+
+      if (roleWallet) {
+        try {
+          let txResult;
+          switch (newEvent.type) {
+            case 'MANUFACTURER_MINTED':
+              txResult = await blockchainService.mintVehicle(roleWallet, newEvent.payload);
+              if (txResult.tokenId) newEvent.tokenId = txResult.tokenId;
+              break;
+            case 'DLT_REGISTRATION_UPDATED':
+              txResult = await blockchainService.registerVehicle(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'OWNERSHIP_TRANSFERRED':
+              txResult = await blockchainService.recordTransfer(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'PLATE_EVENT_RECORDED':
+              txResult = await blockchainService.recordPlateEvent(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'TAX_STATUS_UPDATED':
+              txResult = await blockchainService.recordTaxPayment(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'FLAG_UPDATED':
+            case 'REPOSSESSION_RECORDED':
+              txResult = await blockchainService.setFlag(roleWallet, newEvent.tokenId, { ...newEvent.payload, event: newEvent.type });
+              break;
+            case 'LIEN_CREATED':
+              txResult = await blockchainService.createLien(roleWallet, newEvent.tokenId);
+              break;
+            case 'LIEN_RELEASED':
+              txResult = await blockchainService.releaseLien(roleWallet, newEvent.tokenId);
+              break;
+            case 'CONSENT_UPDATED':
+              txResult = await blockchainService.grantConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'CONSENT_REVOKED':
+              txResult = await blockchainService.revokeConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'INSURANCE_POLICY_UPDATED':
+              txResult = await blockchainService.recordInsurancePolicy(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'CLAIM_FILED':
+              txResult = await blockchainService.fileClaim(roleWallet, newEvent.tokenId, newEvent.payload, newEvent.evidence || []);
+              break;
+            case 'INSPECTION_RESULT_RECORDED':
+              txResult = await blockchainService.recordInspection(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'MAINTENANCE_RECORDED':
+              txResult = await blockchainService.logMaintenance(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'CRITICAL_PART_REPLACED':
+              txResult = await blockchainService.logPartCertification(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+          }
+          if (txResult && txResult.txHash) {
+            newEvent.txHash = txResult.txHash;
+            console.log('[DirectTX] ✅ Success! txHash:', txResult.txHash);
+            showToast(`Direct Blockchain TX successful\n\nTxHash: ${txResult.txHash}`);
+          } else {
+            console.log('[DirectTX] ⚠️ No txResult for event type:', newEvent.type);
+          }
+        } catch (chainErr) {
+          console.error('[DirectTX] ❌ FAILED:', chainErr);
+        }
+      }
+
+      // --- Sync to backend (pass txHash so backend skips on-chain work) ---
       const response = await createEvent(newEvent);
-      if (response && response.txHash) {
+      if (response && response.txHash && !newEvent.txHash) {
         showToast(`Smart Contract interaction successful\n\nTxHash: ${response.txHash}`);
       }
 

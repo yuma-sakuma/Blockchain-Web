@@ -81,7 +81,7 @@ export interface VehicleNFT {
 
   // Mutable State
   currentOwner: string;
-  currentHolder: string;
+  // currentHolder: string;
   ownerCount: number;
 
   registration: Registration;

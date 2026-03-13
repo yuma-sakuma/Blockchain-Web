@@ -1,4 +1,5 @@
 import { ChevronRight, ShieldCheck, Wallet } from 'lucide-react';
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { RolePermissions } from '../auth/roles';
@@ -11,12 +12,15 @@ export const LoginPage = () => {
 
   const from = location.state?.from?.pathname || '/';
 
-  // If already logged in, redirect
+useEffect(() => {
   if (address && role) {
     const target = from === '/login' || from === '/' ? RolePermissions[role][0] : from;
     navigate(target, { replace: true });
-    return null;
   }
+}, [address, role, navigate, from]);
+
+if (address && role) return null;
+
 
   return (
     <div style={{ 

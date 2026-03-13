@@ -9,6 +9,7 @@ import {
   VehicleNFT__factory,
   VehicleRegistry__factory,
 } from "../typechain-types";
+import { grantRoles } from "./grant-roles";
 
 // Load smart-contracts/.env
 dotenv.config();
@@ -89,44 +90,50 @@ async function main() {
   // ============================================================
   console.log("\n=== Granting Roles (gas paid by Deployer as Admin) ===");
 
+  // -- VehicleNFT roles --
+  const MANUFACTURER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MANUFACTURER_ROLE"));
+  
+  await (await vehicleNFT.connect(deployer).grantRole(MANUFACTURER_ROLE, manufacturer.address)).wait();
+  console.log(`✅ MANUFACTURER_ROLE granted to ${manufacturer.address}`);
+  
   // -- VehicleRegistry roles --
   const DLT_OFFICER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("DLT_OFFICER_ROLE"));
   const INSPECTOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("INSPECTOR_ROLE"));
-
+  
   await (await vehicleRegistry.connect(deployer).grantRole(DLT_OFFICER_ROLE, dltOfficer.address)).wait();
   console.log(`✅ DLT_OFFICER_ROLE granted to ${dltOfficer.address}`);
-
+  
   await (await vehicleRegistry.connect(deployer).grantRole(INSPECTOR_ROLE, inspector.address)).wait();
   console.log(`✅ INSPECTOR_ROLE granted to ${inspector.address}`);
-
+  
   // -- VehicleLifecycle roles --
   const WORKSHOP_ROLE = ethers.keccak256(ethers.toUtf8Bytes("WORKSHOP_ROLE"));
   const INSURER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("INSURER_ROLE"));
 
   await (await vehicleLifecycle.connect(deployer).grantRole(WORKSHOP_ROLE, serviceProvider.address)).wait();
   console.log(`✅ WORKSHOP_ROLE granted to ${serviceProvider.address}`);
-
+  
   await (await vehicleLifecycle.connect(deployer).grantRole(INSURER_ROLE, insurer.address)).wait();
   console.log(`✅ INSURER_ROLE granted to ${insurer.address}`);
-
+  
   // -- VehicleLien roles --
   const FINANCE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("FINANCE_ROLE"));
-
+  
   await (await vehicleLien.connect(deployer).grantRole(FINANCE_ROLE, lender.address)).wait();
   console.log(`✅ FINANCE_ROLE granted to ${lender.address}`);
 
-  // -- VehicleNFT roles --
   const REGISTRY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("REGISTRY_ROLE"));
   const LIEN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("LIEN_ROLE"));
-
+  
+  // -- VehicleNFT cross-contract roles --
   await (await vehicleNFT.connect(deployer).grantRole(REGISTRY_ROLE, deployer.address)).wait();
   console.log(`✅ REGISTRY_ROLE granted to deployer ${deployer.address}`);
-
+  
   await (await vehicleNFT.connect(deployer).grantRole(LIEN_ROLE, deployer.address)).wait();
   console.log(`✅ LIEN_ROLE granted to deployer ${deployer.address}`);
-
+  
   console.log("\n=== All Roles Granted ===");
-
+  
   // ============================================================
   // 4. Save deployed contract addresses
   // ============================================================
@@ -187,6 +194,13 @@ async function main() {
       VITE_INSURER_ADDRESS: insurer.address,
       VITE_SERVICE_PROVIDER_ADDRESS: serviceProvider.address,
       VITE_INSPECTOR_ADDRESS: inspector.address,
+      
+      // Auto-sync contract addresses to frontend
+      VITE_VEHICLE_REGISTRY_ADDRESS: vehicleRegistryAddress,
+      VITE_VEHICLE_NFT_ADDRESS: vehicleNFTAddress,
+      VITE_VEHICLE_LIFECYCLE_ADDRESS: vehicleLifecycleAddress,
+      VITE_VEHICLE_LIEN_ADDRESS: vehicleLienAddress,
+      VITE_VEHICLE_CONSENT_ADDRESS: vehicleConsentAddress,
     };
 
     for (const [key, value] of Object.entries(roleAddresses)) {
@@ -207,6 +221,8 @@ async function main() {
   } catch (err) {
     console.warn(`\n⚠️  Could not update frontend .env: ${err}`);
   }
+
+  await grantRoles();
 
   console.log("\n🎉 Deployment complete!");
 }
