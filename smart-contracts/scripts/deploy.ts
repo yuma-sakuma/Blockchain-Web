@@ -159,8 +159,14 @@ async function main() {
       envContent = fs.readFileSync(backendEnvPath, "utf8");
     }
 
-    // Sync contract addresses
-    for (const [key, value] of Object.entries(contractAddresses)) {
+    // Sync contract addresses + admin private key
+    const backendEnvVars: Record<string, string> = {
+      ...contractAddresses,
+      ADMIN_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY || "",
+    };
+
+    for (const [key, value] of Object.entries(backendEnvVars)) {
+      if (!value) continue;
       const regex = new RegExp(`^${key}=.*$`, "m");
       if (regex.test(envContent)) {
         envContent = envContent.replace(regex, `${key}=${value}`);
@@ -194,7 +200,17 @@ async function main() {
       VITE_INSURER_ADDRESS: insurer.address,
       VITE_SERVICE_PROVIDER_ADDRESS: serviceProvider.address,
       VITE_INSPECTOR_ADDRESS: inspector.address,
-      
+
+      // Auto-sync private keys to frontend
+      VITE_MANUFACTURER_PRIVATE_KEY: process.env.MANUFACTURER_PRIVATE_KEY || "",
+      VITE_DEALER_PRIVATE_KEY: process.env.DEALER_PRIVATE_KEY || "",
+      VITE_DLT_OFFICER_PRIVATE_KEY: process.env.DLT_OFFICER_PRIVATE_KEY || "",
+      VITE_CONSUMER_PRIVATE_KEY: process.env.CONSUMER_PRIVATE_KEY || "",
+      VITE_LENDER_PRIVATE_KEY: process.env.LENDER_PRIVATE_KEY || "",
+      VITE_INSURER_PRIVATE_KEY: process.env.INSURER_PRIVATE_KEY || "",
+      VITE_SERVICE_PROVIDER_PRIVATE_KEY: process.env.SERVICE_PROVIDER_PRIVATE_KEY || "",
+      VITE_INSPECTOR_PRIVATE_KEY: process.env.INSPECTOR_PRIVATE_KEY || "",
+
       // Auto-sync contract addresses to frontend
       VITE_VEHICLE_REGISTRY_ADDRESS: vehicleRegistryAddress,
       VITE_VEHICLE_NFT_ADDRESS: vehicleNFTAddress,
