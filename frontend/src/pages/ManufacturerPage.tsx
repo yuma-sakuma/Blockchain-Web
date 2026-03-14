@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { checkVinExists } from '../services/api';
 import { useVehicleStore } from '../store';
 
+
 export const ManufacturerPage = () => {
   const { addEvent, vehicles } = useVehicleStore();
   const { address } = useAuth();
@@ -128,7 +129,7 @@ export const ManufacturerPage = () => {
 
   const handleTransferToDealer = (tokenId: string) => {
     // Default to the standard mock Dealer address for convenience
-    const defaultDealer = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+    const defaultDealer = import.meta.env.VITE_DEALER_ADDRESS;
     const dest = prompt("Enter Dealer Wallet Address:", defaultDealer);
     if (!dest) return;
 
