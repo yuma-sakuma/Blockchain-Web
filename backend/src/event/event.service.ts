@@ -14,6 +14,7 @@ import { PlateRecord } from '../database/entities/plate-record.entity';
 import { Registration } from '../database/entities/registration.entity';
 import { TaxPayment } from '../database/entities/tax-payment.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { VehicleFlagRecord } from '../database/entities/vehicle-flag.entity';
 
 @Injectable()
 export class EventService {
@@ -40,6 +41,8 @@ export class EventService {
     private taxPaymentRepository: Repository<TaxPayment>,
     @InjectRepository(MaintenanceLog)
     private maintenanceLogRepository: Repository<MaintenanceLog>,
+    @InjectRepository(VehicleFlagRecord)
+    private vehicleFlagRecordRepository: Repository<VehicleFlagRecord>,
     private blockchainService: BlockchainService,
   ) { }
 
@@ -365,42 +368,107 @@ export class EventService {
           break;
         }
         case 'FLAG_UPDATED': {
-          if (payload.flag && payload.value !== undefined) {
+          // Support both payload.flag and payload.flagType from frontend
+          const rawFlagKey = payload.flagType || payload.flag;
+          if (rawFlagKey && payload.value !== undefined) {
+            const flagKey = rawFlagKey.toUpperCase();
             const flagsSet = new Set(vehicle.activeFlags || []);
-            const flagKey = payload.flag.toUpperCase();
+
             if (payload.value) {
+              // ── Scenario 1 & 2: Flagging as STOLEN or SEIZED ──
               flagsSet.add(flagKey as any);
-            } else {
-              flagsSet.delete(flagKey as any);
-            }
-            vehicle.activeFlags = Array.from(flagsSet);
-            vehicleUpdated = true;
+              vehicle.activeFlags = Array.from(flagsSet);
+              vehicle.transferLocked = true;
+              vehicleUpdated = true;
 
-            // Blockchain Interaction
-            if (!createEventDto.txHash) {
-            try {
-              await Promise.race([
-                this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-              ]);
+              // Create a new VehicleFlagRecord row
+              const flagRecord = this.vehicleFlagRecordRepository.create({
+                tokenId: vehicle.tokenId,
+                flag: flagKey as any,
+                active: true,
+                sourceAddress: createEventDto.actor || 'SYSTEM',
+                refHash: '',
+                caseDocUrl: payload.caseDocUrl || payload.reason || null,
+                details: null,
+                statusTimeline: [],
+                txHash: null,
+              });
+              const savedFlagRecord = await this.vehicleFlagRecordRepository.save(flagRecord);
 
-              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              // Blockchain Interaction
+              if (!createEventDto.txHash) {
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
 
-              const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
-              if (flagMap[payload.flag]) {
-                const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                  createEventDto.tokenId,
-                  flagMap[payload.flag],
-                  payload.value,
-                  ethers.id('flag-ref-hash')
-                );
-                const receipt = await tx.wait();
-                txHash = receipt.hash;
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+                const flagMap = { 'STOLEN': 1 << 0, 'SEIZED': 1 << 1, 'MAJOR_ACCIDENT': 1 << 2, 'FLOOD': 1 << 3, 'TOTAL_LOSS': 1 << 4 };
+                if (flagMap[flagKey]) {
+                  const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                    createEventDto.tokenId,
+                    flagMap[flagKey],
+                    true,
+                    ethers.id('flag-ref-hash')
+                  );
+                  const receipt = await tx.wait();
+                  txHash = receipt.hash;
+
+                  // Update the flag record with txHash
+                  savedFlagRecord.txHash = txHash;
+                  await this.vehicleFlagRecordRepository.save(savedFlagRecord);
+                }
+              } catch (err) {
+                console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
               }
-            } catch (err) {
-              console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
+              } // end if (!createEventDto.txHash)
+            } else {
+              // ── Scenario 3: Return to Owner ──
+              flagsSet.delete(flagKey as any);
+              vehicle.activeFlags = Array.from(flagsSet);
+              // Only unlock transfer if no more active flags
+              if (flagsSet.size === 0) {
+                vehicle.transferLocked = false;
+              }
+              vehicleUpdated = true;
+
+              // Find and deactivate the active flag record
+              const activeFlagRecord = await this.vehicleFlagRecordRepository.findOne({
+                where: { tokenId: vehicle.tokenId, flag: flagKey as any, active: true }
+              });
+              if (activeFlagRecord) {
+                activeFlagRecord.active = false;
+                await this.vehicleFlagRecordRepository.save(activeFlagRecord);
+              }
+
+              // Blockchain Interaction
+              if (!createEventDto.txHash) {
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+                const flagMap = { 'STOLEN': 1 << 0, 'SEIZED': 1 << 1, 'MAJOR_ACCIDENT': 1 << 2, 'FLOOD': 1 << 3, 'TOTAL_LOSS': 1 << 4 };
+                if (flagMap[flagKey]) {
+                  const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                    createEventDto.tokenId,
+                    flagMap[flagKey],
+                    false,
+                    ethers.id('flag-ref-hash')
+                  );
+                  const receipt = await tx.wait();
+                  txHash = receipt.hash;
+                }
+              } catch (err) {
+                console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
+              }
+              } // end if (!createEventDto.txHash)
             }
-            } // end if (!createEventDto.txHash)
           }
           break;
         }

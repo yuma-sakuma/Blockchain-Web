@@ -11,6 +11,7 @@ import { PlateRecord } from '../database/entities/plate-record.entity';
 import { Registration } from '../database/entities/registration.entity';
 import { TaxPayment } from '../database/entities/tax-payment.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { VehicleFlagRecord } from '../database/entities/vehicle-flag.entity';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { EventController } from './event.controller';
 import { EventService } from './event.service';
@@ -28,7 +29,8 @@ import { EventService } from './event.service';
       Registration,
       PlateRecord,
       TaxPayment,
-      MaintenanceLog
+      MaintenanceLog,
+      VehicleFlagRecord
     ]),
     BlockchainModule
   ],

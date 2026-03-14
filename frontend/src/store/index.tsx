@@ -76,11 +76,31 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
             taxValidUntil: payload.validUntil
           }
         };
-      case 'FLAG_UPDATED':
+      case 'FLAG_UPDATED': {
+        const flagKey = payload.flagType || payload.flag;
+        if (!flagKey) return v;
+        const isStolen = flagKey === 'stolen';
+        const isSeized = flagKey === 'seized';
+        const newFlags = { ...v.flags, [flagKey]: payload.value };
+        // Update transferLocked when toggling stolen/seized
+        let newTransferLocked = v.lien.transferLocked;
+        if (isStolen || isSeized) {
+          if (payload.value) {
+            newTransferLocked = true;
+          } else {
+            // Only unlock if no other enforcement flags active
+            const otherFlagsActive = (isStolen ? newFlags.seized : newFlags.stolen);
+            if (!otherFlagsActive) {
+              newTransferLocked = false;
+            }
+          }
+        }
         return {
           ...v,
-          flags: { ...v.flags, [payload.flag]: payload.value }
+          flags: newFlags,
+          lien: { ...v.lien, transferLocked: newTransferLocked }
         };
+      }
       case 'LIEN_CREATED':
         return {
           ...v,

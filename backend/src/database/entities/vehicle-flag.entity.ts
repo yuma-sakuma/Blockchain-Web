@@ -19,7 +19,7 @@ import { Vehicle } from './vehicle.entity';
 @Entity('vehicle_flags')
 @Index(['tokenId'])
 export class VehicleFlagRecord {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'bigint' })
