@@ -1,5 +1,5 @@
 import { Activity, AlertTriangle, Car, CheckCircle2, Clipboard, FileText, History, Info, Lock, Search, ShieldCheck, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useVehicleStore } from '../store';
 import { EventType } from '../types/vehicle';
 
@@ -21,11 +21,11 @@ export const OverviewPage = () => {
   const [selectedVin, setSelectedVin] = useState<string | null>(null);
   const [networkStatus, setNetworkStatus] = useState<any>(null);
 
-  useState(() => {
+  useEffect(() => {
     import('../services/api').then(api => {
       api.checkBackendStatus().then(status => setNetworkStatus(status)).catch(console.error);
     });
-  });
+  }, []);
 
   const filteredVehicles = vehicles.filter(v =>
     v.vin.toLowerCase().includes(search.toLowerCase()) ||
@@ -88,7 +88,7 @@ export const OverviewPage = () => {
             <div key={v.tokenId} className="card" style={{ cursor: 'pointer', transition: 'transform 0.2s', position: 'relative', overflow: 'hidden' }} onClick={() => setSelectedVin(v.vin)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <span className="badge badge-info" style={{ fontFamily: 'monospace' }}>{v.tokenId}</span>
-                {v.flags.majorAccident && <span className="badge badge-danger">HISTORY LOSS</span>}
+                {v.flags?.majorAccident && <span className="badge badge-danger">HISTORY LOSS</span>}
               </div>
               <h3 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem 0' }}>{v.makeModelTrim}</h3>
               <p className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {v.vin}</p>
@@ -96,11 +96,11 @@ export const OverviewPage = () => {
               <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1.5rem' }}>
                 <div>
                   <div className="text-secondary" style={{ fontSize: '0.7rem' }}>REGISTERED</div>
-                  <div style={{ fontWeight: 700 }}>{v.registration.isRegistered ? 'YES' : 'NO'}</div>
+                  <div style={{ fontWeight: 700 }}>{v.registration?.isRegistered ? 'YES' : 'NO'}</div>
                 </div>
                 <div>
                   <div className="text-secondary" style={{ fontSize: '0.7rem' }}>ODOMETER</div>
-                  <div style={{ fontWeight: 700 }}>{v.spec.mileageKm.toLocaleString()} KM</div>
+                  <div style={{ fontWeight: 700 }}>{v.spec?.mileageKm?.toLocaleString() ?? '0'} KM</div>
                 </div>
               </div>
             </div>
@@ -141,18 +141,18 @@ export const OverviewPage = () => {
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Mileage</div>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
-                    <Zap size={16} /> {selectedVehicle.spec.mileageKm.toLocaleString()} KM
+                    <Zap size={16} /> {selectedVehicle.spec?.mileageKm?.toLocaleString() ?? '0'} KM
                   </div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Lien Guard</div>
-                  <div style={{ fontWeight: 700, color: selectedVehicle.lien.status === 'active' ? 'var(--danger)' : 'var(--success)' }}>
-                    {selectedVehicle.lien.status === 'active' ? 'ENCUMBERED' : 'UNLOCKED'}
+                  <div style={{ fontWeight: 700, color: selectedVehicle.lien?.status === 'active' ? 'var(--danger)' : 'var(--success)' }}>
+                    {selectedVehicle.lien?.status === 'active' ? 'ENCUMBERED' : 'UNLOCKED'}
                   </div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
                   <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Plate No.</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration.plateNo || (selectedVehicle.spec as any).plateNo || 'PENDING'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedVehicle.registration?.plateNo || (selectedVehicle.spec as any)?.plateNo || 'PENDING'}</div>
                 </div>
               </div>
             </div>
@@ -243,16 +243,16 @@ export const OverviewPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ border: selectedVehicle.flags.majorAccident ? '1px solid var(--danger)' : '1px solid var(--border-subtle)' }}>
+            <div className="card" style={{ border: selectedVehicle.flags?.majorAccident ? '1px solid var(--danger)' : '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ margin: 0 }}>Safety Integrity</h3>
-                {selectedVehicle.flags.majorAccident ? <AlertTriangle size={24} color="var(--danger)" /> : <CheckCircle2 size={24} color="var(--success)" />}
+                {selectedVehicle.flags?.majorAccident ? <AlertTriangle size={24} color="var(--danger)" /> : <CheckCircle2 size={24} color="var(--success)" />}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Clean Title</span>
-                  {selectedVehicle.flags.totalLoss ? <span color="var(--danger)">No</span> : <span style={{ color: 'var(--success)' }}>Yes</span>}
+                  {selectedVehicle.flags?.totalLoss ? <span color="var(--danger)">No</span> : <span style={{ color: 'var(--success)' }}>Yes</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Odo Integrity</span>
@@ -260,7 +260,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Theft Flags</span>
-                  {selectedVehicle.flags.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
+                  {selectedVehicle.flags?.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
                 </div>
               </div>
             </div>
@@ -273,19 +273,19 @@ export const OverviewPage = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Model Year</span>
-                  <span>{new Date(selectedVehicle.production.manufacturedAt).getFullYear()}</span>
+                  <span>{new Date(selectedVehicle.production?.manufacturedAt ?? Date.now()).getFullYear()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Color</span>
-                  <span>{selectedVehicle.spec.color}</span>
+                  <span>{selectedVehicle.spec?.color}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Engine Serial</span>
-                  <span>{selectedVehicle.spec.engine}</span>
+                  <span>{selectedVehicle.spec?.engine}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Battery Cap</span>
-                  <span>{(selectedVehicle.spec as any).batteryKwh || 'N/A'}</span>
+                  <span>{(selectedVehicle.spec as any)?.batteryKwh || 'N/A'}</span>
                 </div>
               </div>
             </div>

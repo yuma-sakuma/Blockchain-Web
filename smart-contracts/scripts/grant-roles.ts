@@ -63,23 +63,20 @@ export async function grantRoles() {
     const REGISTRY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("REGISTRY_ROLE"));
     const LIEN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("LIEN_ROLE"));
 
-    // store PK per Role
-    const mfgPK = process.env.MANUFACTURER_PRIVATE_KEY || '';
-    const dealerPK = process.env.DEALER_PRIVATE_KEY || '';
-    const dltOfficerPK = process.env.DLT_OFFICER_PRIVATE_KEY || '';
-    const lenderPK = process.env.LENDER_PRIVATE_KEY || '';
-    const insurerPK = process.env.INSURER_PRIVATE_KEY || '';
-    const serviceProviderPK = process.env.SERVICE_PROVIDER_PRIVATE_KEY || '';
-    const inspectorPK = process.env.INSPECTOR_PRIVATE_KEY || '';
+    // store PK per Role and get Address
+    const getAddress = (envKey: string) => {
+        const pk = process.env[envKey];
+        if (pk) return new ethers.Wallet(pk).address;
+        return deployer.address;
+    };
 
-    // create all role wallet
-    const mfgWallet = new ethers.Wallet(mfgPK);
-    const dealerWallet = new ethers.Wallet(dealerPK);
-    const dltOfficerWallet = new ethers.Wallet(dltOfficerPK);
-    const lenderWallet = new ethers.Wallet(lenderPK);
-    const insurerWallet = new ethers.Wallet(insurerPK);
-    const serviceProviderWallet = new ethers.Wallet(serviceProviderPK);
-    const inspectorWallet = new ethers.Wallet(inspectorPK);
+    const mfgAddress = getAddress("MANUFACTURER_PRIVATE_KEY");
+    const dealerAddress = getAddress("DEALER_PRIVATE_KEY");
+    const dltOfficerAddress = getAddress("DLT_OFFICER_PRIVATE_KEY");
+    const lenderAddress = getAddress("LENDER_PRIVATE_KEY");
+    const insurerAddress = getAddress("INSURER_PRIVATE_KEY");
+    const serviceProviderAddress = getAddress("SERVICE_PROVIDER_PRIVATE_KEY");
+    const inspectorAddress = getAddress("INSPECTOR_PRIVATE_KEY");
 
     // ── VehicleRegistry ──
     const vehicleRegistry = await ethers.getContractAt("VehicleRegistry", addresses.VEHICLE_REGISTRY_ADDRESS);
@@ -96,15 +93,15 @@ export async function grantRoles() {
     const vehicleLien = await ethers.getContractAt("VehicleLien", addresses.VEHICLE_LIEN_ADDRESS);
     const FINANCE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("FINANCE_ROLE"));
     
-    await grantIfNeeded(vehicleNFT, "MANUFACTURER_ROLE", MANUFACTURER_ROLE, mfgWallet.address, "VehicleNFT");
+    await grantIfNeeded(vehicleNFT, "MANUFACTURER_ROLE", MANUFACTURER_ROLE, mfgAddress, "VehicleNFT");
     await grantIfNeeded(vehicleNFT, "REGISTRY_ROLE", REGISTRY_ROLE, addresses.VEHICLE_REGISTRY_ADDRESS, "VehicleNFT");
     await grantIfNeeded(vehicleNFT, "LIEN_ROLE", LIEN_ROLE, addresses.VEHICLE_LIEN_ADDRESS, "VehicleNFT");
-    await grantIfNeeded(vehicleRegistry, "DLT_OFFICER_ROLE", DLT_OFFICER_ROLE, dltOfficerWallet.address, "VehicleRegistry");
-    await grantIfNeeded(vehicleRegistry, "INSPECTOR_ROLE", INSPECTOR_ROLE, inspectorWallet.address, "VehicleRegistry");
-    await grantIfNeeded(vehicleLifecycle, "DEALER_ROLE", DEALER_ROLE, dealerWallet.address, "VehicleLifecycle");
-    await grantIfNeeded(vehicleLifecycle, "WORKSHOP_ROLE", WORKSHOP_ROLE, serviceProviderWallet.address, "VehicleLifecycle");
-    await grantIfNeeded(vehicleLifecycle, "INSURER_ROLE", INSURER_ROLE, insurerWallet.address, "VehicleLifecycle");
-    await grantIfNeeded(vehicleLien, "FINANCE_ROLE", FINANCE_ROLE, lenderWallet.address, "VehicleLien");
+    await grantIfNeeded(vehicleRegistry, "DLT_OFFICER_ROLE", DLT_OFFICER_ROLE, dltOfficerAddress, "VehicleRegistry");
+    await grantIfNeeded(vehicleRegistry, "INSPECTOR_ROLE", INSPECTOR_ROLE, inspectorAddress, "VehicleRegistry");
+    await grantIfNeeded(vehicleLifecycle, "DEALER_ROLE", DEALER_ROLE, dealerAddress, "VehicleLifecycle");
+    await grantIfNeeded(vehicleLifecycle, "WORKSHOP_ROLE", WORKSHOP_ROLE, serviceProviderAddress, "VehicleLifecycle");
+    await grantIfNeeded(vehicleLifecycle, "INSURER_ROLE", INSURER_ROLE, insurerAddress, "VehicleLifecycle");
+    await grantIfNeeded(vehicleLien, "FINANCE_ROLE", FINANCE_ROLE, lenderAddress, "VehicleLien");
 
     console.log("\n🎉 All roles granted successfully!");
 }

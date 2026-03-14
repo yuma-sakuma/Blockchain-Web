@@ -192,7 +192,7 @@ export const DLTPage = () => {
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>License Plate</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || searchResult.spec.plateNo || 'None'}</div>
+                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || (searchResult.spec as any).plateNo || 'None'}</div>
                                 </div>
                                 <div>
                                     <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registered Color</div>
