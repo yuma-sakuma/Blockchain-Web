@@ -189,8 +189,9 @@ contract VehicleLifecycle is AccessControl {
 
     // ─── Ownership Transfer ──────────────────────────────────
     /**
-     * @notice บันทึก event การโอนกรรมสิทธิ์ (เรียกพร้อมกับ ERC721 transfer)
+     * @notice บันทึก event การโอนกรรมสิทธิ์ + โอน ETH จากผู้ซื้อไปผู้ขาย
      * @param reason  0=inventory_transfer, 1=first_sale, 2=resale, 3=trade_in
+     * @dev ส่ง msg.value (ETH) มาพร้อม call → contract จะ forward ให้เจ้าของ NFT ปัจจุบัน (ผู้ขาย)
      */
     function recordTransfer(
         uint256 tokenId,
@@ -199,7 +200,7 @@ contract VehicleLifecycle is AccessControl {
         bytes32 saleContractHash,
         bytes32 buyerOwnerId,
         bytes32 paymentRefHash
-    ) external vehicleExists(tokenId) {
+    ) external payable vehicleExists(tokenId) {
         address from = vehicleNFT.ownerOf(tokenId);
         require(
             msg.sender == from ||
@@ -207,6 +208,12 @@ contract VehicleLifecycle is AccessControl {
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Not authorized"
         );
+
+        // Forward ETH payment to the seller (current NFT owner)
+        if (msg.value > 0) {
+            (bool sent, ) = payable(from).call{value: msg.value}("");
+            require(sent, "ETH transfer to seller failed");
+        }
 
         emit OwnershipTransferred(
             tokenId,

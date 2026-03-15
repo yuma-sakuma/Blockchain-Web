@@ -763,8 +763,8 @@
       ]
     },
     "C:\\Users\\ariya\\OneDrive\\เอกสาร\\GitHub\\Blockchain-Web\\smart-contracts\\contracts\\VehicleLifecycle.sol": {
-      "lastModificationDate": 1771763484467,
-      "contentHash": "dafcf00576c68daf7538dadf6004d90d",
+      "lastModificationDate": 1773583829827,
+      "contentHash": "24c4b5e1b7c4abc84c6a0d4dae81f853",
       "sourceName": "contracts/VehicleLifecycle.sol",
       "solcConfig": {
         "version": "0.8.20",

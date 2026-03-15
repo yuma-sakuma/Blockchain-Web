@@ -158,14 +158,18 @@ export class EventService {
             vehicle.ownerCount = (vehicle.ownerCount || 0) + 1;
             vehicleUpdated = true;
 
+            // Convert ETH price to Wei for storage (1 ETH = 10^18 Wei)
+            const priceInWei = payload.price ? BigInt(Math.floor(payload.price * 1e18)).toString() : null;
+
             const transfer = this.ownershipTransferRepository.create({
               fromAddress: payload.from || createEventDto.actor,
               toAddress: payload.to,
               reason: 'RESALE' as any,
               transferredAt: new Date(payload.date || Date.now()).getTime().toString(),
               docHash: 'mockHash',
-              salePrice: payload.price ? (payload.price * 100).toString() : null,
-              currency: 'THB'
+              salePrice: priceInWei,
+              currency: 'ETH',
+              paymentMethod: 'CRYPTO' as any,
             });
             await this.ownershipTransferRepository.save(transfer);
 
@@ -188,16 +192,29 @@ export class EventService {
 
               const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
               const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+
+              // Calculate ETH value to send with the transaction (pays the seller)
+              const ethValue = payload.price ? ethers.parseEther(payload.price.toString()) : 0n;
+
               const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
                 createEventDto.tokenId,
                 toAddress,
                 reasonMap[payload.reason] || 2,
                 ethers.id(payload.docRef || 'none'),
                 ethers.id(payload.to),
-                ethers.id('payment-ref')
+                ethers.id('payment-ref'),
+                { value: ethValue }
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+
+              // Save the payment tx hash
+              if (txHash) {
+                await this.ownershipTransferRepository.update(
+                  { tokenId: vehicle.tokenId },
+                  { paymentTxHash: txHash }
+                );
+              }
             } catch (err) {
               if (err.message !== 'STOP_SYNC') {
                 console.warn(`[EventService] Blockchain Transfer Sync failed: ${err.message || err}`);

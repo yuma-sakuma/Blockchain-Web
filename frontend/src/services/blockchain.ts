@@ -42,7 +42,11 @@ export const blockchainService = {
     const contract = getContract("VEHICLE_LIFECYCLE", wallet);
     const reasonMap: Record<string, number> = { inventory_transfer: 0, first_sale: 1, resale: 2, trade_in: 3 };
     const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
-    const tx = await contract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id("payment-ref"));
+
+    // Calculate ETH value to send (pays the seller via smart contract)
+    const ethValue = payload.price ? ethers.parseEther(payload.price.toString()) : 0n;
+
+    const tx = await contract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id("payment-ref"), { value: ethValue });
     const receipt = await tx.wait();
     return { txHash: receipt.hash };
   },

@@ -46,7 +46,8 @@ export const DealerPage = () => {
             payload: {
                 buyer: buyerId,
                 saleType: "new_car",
-                price: 850000,
+                price: 0.85,
+                currency: 'ETH',
                 contractHash: "HASH_CONTRACT_" + Date.now()
             }
         });
@@ -59,6 +60,7 @@ export const DealerPage = () => {
                 from: dealerId,
                 to: buyerId,
                 reason: 'first_owner_delivery',
+                price: 0.85,
                 deliveryDate: new Date().toISOString()
             }
         });
@@ -87,7 +89,7 @@ export const DealerPage = () => {
             return;
         }
         
-        const evaluationPrice = 500000;
+        const evaluationPrice = 0.5;
         
         await addEvent({
             type: 'TRADEIN_EVALUATED',
@@ -101,7 +103,7 @@ export const DealerPage = () => {
             }
         });
         
-        if (confirm(`Market Evaluation: ${evaluationPrice.toLocaleString()} THB. Buyback this asset into inventory?`)) {
+        if (confirm(`Market Evaluation: ${evaluationPrice} ETH. Buyback this asset into inventory?`)) {
              await addEvent({
                 type: 'OWNERSHIP_TRANSFERRED',
                 actor: dealerId,
