@@ -125,12 +125,12 @@ async function main() {
   const REGISTRY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("REGISTRY_ROLE"));
   const LIEN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("LIEN_ROLE"));
   
-  // -- VehicleNFT cross-contract roles --
-  await (await vehicleNFT.connect(deployer).grantRole(REGISTRY_ROLE, deployer.address)).wait();
-  console.log(`✅ REGISTRY_ROLE granted to deployer ${deployer.address}`);
+  // -- VehicleNFT cross-contract roles (granted to contract addresses, not deployer) --
+  await (await vehicleNFT.connect(deployer).grantRole(REGISTRY_ROLE, vehicleRegistryAddress)).wait();
+  console.log(`✅ REGISTRY_ROLE granted to VehicleRegistry contract ${vehicleRegistryAddress}`);
   
-  await (await vehicleNFT.connect(deployer).grantRole(LIEN_ROLE, deployer.address)).wait();
-  console.log(`✅ LIEN_ROLE granted to deployer ${deployer.address}`);
+  await (await vehicleNFT.connect(deployer).grantRole(LIEN_ROLE, vehicleLienAddress)).wait();
+  console.log(`✅ LIEN_ROLE granted to VehicleLien contract ${vehicleLienAddress}`);
   
   console.log("\n=== All Roles Granted ===");
   

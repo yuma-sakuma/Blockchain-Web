@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { createEvent, getEvents, getVehicles } from '../services/api';
+import { createAuthenticatedEvent, getEvents, getVehicles } from '../services/api';
 import { blockchainService } from '../services/blockchain';
 import { VehicleEvent, VehicleNFT } from '../types/vehicle';
 
@@ -363,6 +363,12 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             case 'CONSENT_REVOKED':
               txResult = await blockchainService.revokeConsent(roleWallet, newEvent.tokenId, newEvent.payload);
               break;
+            case 'READ_CONSENT_GRANTED':
+              txResult = await blockchainService.grantReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'READ_CONSENT_REVOKED':
+              txResult = await blockchainService.revokeReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
             case 'INSURANCE_POLICY_UPDATED':
               txResult = await blockchainService.recordInsurancePolicy(roleWallet, newEvent.tokenId, newEvent.payload);
               break;
@@ -378,6 +384,18 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             case 'CRITICAL_PART_REPLACED':
               txResult = await blockchainService.logPartCertification(roleWallet, newEvent.tokenId, newEvent.payload);
               break;
+            case 'ESCROW_CREATED':
+              txResult = await blockchainService.createEscrow(roleWallet, newEvent.tokenId, newEvent.payload);
+              break;
+            case 'ESCROW_FUNDED':
+              txResult = await blockchainService.fundEscrowNative(roleWallet, newEvent.payload);
+              break;
+            case 'ESCROW_RELEASED':
+              txResult = await blockchainService.fulfillCondition(roleWallet, newEvent.payload);
+              break;
+            case 'ESCROW_CANCELLED':
+              txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
+              break;
           }
           if (txResult && txResult.txHash) {
             newEvent.txHash = txResult.txHash;
@@ -392,7 +410,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // --- Sync to backend (pass txHash so backend skips on-chain work) ---
-      const response = await createEvent(newEvent);
+      // Use authenticated API call with role wallet signature
+      const response = await createAuthenticatedEvent(newEvent, roleWallet);
       if (response && response.txHash && !newEvent.txHash) {
         showToast(`Smart Contract interaction successful\n\nTxHash: ${response.txHash}`);
       }

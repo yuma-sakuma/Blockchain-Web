@@ -188,6 +188,20 @@ export class EventService {
 
               const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
               const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+              
+              // --- FIX: Actually transfer the NFT on-chain ---
+              const currentOwner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
+                const transferTx = await this.blockchainService.vehicleNFTContract.transferFrom(
+                  currentOwner,
+                  toAddress,
+                  createEventDto.tokenId
+                );
+                await transferTx.wait();
+                console.log(`[EventService] ✅ NFT ${createEventDto.tokenId} transferred from ${currentOwner} to ${toAddress}`);
+              }
+
+              // Record the transfer event in VehicleLifecycle
               const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
                 createEventDto.tokenId,
                 toAddress,
@@ -568,6 +582,91 @@ export class EventService {
           break;
         }
 
+        // --- Read Consent: routes to VehicleConsent.sol (read-only access) ---
+        case 'READ_CONSENT_GRANTED': {
+          if (payload.grantTo) {
+            const grant = this.consentGrantRepository.create({
+              tokenId: vehicle.tokenId,
+              ownerAddress: payload.owner,
+              granteeDid: payload.grantTo,
+              scopes: payload.scopes || ['VEHICLE_IDENTITY' as any],
+              scopeMask: payload.scopeMask || '1',
+              expiresAt: new Date(payload.expiresAt).getTime().toString(),
+              grantHash: 'pending',
+              nonce: Date.now().toString()
+            });
+            await this.consentGrantRepository.save(grant);
+
+            // Blockchain Interaction → VehicleConsent.sol (READ)
+            if (!createEventDto.txHash) {
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleConsentContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
+
+              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+              const granteeDid = ethers.id(payload.grantTo);
+              const scopeMask = payload.scopeMask || 1;
+              const expiresAt = Math.floor(new Date(payload.expiresAt).getTime() / 1000);
+              const nonce = Date.now();
+
+              const tx = await this.blockchainService.vehicleConsentContract.grantConsent(
+                createEventDto.tokenId,
+                granteeDid,
+                scopeMask,
+                expiresAt,
+                payload.singleUse || false,
+                nonce
+              );
+              const receipt = await tx.wait();
+              txHash = receipt.hash;
+              console.log(`[EventService] ✅ Read Consent granted via VehicleConsent.sol: ${txHash}`);
+            } catch (err) {
+              console.warn(`[EventService] Blockchain Read Consent sync failed: ${err.message || err}`);
+            }
+            } // end if (!createEventDto.txHash)
+          }
+          break;
+        }
+
+        case 'READ_CONSENT_REVOKED': {
+          if (payload.grantHash) {
+            const grants = await this.consentGrantRepository.find({
+              where: { tokenId: vehicle.tokenId, granteeDid: payload.revokeFrom },
+              order: { createdAt: 'DESC' }
+            });
+            if (grants.length > 0) {
+              grants[0].revoked = true;
+              await this.consentGrantRepository.save(grants[0]);
+
+              // Blockchain Interaction → VehicleConsent.sol (READ)
+              if (!createEventDto.txHash) {
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleConsentContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+                const tx = await this.blockchainService.vehicleConsentContract.revokeConsent(
+                  createEventDto.tokenId,
+                  payload.grantHash
+                );
+                const receipt = await tx.wait();
+                txHash = receipt.hash;
+                console.log(`[EventService] ✅ Read Consent revoked via VehicleConsent.sol: ${txHash}`);
+              } catch (err) {
+                console.warn(`[EventService] Blockchain Read Consent Revocation sync failed: ${err.message || err}`);
+              }
+              } // end if (!createEventDto.txHash)
+            }
+          }
+          break;
+        }
+
         case 'INSURANCE_POLICY_UPDATED': {
           const policyNumber = payload.policyNo || payload.policyNumber;
           if (policyNumber) {
@@ -880,6 +979,105 @@ export class EventService {
             vehicleUpdated = true;
           }
           break;
+
+        // --- Escrow: routes to VehicleLien.sol ---
+        case 'ESCROW_CREATED': {
+          if (!createEventDto.txHash) {
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+            const escrowId = ethers.id(`escrow-${createEventDto.tokenId}-${Date.now()}`);
+            const buyerAddress = ethers.isAddress(payload.buyer) ? ethers.getAddress(payload.buyer) : ethers.ZeroAddress;
+            const conditionsMask = payload.conditionsMask || 3; // payment + lien_released
+            const depositAmount = ethers.parseEther(payload.depositAmount?.toString() || '0');
+
+            const tx = await this.blockchainService.vehicleLienContract.createEscrow(
+              escrowId,
+              createEventDto.tokenId,
+              buyerAddress,
+              conditionsMask,
+              ethers.ZeroAddress, // native coin
+              depositAmount
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+            console.log(`[EventService] ✅ Escrow created: ${txHash}`);
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Escrow creation failed: ${err.message || err}`);
+          }
+          } // end if (!createEventDto.txHash)
+          break;
+        }
+
+        case 'ESCROW_FUNDED': {
+          if (payload.escrowId && !createEventDto.txHash) {
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            const tx = await this.blockchainService.vehicleLienContract.fundEscrowNative(
+              payload.escrowId,
+              { value: ethers.parseEther(payload.amount?.toString() || '0') }
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+            console.log(`[EventService] ✅ Escrow funded: ${txHash}`);
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Escrow funding failed: ${err.message || err}`);
+          }
+          } // end if
+          break;
+        }
+
+        case 'ESCROW_RELEASED': {
+          if (payload.escrowId && payload.condition && !createEventDto.txHash) {
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            const tx = await this.blockchainService.vehicleLienContract.fulfillCondition(
+              payload.escrowId,
+              payload.condition
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+            console.log(`[EventService] ✅ Escrow condition fulfilled: ${txHash}`);
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Escrow release failed: ${err.message || err}`);
+          }
+          } // end if
+          break;
+        }
+
+        case 'ESCROW_CANCELLED': {
+          if (payload.escrowId && !createEventDto.txHash) {
+          try {
+            await Promise.race([
+              this.blockchainService.vehicleLienContract.runner?.provider?.getNetwork(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+            ]);
+
+            const tx = await this.blockchainService.vehicleLienContract.cancelEscrow(
+              payload.escrowId
+            );
+            const receipt = await tx.wait();
+            txHash = receipt.hash;
+            console.log(`[EventService] ✅ Escrow cancelled: ${txHash}`);
+          } catch (err) {
+            console.warn(`[EventService] Blockchain Escrow cancellation failed: ${err.message || err}`);
+          }
+          } // end if
+          break;
+        }
       }
 
       if (vehicleUpdated) {

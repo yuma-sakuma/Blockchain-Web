@@ -131,16 +131,13 @@ export class BlockchainService implements OnModuleInit {
       return;
     }
 
-    const adminAddress = this.walletAddress;
     const registryAddress = await this.vehicleRegistryContract.getAddress();
     const lienAddress = await this.vehicleLienContract.getAddress();
 
+    // Only cross-contract roles are granted here (structurally necessary for inter-contract calls).
+    // Individual role-based permissions (DLT_OFFICER, WORKSHOP, INSURER, FINANCE, etc.)
+    // are managed by the deploy script (deploy.ts + grant-roles.ts) and granted to each role's own wallet.
     const roleGrants = [
-      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'DLT_OFFICER_ROLE', roleHash: ethers.id('DLT_OFFICER_ROLE'), grantTo: adminAddress },
-      { contract: this.vehicleRegistryContract, contractName: 'VehicleRegistry', roleName: 'INSPECTOR_ROLE', roleHash: ethers.id('INSPECTOR_ROLE'), grantTo: adminAddress },
-      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'WORKSHOP_ROLE', roleHash: ethers.id('WORKSHOP_ROLE'), grantTo: adminAddress },
-      { contract: this.vehicleLifecycleContract, contractName: 'VehicleLifecycle', roleName: 'INSURER_ROLE', roleHash: ethers.id('INSURER_ROLE'), grantTo: adminAddress },
-      { contract: this.vehicleLienContract, contractName: 'VehicleLien', roleName: 'FINANCE_ROLE', roleHash: ethers.id('FINANCE_ROLE'), grantTo: adminAddress },
       { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'REGISTRY_ROLE', roleHash: ethers.id('REGISTRY_ROLE'), grantTo: registryAddress },
       { contract: this.vehicleNFTContract, contractName: 'VehicleNFT', roleName: 'LIEN_ROLE', roleHash: ethers.id('LIEN_ROLE'), grantTo: lienAddress },
     ];
