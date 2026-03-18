@@ -36,7 +36,7 @@ export const DealerPage = () => {
             }
         }
 
-        const defaultConsumer = "0xF039e6aA859239a880CCc7CB31eb47237c3893cf";
+        const defaultConsumer = import.meta.env.VITE_CONSUMER_ADDRESS || "";
         const customerName = prompt("Buyer Identity (Wallet Address or Name):", defaultConsumer);
         if (!customerName) return;
 

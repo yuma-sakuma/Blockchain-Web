@@ -30,7 +30,12 @@ export class EventController {
   async create(@Body() createEventDto: any, @Req() req: any): Promise<EventLog> {
     // Use verified signer from guard if available, fallback to body actor
     if (req.signer) {
-      createEventDto.actor = req.signer;
+      if (typeof createEventDto.actor === 'string' && createEventDto.actor.includes(':')) {
+        const prefix = createEventDto.actor.split(':')[0];
+        createEventDto.actor = `${prefix}:${req.signer}`;
+      } else {
+        createEventDto.actor = req.signer;
+      }
     }
     return this.eventService.create(createEventDto);
   }

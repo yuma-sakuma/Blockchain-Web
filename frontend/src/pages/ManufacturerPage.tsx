@@ -119,13 +119,13 @@ export const ManufacturerPage = () => {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const signature = 'sig_' + Math.random().toString(36).substring(7).toUpperCase();
-    const actorId = `MANUFACTURER:${address?.substring(0, 6)}...`;
+    const manufacturerId = `MANUFACTURER:${address}`;
 
     // 1. Mint Event (Await Real Token ID from Blockchain)
     try {
       const response = await addEvent({
         type: 'MANUFACTURER_MINTED',
-        actor: actorId,
+        actor: manufacturerId,
         // Remove simulated tokenId, now 'store/index.tsx' handles getting and assigning the real one
         tokenId: "", 
         payload: {
@@ -155,7 +155,7 @@ export const ManufacturerPage = () => {
       // 2. Warranty Definition (Uses Actual Token ID)
       await addEvent({
         type: 'WARRANTY_DEFINED',
-        actor: actorId,
+        actor: manufacturerId,
         tokenId: actualTokenId,
         payload: {
           startPolicy: "at_first_registration",
@@ -196,7 +196,13 @@ export const ManufacturerPage = () => {
     });
   };
 
-  const myStock = vehicles.filter(v => v.currentOwner.toUpperCase().startsWith('MANUFACTURER')); 
+  const normalizedAddress = address?.toLowerCase() || '';
+  const myStock = vehicles.filter(v => {
+      const ownerLower = v.currentOwner.toLowerCase();
+      return ownerLower === `manufacturer:${normalizedAddress}` || 
+             ownerLower === normalizedAddress ||
+             (ownerLower.includes('manufacturer') && ownerLower.includes(normalizedAddress));
+  });
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1000px', margin: '0 auto' }}>

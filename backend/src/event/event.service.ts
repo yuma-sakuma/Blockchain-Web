@@ -469,7 +469,6 @@ export class EventService {
           if (payload.flag && payload.value !== undefined) {
             const flagKey = payload.flag.toUpperCase();
             const flagsSet = new Set(vehicle.activeFlags || []);
-            const flagKey = flagName.toUpperCase();
             if (payload.value) {
               flagsSet.add(flagKey as any);
               vehicle.activeFlags = Array.from(flagsSet);
@@ -477,7 +476,7 @@ export class EventService {
               vehicleUpdated = true;
 
               // Create a new VehicleFlagRecord row
-              const flagRecord = this.vehicleFlagRecordRepository.create({
+              const flagRecord = this.vehicleFlagRepository.create({
                 tokenId: vehicle.tokenId,
                 flag: flagKey as any,
                 active: true,
@@ -515,7 +514,7 @@ export class EventService {
                   throw err;
                 }
               } // end if (!createEventDto.txHash)
-              await this.vehicleFlagRecordRepository.save(flagRecord);
+              await this.vehicleFlagRepository.save(flagRecord);
             } else {
               // ── Scenario 3: Return to Owner ──
               flagsSet.delete(flagKey as any);
@@ -527,7 +526,7 @@ export class EventService {
               vehicleUpdated = true;
 
               // Find and deactivate the active flag record
-              const activeFlagRecord = await this.vehicleFlagRecordRepository.findOne({
+              const activeFlagRecord = await this.vehicleFlagRepository.findOne({
                 where: { tokenId: vehicle.tokenId, flag: flagKey as any, active: true }
               });
               // Blockchain Interaction (wrapped in withTxLock)
@@ -561,57 +560,12 @@ export class EventService {
               } // end if (!createEventDto.txHash)
               if (activeFlagRecord) {
                 activeFlagRecord.active = false;
-                await this.vehicleFlagRecordRepository.save(activeFlagRecord);
+                await this.vehicleFlagRepository.save(activeFlagRecord);
               }
             }
           }
-          vehicle.activeFlags = Array.from(flagsSet);
-          vehicleUpdated = true;
-
-          // Save to vehicle_flags table for audit trail
-          const flagRecord = this.vehicleFlagRepository.create({
-            tokenId: vehicle.tokenId,
-            flag: flagKey as any,
-            active: payload.value,
-            sourceAddress: createEventDto.actor || '0x00',
-            refHash: ethers.id(`flag-${flagKey}-${Date.now()}`),
-            details: payload.details || null,
-            statusTimeline: [{ status: payload.value ? 'SET' : 'CLEARED', at: Date.now().toString(), note: payload.reason || null }],
-          });
-          await this.vehicleFlagRepository.save(flagRecord);
-
-          // Blockchain Interaction
-          if (!createEventDto.txHash) {
-            try {
-              await Promise.race([
-                this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-              ]);
-
-              await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-
-              const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
-              if (flagMap[flagName]) {
-                const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                  createEventDto.tokenId,
-                  flagMap[flagName],
-                  payload.value,
-                  ethers.id('flag-ref-hash')
-                );
-                const receipt = await tx.wait();
-                txHash = receipt.hash;
-                console.log('[EventService] ✅ FLAG_UPDATED Transaction Confirmed!');
-                console.log('  txHash     :', txHash);
-                console.log('  blockNumber:', receipt.blockNumber);
-                console.log('  gasUsed    :', receipt.gasUsed?.toString());
-              }
-            } catch (err) {
-              console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
-            }
-          } // end if (!createEventDto.txHash)
-        }
           break;
-      }
+        }
         case 'LIEN_CREATED': {
         console.log('[EventService] 🔒 LIEN_CREATED event');
         vehicle.transferLocked = true;
@@ -1031,7 +985,7 @@ export class EventService {
             await this.vehicleRepository.save(vehicle);
 
             // Save flag record
-            const flagRecord = this.vehicleFlagRecordRepository.create({
+            const flagRecord = this.vehicleFlagRepository.create({
               tokenId: vehicle.tokenId,
               flag: 'TOTAL_LOSS' as any,
               active: true,
@@ -1040,7 +994,7 @@ export class EventService {
               details: { autoFlagged: true, claimId: payload.claimId, severity: 'total_loss' },
               statusTimeline: [{ status: 'SET', at: new Date().toISOString(), note: 'Auto-flagged from CLAIM_FILED severity=total_loss' }],
             });
-            await this.vehicleFlagRecordRepository.save(flagRecord);
+            await this.vehicleFlagRepository.save(flagRecord);
           }
           // Sync flag to blockchain
           if (!createEventDto.txHash) {
@@ -1480,9 +1434,9 @@ export class EventService {
     if (vehicleUpdated) {
       await this.vehicleRepository.save(vehicle);
     }
-  }
+    } // end else (non-MANUFACTURER_MINTED)
 
-  const finalTxHash = createEventDto.txHash || txHash;
+    const finalTxHash = createEventDto.txHash || txHash;
 
     console.log('\n╔══════════════════════════════════════════════════════════════');
     console.log('║ 💾 [EventService] SAVING EVENT TO DATABASE');
@@ -1491,34 +1445,34 @@ export class EventService {
     console.log('║ TokenID      :', createEventDto.tokenId);
     console.log('║ payloadHash  :', payloadHash);
     console.log('║ txHash (final):', finalTxHash || '(none)');
-console.log('║   └─ source  :', createEventDto.txHash ? 'Frontend' : (txHash ? 'Backend' : 'N/A'));
-console.log('╚══════════════════════════════════════════════════════════════\n');
+    console.log('║   └─ source  :', createEventDto.txHash ? 'Frontend' : (txHash ? 'Backend' : 'N/A'));
+    console.log('╚══════════════════════════════════════════════════════════════\n');
 
-const event = this.eventLogRepository.create({
-  ...createEventDto,
-  actorAddress: createEventDto.actor || '0x00',
-  actorRole: (createEventDto.actorRole === 'DLT_OFFICER' ? 'DLT' :
-    createEventDto.actorRole === 'LENDER' ? 'FINANCE' :
-      createEventDto.actorRole === 'SERVICE_PROVIDER' ? 'WORKSHOP' :
-        createEventDto.actorRole === 'INSPECTOR' ? 'INSPECT' :
-          createEventDto.actorRole === 'CONSUMER' ? 'OWNER' :
-            createEventDto.actorRole) ||
-    (createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' :
-      createEventDto.actor?.startsWith('DLT') ? 'DLT' :
-        createEventDto.actor?.startsWith('WORKSHOP') ? 'WORKSHOP' :
-          createEventDto.actor?.startsWith('INSURER') ? 'INSURER' :
-            createEventDto.actor?.startsWith('FINANCE') ? 'FINANCE' :
-              createEventDto.actor?.startsWith('DEALER') ? 'DEALER' : 'OWNER'),
-  occurredAt: createEventDto.occurredAt || Date.now().toString(),
-  payloadHash: payloadHash,
-  evidence: createEventDto.evidence || null,
-  evidenceHash: createEventDto.evidence && createEventDto.evidence.length > 0 ? createEventDto.evidence[0].hash : null,
-  txHash: finalTxHash,
-}) as any;
+    const event = this.eventLogRepository.create({
+      ...createEventDto,
+      actorAddress: createEventDto.actor || '0x00',
+      actorRole: (createEventDto.actorRole === 'DLT_OFFICER' ? 'DLT' :
+        createEventDto.actorRole === 'LENDER' ? 'FINANCE' :
+          createEventDto.actorRole === 'SERVICE_PROVIDER' ? 'WORKSHOP' :
+            createEventDto.actorRole === 'INSPECTOR' ? 'INSPECT' :
+              createEventDto.actorRole === 'CONSUMER' ? 'OWNER' :
+                createEventDto.actorRole) ||
+        (createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' :
+          createEventDto.actor?.startsWith('DLT') ? 'DLT' :
+            createEventDto.actor?.startsWith('WORKSHOP') ? 'WORKSHOP' :
+              createEventDto.actor?.startsWith('INSURER') ? 'INSURER' :
+                createEventDto.actor?.startsWith('FINANCE') ? 'FINANCE' :
+                  createEventDto.actor?.startsWith('DEALER') ? 'DEALER' : 'OWNER'),
+      occurredAt: createEventDto.occurredAt || Date.now().toString(),
+      payloadHash: payloadHash,
+      evidence: createEventDto.evidence || null,
+      evidenceHash: createEventDto.evidence && createEventDto.evidence.length > 0 ? createEventDto.evidence[0].hash : null,
+      txHash: finalTxHash,
+    }) as any;
 
-const savedEvent = await this.eventLogRepository.save(event);
-console.log(`[EventService] ✅ Event saved to DB with ID: ${savedEvent.eventId}`);
-console.log('-------------------------------------------------------------------------------\n');
-return savedEvent;
+    const savedEvent = await this.eventLogRepository.save(event);
+    console.log(`[EventService] ✅ Event saved to DB with ID: ${savedEvent.eventId}`);
+    console.log('-------------------------------------------------------------------------------\n');
+    return savedEvent;
   }
 }
