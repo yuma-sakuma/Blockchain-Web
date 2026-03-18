@@ -71,7 +71,7 @@ export const ConsumerPage = () => {
           return;
       }
 
-      const price = prompt("Agreed Sale Price (THB):", "450000");
+      const price = prompt("Agreed Sale Price (ETH):", "0.5");
       if (!price) return;
 
       const fullBuyerId = buyerId.startsWith('0x') ? `CONSUMER:${buyerId}` : buyerId;
@@ -84,7 +84,8 @@ export const ConsumerPage = () => {
               payer: fullBuyerId,
               payee: currentUser,
               amount: Number(price),
-              method: 'verified_bank_transfer',
+              currency: 'ETH',
+              method: 'crypto_wallet_transfer',
               proofHash: 'TXN_' + Math.floor(Math.random() * 1000000)
           }
       });

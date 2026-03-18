@@ -64,7 +64,7 @@ export const ServicePage = () => {
                 mileageKm: mileage,
                 jobs: jobs.split(',').map(j => j.trim()),
                 cost: { total: 1500 },
-                evidenceHash: maintFile?.hash || "MOCK_SERVICE_HASH"
+                evidenceHash: maintFile?.hash || undefined
             },
             evidence: maintFile ? [{
                 hash: maintFile.hash,
@@ -108,7 +108,7 @@ export const ServicePage = () => {
                 newPartNo,
                 oldPartNo: (targetVehicle.spec as any)[partType.toLowerCase()] || "UNKNOWN",
                 reason: "Replacement/Upgrade",
-                evidenceHash: partFile?.hash || "MOCK_PART_CERT"
+                evidenceHash: partFile?.hash || undefined
             },
             evidence: partFile ? [{
                 hash: partFile.hash,
@@ -132,7 +132,7 @@ export const ServicePage = () => {
                 workshop: garageId,
                 jobs: estimateJobs.split(',').map(j => j.trim()),
                 total: Number(estimateTotal),
-                evidenceHash: estimateFile?.hash || "MOCK_APPRAISAL_HASH"
+                evidenceHash: estimateFile?.hash || undefined
             },
             evidence: estimateFile ? [{
                 hash: estimateFile.hash,
@@ -266,6 +266,31 @@ export const ServicePage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Blockchain Transaction Log */}
+            {targetVehicle && (() => {
+                const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['MAINTENANCE_RECORDED', 'INSPECTION_RESULT_RECORDED', 'CRITICAL_PART_REPLACED', 'WORKSHOP_ESTIMATE_SUBMITTED', 'ODOMETER_SNAPSHOT'].includes(e.type));
+                return vehicleEvents.length > 0 ? (
+                    <div className="card" style={{ marginTop: '1rem' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                            🔗 Service Blockchain Transactions
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {vehicleEvents.slice(-8).map((ev, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                    <div>
+                                        <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                        {ev.txHash!.slice(0, 10)}...{ev.txHash!.slice(-8)}
+                                    </code>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : null;
+            })()}
         </div>
     );
 };

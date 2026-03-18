@@ -68,12 +68,12 @@ export class OwnershipTransfer {
   @Column({ type: 'json', nullable: true })
   sellerProfile: Record<string, any> | null;
 
-  /** ราคาขาย (หน่วยสตางค์) */
+  /** ราคาขาย (หน่วย Wei) */
   @Column({ type: 'bigint', nullable: true })
   salePrice: string | null;
 
   /** สกุลเงิน */
-  @Column({ length: 10, default: 'THB' })
+  @Column({ length: 10, default: 'ETH' })
   currency: string;
 
   /** วิธีการชำระเงิน */

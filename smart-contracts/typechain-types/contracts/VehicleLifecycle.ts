@@ -672,7 +672,7 @@ export interface VehicleLifecycle extends BaseContract {
       paymentRefHash: BytesLike
     ],
     [void],
-    "nonpayable"
+    "payable"
   >;
 
   renounceRole: TypedContractMethod<
@@ -838,7 +838,7 @@ export interface VehicleLifecycle extends BaseContract {
       paymentRefHash: BytesLike
     ],
     [void],
-    "nonpayable"
+    "payable"
   >;
   getFunction(
     nameOrSignature: "renounceRole"

@@ -83,6 +83,12 @@ export const checkEngineExists = async (engine: string): Promise<{ exists: boole
   return response.json();
 };
 
+export const checkMileage = async (vin: string): Promise<{ currentMileage: number }> => {
+  const response = await fetch(`${API_URL}/vehicles/check-mileage?vin=${encodeURIComponent(vin)}`);
+  if (!response.ok) throw new Error('Failed to check mileage');
+  return response.json();
+};
+
 export const checkPlateExists = async (plateNo: string): Promise<{ exists: boolean }> => {
   const response = await fetch(`${API_URL}/events/check-plate?plateNo=${encodeURIComponent(plateNo)}`);
   if (!response.ok) throw new Error('Failed to check plate');

@@ -30,6 +30,9 @@ export class BlockchainService implements OnModuleInit {
   public wallet: ethers.Signer;
   public walletAddress: string;
 
+  // Role-specific wallets (fixes God Mode Wallet issue §1.1)
+  private roleWallets: Map<string, ethers.Signer> = new Map();
+
   public vehicleRegistryContract: ethers.Contract;
   public vehicleNFTContract: ethers.Contract;
   public vehicleLifecycleContract: ethers.Contract;
@@ -52,6 +55,27 @@ export class BlockchainService implements OnModuleInit {
       // caused by local Ganache cache delays or external script interference
       this.wallet = new SafeNonceManager(rawWallet);
     }
+
+    // Initialize role-specific wallets from env vars (§1.1 God Mode Wallet fix)
+    const roleKeys: Record<string, string> = {
+      MANUFACTURER: 'MANUFACTURER_PRIVATE_KEY',
+      DEALER: 'DEALER_PRIVATE_KEY',
+      DLT_OFFICER: 'DLT_OFFICER_PRIVATE_KEY',
+      CONSUMER: 'CONSUMER_PRIVATE_KEY',
+      LENDER: 'LENDER_PRIVATE_KEY',
+      INSURER: 'INSURER_PRIVATE_KEY',
+      SERVICE_PROVIDER: 'SERVICE_PROVIDER_PRIVATE_KEY',
+      INSPECTOR: 'INSPECTOR_PRIVATE_KEY',
+    };
+    for (const [role, envVar] of Object.entries(roleKeys)) {
+      const key = this.configService.get<string>(envVar);
+      if (key) {
+        const rawWallet = new ethers.Wallet(key, this.provider);
+        this.roleWallets.set(role, new SafeNonceManager(rawWallet));
+        console.log(`[BlockchainService] ✅ Role wallet loaded: ${role} → ${rawWallet.address}`);
+      }
+    }
+
 
     // Use process.cwd() instead of __dirname to ensure it finds the src folder even if compiled to dist
     const abiPath = path.join(process.cwd(), 'src', 'blockchain', 'abi');
@@ -177,4 +201,40 @@ export class BlockchainService implements OnModuleInit {
       return 0;
     }
   }
-}
+
+  /**
+   * Get the signer for a specific role. Falls back to admin wallet if role wallet is not configured.
+   * This fixes §1.1 God Mode Wallet — each role uses its own wallet for transactions.
+   */
+  getSignerForRole(role: string): ethers.Signer {
+    // Normalize role from actor string (e.g. "INSURER:0x..." → "INSURER")
+    const normalizedRole = role.split(':')[0].toUpperCase()
+      .replace('DLT', 'DLT_OFFICER')
+      .replace('INSPECTION', 'INSPECTOR')
+      .replace('SERVICE', 'SERVICE_PROVIDER')
+      .replace('WORKSHOP', 'SERVICE_PROVIDER');
+    
+    const roleSigner = this.roleWallets.get(normalizedRole);
+    if (roleSigner) {
+      console.log(`[BlockchainService] 🔑 Using role wallet for: ${normalizedRole}`);
+      return roleSigner;
+    }
+    console.log(`[BlockchainService] ⚠️ No role wallet for "${normalizedRole}", using admin wallet`);
+    return this.wallet;
+  }
+
+  /**
+   * Get a contract instance connected to the signer for a specific role.
+   */
+  getContractForRole(contractName: string, role: string): ethers.Contract {
+    const signer = this.getSignerForRole(role);
+    switch (contractName) {
+      case 'VEHICLE_NFT': return this.vehicleNFTContract.connect(signer) as ethers.Contract;
+      case 'VEHICLE_REGISTRY': return this.vehicleRegistryContract.connect(signer) as ethers.Contract;
+      case 'VEHICLE_LIFECYCLE': return this.vehicleLifecycleContract.connect(signer) as ethers.Contract;
+      case 'VEHICLE_LIEN': return this.vehicleLienContract.connect(signer) as ethers.Contract;
+      case 'VEHICLE_CONSENT': return this.vehicleConsentContract.connect(signer) as ethers.Contract;
+      default: throw new Error(`Unknown contract: ${contractName}`);
+    }
+  }
+}

@@ -49,7 +49,8 @@ export const DealerPage = () => {
             payload: {
                 buyer: buyerId,
                 saleType: "new_car",
-                price: 850000,
+                price: 0.85,
+                currency: 'ETH',
                 contractHash: "HASH_CONTRACT_" + Date.now()
             }
         });
@@ -62,6 +63,7 @@ export const DealerPage = () => {
                 from: dealerId,
                 to: buyerId,
                 reason: 'first_owner_delivery',
+                price: 0.85,
                 deliveryDate: new Date().toISOString()
             }
         });
@@ -90,7 +92,13 @@ export const DealerPage = () => {
             return;
         }
 
-        const evaluationPrice = 500000;
+        const priceInput = prompt("กรอกราคาประเมินรถเทิร์น (บาท):", "500000");
+        if (!priceInput) return;
+        const evaluationPrice = Number(priceInput);
+        if (isNaN(evaluationPrice) || evaluationPrice <= 0) {
+            alert("ราคาไม่ถูกต้อง");
+            return;
+        }
 
         await addEvent({
             type: 'TRADEIN_EVALUATED',
