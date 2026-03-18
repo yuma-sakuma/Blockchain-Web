@@ -35,7 +35,7 @@
 - **Frontend:** หน้า UI (`FinancePage.tsx`, `DealerPage.tsx`) มีการสุ่มค่า `contractHash: "L-CTR-" + Date.now()` และ `Math.random()` ปั้นขึ้นไปเป็นขยะส่งให้ Backend 
 
 ### 2.2 การลักไก่ Save DB ตัดหน้า Blockchain (Silent Failure)
-- **ปัญหา:** ในไฟล `event.service.ts` จำนวนกว่า 15 เคส มีการใช้รูปแบบการรันคำสั่ง `await repository.save(entity)` **แซงหน้า** บล็อก `try { await tx.wait() }`
+- **ปัญหา:** ในไฟล์ `event.service.ts` จำนวนกว่า 15 เคส มีการใช้รูปแบบการรันคำสั่ง `await repository.save(entity)` **แซงหน้า** บล็อก `try { await tx.wait() }`
 - **ผลกระทบ:** Database ถูกบันทึกไปแล้ว! แต่ถ้าตอนหลัง Blockchain สั่ง Revert หรือ Gas หมด... โค้ด Backend ยังเอา `catch(err)` ครอบกลืน Error ทิ้ง ทำให้เกิดภาวะ **"ฐานข้อมูลบอกสำเร็จ เชนบอกไม่มีอยู่จริง"**
 - **📍 พิกัด 15 จุดร้ายแรงที่ต้องย้าย `save()` ไปไว้หลังสุด:**
   - `OWNERSHIP_TRANSFERRED` (Line 174, 177)

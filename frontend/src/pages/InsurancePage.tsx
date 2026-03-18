@@ -42,7 +42,7 @@ export const InsurancePage = () => {
                 validFrom: new Date().toISOString(),
                 validUntil: new Date(Date.now() + 86400000 * 365).toISOString(),
                 coverageType: coverage,
-                evidenceHash: policyFile?.hash || "MOCK_POLICY_DOC"
+                evidenceHash: policyFile?.hash || undefined
             },
             evidence: policyFile ? [{
                 hash: policyFile.hash,
@@ -88,7 +88,7 @@ export const InsurancePage = () => {
                 date: new Date().toISOString(),
                 description,
                 severity,
-                evidenceHashes: claimFile ? [claimFile.hash] : ["HASH_ACCIDENT_PHOTO_01", "HASH_POLICE_REPORT"]
+                evidenceHashes: claimFile ? [claimFile.hash] : []
             },
             evidence: claimFile ? [{
                 hash: claimFile.hash,
@@ -111,7 +111,7 @@ export const InsurancePage = () => {
                 estimateId: estimate.payload.id,
                 amount: estimate.payload.total,
                 approvedAmount: estimate.payload.total,
-                approvalCode: "APP-" + Math.floor(Math.random() * 10000),
+                approvalCode: crypto.randomUUID(),
                 notes: "Standard labor rates applied."
             }
         });
@@ -345,6 +345,31 @@ export const InsurancePage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Blockchain Transaction Log */}
+            {targetVehicle && (() => {
+                const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['INSURANCE_POLICY_UPDATED', 'CLAIM_FILED', 'INSURER_APPROVED_ESTIMATE'].includes(e.type));
+                return vehicleEvents.length > 0 ? (
+                    <div className="card" style={{ marginTop: '1rem' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                            🔗 Insurance Blockchain Transactions
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {vehicleEvents.slice(-8).map((ev, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                    <div>
+                                        <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                        {ev.txHash!.slice(0, 10)}...{ev.txHash!.slice(-8)}
+                                    </code>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : null;
+            })()}
         </div>
     );
 };

@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
 
 export const FinancePage = () => {
-    const { vehicles, addEvent } = useVehicleStore();
+    const { vehicles, events, addEvent } = useVehicleStore();
     const { address } = useAuth();
     const [vin, setVin] = useState('');
     
@@ -20,7 +20,7 @@ export const FinancePage = () => {
             tokenId: targetVehicle.tokenId,
             payload: {
                 lender,
-                contractHash: "L-CTR-" + Date.now(),
+                contractHash: `CTR-${targetVehicle.tokenId}-${Date.now()}`,
                 startDate: new Date().toISOString(),
                 rules: { transferLocked: true }
             }
@@ -35,7 +35,7 @@ export const FinancePage = () => {
             tokenId: targetVehicle.tokenId,
             payload: {
                 releasedAt: new Date().toISOString(),
-                receiptHash: "L-PAY-" + Date.now()
+                receiptHash: `RLS-${targetVehicle.tokenId}-${Date.now()}`
             }
         });
     };
@@ -49,7 +49,7 @@ export const FinancePage = () => {
                 tokenId: targetVehicle.tokenId,
                 payload: {
                     date: new Date().toISOString(),
-                    legalRefHash: "DLT-NOTICE-" + Date.now()
+                    legalRefHash: `RPO-${targetVehicle.tokenId}-${Date.now()}`
                 }
             });
         }
@@ -65,7 +65,7 @@ export const FinancePage = () => {
                 installmentNo: num,
                 amount: 15400,
                 date: new Date().toISOString(),
-                proofHash: "TXN_" + Math.random().toString(36).substring(7)
+                proofHash: `PAY-${targetVehicle.tokenId}-${num}-${Date.now()}`
             }
         });
     };
@@ -91,6 +91,7 @@ export const FinancePage = () => {
             </div>
 
             {targetVehicle ? (
+                <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2.5rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                         <div className="card">
@@ -177,6 +178,32 @@ export const FinancePage = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Transaction History with txHash */}
+                {(() => {
+                    const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['LIEN_CREATED', 'LIEN_RELEASED', 'REPOSSESSION_RECORDED', 'INSTALLMENT_MILESTONE_RECORDED'].includes(e.type));
+                    return vehicleEvents.length > 0 ? (
+                        <div className="card" style={{ gridColumn: '1 / -1' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                                🔗 Blockchain Transaction Log
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {vehicleEvents.slice(-8).map((ev, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                        <div>
+                                            <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                            {ev.txHash!.slice(0, 10)}...{ev.txHash!.slice(-8)}
+                                        </code>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null;
+                })()}
+                </>
             ) : (
                 <div className="card" style={{ textAlign: 'center', padding: '4rem', opacity: 0.5 }}>
                    <Landmark size={48} style={{ margin: '0 auto 1.5rem auto' }} />
