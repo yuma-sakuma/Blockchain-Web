@@ -6,6 +6,7 @@ import { VehicleEvent, VehicleNFT } from '../types/vehicle';
 interface VehicleContextType {
   vehicles: VehicleNFT[];
   events: VehicleEvent[];
+  isGlobalLoading: boolean;
   addEvent: (event: Omit<VehicleEvent, 'id' | 'timestamp'>) => Promise<any>;
   getVehicle: (tokenId: string) => VehicleNFT | undefined;
 }
@@ -229,6 +230,7 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
 export const VehicleProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<VehicleNFT[]>([]);
   const [events, setEvents] = useState<VehicleEvent[]>([]);
+  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -329,8 +331,73 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     fetchInitialData();
   }, []);
 
+  // Re-fetch all data from backend (called after successful events)
+  const fetchAllData = async () => {
+    try {
+      const [fetchedVehicles, fetchedEvents] = await Promise.all([
+        getVehicles(),
+        getEvents()
+      ]);
+      const mappedEvents: VehicleEvent[] = fetchedEvents.map((e: any) => ({
+        id: e.eventId,
+        tokenId: e.tokenId,
+        timestamp: new Date(Number(e.occurredAt)).toISOString(),
+        actor: e.actorAddress || 'UNKNOWN',
+        type: e.type,
+        payload: e.payload,
+        evidence: e.evidence || undefined,
+        txHash: e.txHash || undefined,
+      }));
+      setEvents(mappedEvents);
+
+      const mappedVehicles: VehicleNFT[] = fetchedVehicles.map((v: any) => ({
+        tokenId: v.tokenId,
+        vin: v.vinNumber,
+        makeModelTrim: v.modelJson?.model || 'Unknown',
+        spec: v.specJson || { color: 'Unknown', options: [] },
+        production: {
+          manufacturedAt: new Date(Number(v.manufacturedAt)).toISOString(),
+          plantId: v.manufacturerAddress
+        },
+        manufacturerSignature: v.manufacturerSignature || '',
+        currentOwner: v.currentOwnerAddress || 'Unknown',
+        ownerCount: v.ownerCount || 0,
+        registration: {
+          isRegistered: v.registrationStatus === 'REGISTERED',
+          taxStatus: v.taxPayments && v.taxPayments.length > 0 ? 'paid' : 'unpaid' as any,
+          plateNo: v.plateRecords && v.plateRecords.length > 0
+            ? v.plateRecords.sort((a: any, b: any) => Number(b.effectiveAt) - Number(a.effectiveAt))[0].plateNo
+            : undefined,
+          bookNo: v.registrations && v.registrations.length > 0
+            ? v.registrations.sort((a: any, b: any) => Number(b.registeredAt) - Number(a.registeredAt))[0].greenBookNo
+            : undefined
+        },
+        warranty: { terms: { years: 0, mileageKm: 0, coverage: [] } },
+        flags: {
+          stolen: v.activeFlags?.includes('STOLEN') || false,
+          seized: v.activeFlags?.includes('SEIZED') || false,
+          majorAccident: v.activeFlags?.includes('MAJOR_ACCIDENT') || false,
+          flood: v.activeFlags?.includes('FLOOD') || false,
+          totalLoss: v.activeFlags?.includes('TOTAL_LOSS') || false,
+          scrapped: v.activeFlags?.includes('SCRAPPED') || false
+        },
+        lien: { status: v.transferLocked ? 'active' : 'none' as any, transferLocked: v.transferLocked || false },
+        insurance: v.insurancePolicies && v.insurancePolicies.length > 0 ? {
+          insurer: v.insurancePolicies[0].insurerAddress,
+          policyNumber: v.insurancePolicies[0].policyNo,
+          coverageType: v.insurancePolicies[0].coverageDetails?.type || 'unknown',
+          validUntil: new Date(Number(v.insurancePolicies[0].validTo)).toISOString(),
+          status: 'active' as any
+        } : undefined
+      }));
+      setVehicles(mappedVehicles);
+    } catch (err) {
+      console.error('[fetchAllData] Failed to re-fetch:', err);
+    }
+  };
+
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
-    // Track original tokenId so we can reconcile after blockchain returns real one
+    setIsGlobalLoading(true);
     const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
@@ -428,33 +495,77 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Update Local State ONLY AFTER getting clear Token ID and Hash
+      // Update local state optimistically
       setEvents(prev => [...prev, newEvent]);
       setVehicles(prev => applyEventToState(prev, newEvent));
 
-      // --- Sync to backend (pass txHash so backend skips on-chain work) ---
-      // Use authenticated API call with role wallet signature
+      // Sync to backend
       const response = await createAuthenticatedEvent(newEvent, roleWallet);
 
       if (response && response.txHash) {
         showToast(`Transaction Confirmed\n\nTxHash: ${response.txHash}`);
-
-        // Ensure txHash is saved on the event we just pushed optimistic
         setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
       }
 
-      // Return newEvent so caller (Page) has the REAL tokenId
+      // Re-fetch all data from backend to ensure consistency
+      await fetchAllData();
+
       return newEvent;
     } catch (err: any) {
       console.error("Failed executing event flow", err);
       showToast(`Interaction failed: ${err.message}`, 'error');
       throw err;
+    } finally {
+      setIsGlobalLoading(false);
     }
   };
 
   return (
-    <VehicleContext.Provider value={{ vehicles, events, addEvent, getVehicle: (id) => vehicles.find(v => v.tokenId === id) }}>
+    <VehicleContext.Provider value={{ vehicles, events, isGlobalLoading, addEvent, getVehicle: (id) => vehicles.find(v => v.tokenId === id) }}>
       {children}
+
+      {/* Loading Overlay */}
+      {isGlobalLoading && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            border: '1px solid rgba(99,102,241,0.3)',
+            borderRadius: '16px',
+            padding: '32px 48px',
+            textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid rgba(99,102,241,0.2)',
+              borderTopColor: '#6366f1',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px'
+            }} />
+            <div style={{ color: '#e2e8f0', fontSize: '1rem', fontWeight: 600 }}>
+              ⏳ Processing Transaction...
+            </div>
+            <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '8px' }}>
+              Syncing with Blockchain
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSS for spinner animation */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
       {toastMessage && (
         <div style={{
           position: 'fixed',
@@ -465,7 +576,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           padding: '16px 20px',
           borderRadius: '8px',
           boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-          zIndex: 9999,
+          zIndex: 10001,
           maxWidth: '450px',
           fontFamily: 'monospace',
           fontSize: '0.85rem',

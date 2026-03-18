@@ -92,7 +92,13 @@ export const DealerPage = () => {
             return;
         }
 
-        const evaluationPrice = 500000;
+        const priceInput = prompt("กรอกราคาประเมินรถเทิร์น (บาท):", "500000");
+        if (!priceInput) return;
+        const evaluationPrice = Number(priceInput);
+        if (isNaN(evaluationPrice) || evaluationPrice <= 0) {
+            alert("ราคาไม่ถูกต้อง");
+            return;
+        }
 
         await addEvent({
             type: 'TRADEIN_EVALUATED',
