@@ -60,6 +60,10 @@ export class Vehicle {
   @Column({ length: 66 })
   modelHash: string;
 
+  /** ข้อมูลการรับประกัน (Warranty) */
+  @Column({ type: 'json', nullable: true })
+  warrantyJson: { startPolicy: string; terms: Record<string, any> } | null;
+
   /** สเปกรถฉบับเต็ม (สี, แบตเตอรี่, options ฯลฯ) */
   @Column({ type: 'json' })
   specJson: Record<string, any>;

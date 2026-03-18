@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { SignatureGuard } from '../auth/signature.guard';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { EventLog } from '../database/entities/event-log.entity';
@@ -25,8 +26,12 @@ export class EventController {
   }
 
   @Post()
-  @UseGuards(ApiKeyGuard)
-  async create(@Body() createEventDto: any): Promise<EventLog> {
+  @UseGuards(SignatureGuard)
+  async create(@Body() createEventDto: any, @Req() req: any): Promise<EventLog> {
+    // Use verified signer from guard if available, fallback to body actor
+    if (req.signer) {
+      createEventDto.actor = req.signer;
+    }
     return this.eventService.create(createEventDto);
   }
 }

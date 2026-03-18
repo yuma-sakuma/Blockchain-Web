@@ -1,6 +1,7 @@
+import { execSync } from "child_process";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as path from "path";
 import {
   VehicleConsent__factory,
@@ -15,6 +16,23 @@ import { grantRoles } from "./grant-roles";
 dotenv.config();
 
 async function main() {
+  // ============================================================
+  // 0. Reset Backend Database (if running on Ganache/Localhost)
+  // ============================================================
+  if (network.name === "ganache" || network.name === "localhost") {
+    console.log(`\n=== 🧹 Resetting Backend Database (${network.name}) ===`);
+    try {
+      const backendPath = path.join(__dirname, "..", "..", "backend");
+      console.log(`Dropping schema...`);
+      execSync("npm run typeorm -- schema:drop -d src/database/data-source.ts", { cwd: backendPath, stdio: "inherit" });
+      console.log(`Syncing schema...`);
+      execSync("npm run typeorm -- schema:sync -d src/database/data-source.ts", { cwd: backendPath, stdio: "inherit" });
+      console.log("✅ Database reset complete!\n");
+    } catch (err) {
+      console.error("⚠️ Failed to reset database:", err);
+    }
+  }
+
   // ============================================================
   // 1. Build role wallets from private keys in .env
   // ============================================================
@@ -125,12 +143,12 @@ async function main() {
   const REGISTRY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("REGISTRY_ROLE"));
   const LIEN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("LIEN_ROLE"));
   
-  // -- VehicleNFT cross-contract roles --
-  await (await vehicleNFT.connect(deployer).grantRole(REGISTRY_ROLE, deployer.address)).wait();
-  console.log(`✅ REGISTRY_ROLE granted to deployer ${deployer.address}`);
+  // -- VehicleNFT cross-contract roles (granted to contract addresses, not deployer) --
+  await (await vehicleNFT.connect(deployer).grantRole(REGISTRY_ROLE, vehicleRegistryAddress)).wait();
+  console.log(`✅ REGISTRY_ROLE granted to VehicleRegistry contract ${vehicleRegistryAddress}`);
   
-  await (await vehicleNFT.connect(deployer).grantRole(LIEN_ROLE, deployer.address)).wait();
-  console.log(`✅ LIEN_ROLE granted to deployer ${deployer.address}`);
+  await (await vehicleNFT.connect(deployer).grantRole(LIEN_ROLE, vehicleLienAddress)).wait();
+  console.log(`✅ LIEN_ROLE granted to VehicleLien contract ${vehicleLienAddress}`);
   
   console.log("\n=== All Roles Granted ===");
   
@@ -177,6 +195,10 @@ async function main() {
 
     fs.writeFileSync(backendEnvPath, envContent);
     console.log(`\n✅ Backend .env updated at: ${backendEnvPath}`);
+    console.log("\n--- Backend Contract Addresses Written ---");
+    for (const [key, value] of Object.entries(contractAddresses)) {
+      console.log(`   ${key}=${value}`);
+    }
   } catch (err) {
     console.warn(`\n⚠️  Could not update backend .env: ${err}`);
   }
@@ -229,7 +251,7 @@ async function main() {
     }
 
     fs.writeFileSync(frontendEnvPath, envContent);
-    console.log(`✅ Frontend .env updated at: ${frontendEnvPath}`);
+    console.log(`\n✅ Frontend .env updated at: ${frontendEnvPath}`);
     console.log("\n--- Frontend Role Addresses Written ---");
     for (const [key, value] of Object.entries(roleAddresses)) {
       console.log(`   ${key}=${value}`);
