@@ -42,7 +42,7 @@ export class EventService {
     @InjectRepository(MaintenanceLog)
     private maintenanceLogRepository: Repository<MaintenanceLog>,
     @InjectRepository(VehicleFlagRecord)
-    private vehicleFlagRecordRepository: Repository<VehicleFlagRecord>,
+    private vehicleFlagRepository: Repository<VehicleFlagRecord>,
     private blockchainService: BlockchainService,
   ) { }
 
@@ -85,14 +85,15 @@ export class EventService {
           throw new Error(`VIN ${payload.vin} already exists in the database.`);
         }
 
-        // 2. Engine/Motor Serial Uniqueness Check (using DB query to avoid OOM — Audit Fix §7.3)
+        // 2. Engine/Motor Serial Uniqueness Check
         if (payload.spec && payload.spec.engine) {
-          const existingEngine = await this.vehicleRepository
-            .createQueryBuilder('v')
-            .where("JSON_UNQUOTE(JSON_EXTRACT(v.specJson, '$.engine')) = :engine", { engine: payload.spec.engine })
-            .getOne();
-          if (existingEngine) {
-            throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
+          // Find all vehicles and check inside specJson.
+          // (Using pure JS for cross-db compatibility since specJson is a simple object)
+          const allVehicles = await this.vehicleRepository.find({ select: ['tokenId', 'specJson'] });
+          for (const v of allVehicles) {
+            if (v.specJson && v.specJson.engine === payload.spec.engine) {
+              throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
+            }
           }
         }
 
@@ -241,7 +242,9 @@ export class EventService {
                 }
 
                 const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
-                const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+                // Strip role prefix (e.g. "CONSUMER:0x...", "DEALER:0x...") to get raw address
+                const rawTo = payload.to?.includes(':') ? payload.to.split(':').pop() : payload.to;
+                const toAddress = ethers.isAddress(rawTo) ? ethers.getAddress(rawTo) : ethers.ZeroAddress;
 
                 // --- FIX: Actually transfer the NFT on-chain ---
                 const currentOwner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
@@ -463,102 +466,62 @@ export class EventService {
         }
         case 'FLAG_UPDATED': {
           console.log('[EventService] 🚩 FLAG_UPDATED event');
-          if (payload.flag && payload.value !== undefined) {
+          const flagName = payload.flag || payload.flagType;
+          if (flagName && payload.value !== undefined) {
             const flagsSet = new Set(vehicle.activeFlags || []);
-
+            const flagKey = flagName.toUpperCase();
             if (payload.value) {
-              // ── Scenario 1 & 2: Flagging as STOLEN or SEIZED ──
               flagsSet.add(flagKey as any);
-              vehicle.activeFlags = Array.from(flagsSet);
-              vehicle.transferLocked = true;
-              vehicleUpdated = true;
-
-              // Create a new VehicleFlagRecord row
-              const flagRecord = this.vehicleFlagRecordRepository.create({
-                tokenId: vehicle.tokenId,
-                flag: flagKey as any,
-                active: true,
-                sourceAddress: createEventDto.actor || 'SYSTEM',
-                refHash: '',
-                caseDocUrl: payload.caseDocUrl || payload.reason || null,
-                details: null,
-                statusTimeline: [],
-                txHash: null,
-              });
-              const savedFlagRecord = await this.vehicleFlagRecordRepository.save(flagRecord);
-
-              // Blockchain Interaction
-              if (!createEventDto.txHash) {
-                try {
-                  await Promise.race([
-                    this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-                  ]);
-
-                  const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
-                  if (flagMap[payload.flag]) {
-                    const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                      createEventDto.tokenId,
-                      flagMap[payload.flag],
-                      payload.value,
-                      ethers.id('flag-ref-hash')
-                    );
-                    const receipt = await tx.wait();
-                    txHash = receipt.hash;
-                    console.log('[EventService] ✅ FLAG_UPDATED Transaction Confirmed!');
-                    console.log('  txHash     :', txHash);
-                    console.log('  blockNumber:', receipt.blockNumber);
-                    console.log('  gasUsed    :', receipt.gasUsed?.toString());
-                  }
-                } // end if (!createEventDto.txHash)
             } else {
-                // ── Scenario 3: Return to Owner ──
-                flagsSet.delete(flagKey as any);
-                vehicle.activeFlags = Array.from(flagsSet);
-                // Only unlock transfer if no more active flags
-                if (flagsSet.size === 0) {
-                  vehicle.transferLocked = false;
-                }
-                vehicleUpdated = true;
-
-                // Find and deactivate the active flag record
-                const activeFlagRecord = await this.vehicleFlagRecordRepository.findOne({
-                  where: { tokenId: vehicle.tokenId, flag: flagKey as any, active: true }
-                });
-                if (activeFlagRecord) {
-                  activeFlagRecord.active = false;
-                  await this.vehicleFlagRecordRepository.save(activeFlagRecord);
-                }
-
-                // Blockchain Interaction
-                if (!createEventDto.txHash) {
-                  try {
-                    await Promise.race([
-                      this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
-                      new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
-                    ]);
-
-                    await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-
-                    const flagMap = { 'STOLEN': 1 << 0, 'SEIZED': 1 << 1, 'MAJOR_ACCIDENT': 1 << 2, 'FLOOD': 1 << 3, 'TOTAL_LOSS': 1 << 4 };
-                    if (flagMap[flagKey]) {
-                      const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
-                        createEventDto.tokenId,
-                        flagMap[flagKey],
-                        false,
-                        ethers.id('flag-ref-hash')
-                      );
-                      const receipt = await tx.wait();
-                      txHash = receipt.hash;
-                    }
-                  } catch (err) {
-                    console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
-                  }
-                } // end if (!createEventDto.txHash)
-              }
+              flagsSet.delete(flagKey as any);
             }
-            break;
+            vehicle.activeFlags = Array.from(flagsSet);
+            vehicleUpdated = true;
+
+            // Save to vehicle_flags table for audit trail
+            const flagRecord = this.vehicleFlagRepository.create({
+              tokenId: vehicle.tokenId,
+              flag: flagKey as any,
+              active: payload.value,
+              sourceAddress: createEventDto.actor || '0x00',
+              refHash: ethers.id(`flag-${flagKey}-${Date.now()}`),
+              details: payload.details || null,
+              statusTimeline: [{ status: payload.value ? 'SET' : 'CLEARED', at: Date.now().toString(), note: payload.reason || null }],
+            });
+            await this.vehicleFlagRepository.save(flagRecord);
+
+            // Blockchain Interaction
+            if (!createEventDto.txHash) {
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleRegistryContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+
+                const flagMap = { 'stolen': 1 << 0, 'seized': 1 << 1, 'major_accident': 1 << 2, 'flood': 1 << 3, 'total_loss': 1 << 4 };
+                if (flagMap[flagName]) {
+                  const tx = await this.blockchainService.vehicleRegistryContract.setFlag(
+                    createEventDto.tokenId,
+                    flagMap[flagName],
+                    payload.value,
+                    ethers.id('flag-ref-hash')
+                  );
+                  const receipt = await tx.wait();
+                  txHash = receipt.hash;
+                  console.log('[EventService] ✅ FLAG_UPDATED Transaction Confirmed!');
+                  console.log('  txHash     :', txHash);
+                  console.log('  blockNumber:', receipt.blockNumber);
+                  console.log('  gasUsed    :', receipt.gasUsed?.toString());
+                }
+              } catch (err) {
+                console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
+              }
+            } // end if (!createEventDto.txHash)
           }
+          break;
+        }
         case 'LIEN_CREATED': {
           console.log('[EventService] 🔒 LIEN_CREATED event');
           vehicle.transferLocked = true;
