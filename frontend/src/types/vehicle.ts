@@ -138,6 +138,7 @@ export interface VehicleEvent {
   tokenId: string;
   timestamp: string;
   actor: string;
+  actorRole?: string;
   type: EventType;
   payload: any;
   evidence?: Array<{

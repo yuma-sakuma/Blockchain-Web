@@ -28,6 +28,12 @@ export class VehicleController {
     return this.vehicleService.checkVinExists(vin);
   }
 
+  @Get('check-engine')
+  @ApiQuery({ name: 'engine', required: true })
+  async checkEngineExists(@Query('engine') engine: string): Promise<{ exists: boolean }> {
+    return this.vehicleService.checkEngineExists(engine);
+  }
+
   @Get(':tokenId')
   async findOne(@Param('tokenId') tokenId: string): Promise<any> {
     const v = await this.vehicleService.findOne(tokenId);

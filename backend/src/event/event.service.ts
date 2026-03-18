@@ -1254,12 +1254,18 @@ export class EventService {
     const event = this.eventLogRepository.create({
       ...createEventDto,
       actorAddress: createEventDto.actor || '0x00',
-      actorRole: createEventDto.actorRole ||
+      actorRole: (createEventDto.actorRole === 'DLT_OFFICER' ? 'DLT' :
+        createEventDto.actorRole === 'LENDER' ? 'FINANCE' :
+          createEventDto.actorRole === 'SERVICE_PROVIDER' ? 'WORKSHOP' :
+            createEventDto.actorRole === 'INSPECTOR' ? 'INSPECT' :
+              createEventDto.actorRole === 'CONSUMER' ? 'OWNER' :
+                createEventDto.actorRole) ||
         (createEventDto.actor?.startsWith('MANUFACTURER') ? 'MANUFACTURER' :
-          createEventDto.actor?.startsWith('DLT') ? 'REGULATORY' :
-            createEventDto.actor?.startsWith('WORKSHOP') ? 'SERVICE' :
-              createEventDto.actor?.startsWith('INSURER') ? 'INSURANCE' :
-                createEventDto.actor?.startsWith('FINANCE') ? 'FINANCIAL' : 'CONSUMER'),
+          createEventDto.actor?.startsWith('DLT') ? 'DLT' :
+            createEventDto.actor?.startsWith('WORKSHOP') ? 'WORKSHOP' :
+              createEventDto.actor?.startsWith('INSURER') ? 'INSURER' :
+                createEventDto.actor?.startsWith('FINANCE') ? 'FINANCE' :
+                  createEventDto.actor?.startsWith('DEALER') ? 'DEALER' : 'OWNER'),
       occurredAt: createEventDto.occurredAt || Date.now().toString(),
       payloadHash: payloadHash,
       evidence: createEventDto.evidence || null,
@@ -1268,7 +1274,8 @@ export class EventService {
     }) as any;
 
     const savedEvent = await this.eventLogRepository.save(event);
-    console.log(`[EventService] ✅ Event saved to DB with ID: ${savedEvent.id}`);
+    console.log(`[EventService] ✅ Event saved to DB with ID: ${savedEvent.eventId}`);
+    console.log('-------------------------------------------------------------------------------\n');
     return savedEvent;
   }
 }

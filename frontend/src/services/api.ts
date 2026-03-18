@@ -77,6 +77,12 @@ export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> 
   return response.json();
 };
 
+export const checkEngineExists = async (engine: string): Promise<{ exists: boolean }> => {
+  const response = await fetch(`${API_URL}/vehicles/check-engine?engine=${encodeURIComponent(engine)}`);
+  if (!response.ok) throw new Error('Failed to check Engine Serial');
+  return response.json();
+};
+
 export const checkPlateExists = async (plateNo: string): Promise<{ exists: boolean }> => {
   const response = await fetch(`${API_URL}/events/check-plate?plateNo=${encodeURIComponent(plateNo)}`);
   if (!response.ok) throw new Error('Failed to check plate');

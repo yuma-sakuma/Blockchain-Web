@@ -313,7 +313,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      actorRole: sessionStorage.getItem('auth_role') || undefined
     };
 
     try {
