@@ -34,6 +34,12 @@ export class VehicleController {
     return this.vehicleService.checkEngineExists(engine);
   }
 
+  @Get('check-mileage')
+  @ApiQuery({ name: 'vin', required: true })
+  async checkMileage(@Query('vin') vin: string): Promise<{ currentMileage: number }> {
+    return this.vehicleService.checkMileage(vin);
+  }
+
   @Get(':tokenId')
   async findOne(@Param('tokenId') tokenId: string): Promise<any> {
     const v = await this.vehicleService.findOne(tokenId);

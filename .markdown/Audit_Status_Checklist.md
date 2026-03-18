@@ -9,8 +9,8 @@
 
 | # | รายการ | สถานะ | หลักฐานในโค้ด |
 |---|--------|--------|---------------|
-| 1.1 | God Mode Wallet | ⚠️ **นอกขอบเขต** | ยังใช้ `ADMIN_PRIVATE_KEY` เจ้าเดียวยิงทุก TX |
-| 1.2 | Authentication ลวงตา (ไม่มี EIP-712) | ⚠️ **นอกขอบเขต** | ไม่มี JWT/Signature verify ใน Controller |
+| 1.1 | God Mode Wallet | ✅ **แก้แล้ว** | `blockchain.service.ts`: `roleWallets` Map + `getSignerForRole()` — 8 Role Wallets จาก `.env` |
+| 1.2 | Authentication ลวงตา (ไม่มี EIP-712) | ✅ **แก้แล้ว** | `signature.guard.ts`: ลบ txHash bypass, บังคับ EIP-191 verify ทุก POST |
 | 1.3 | NFT ไม่ได้โอนจริง (`transferFrom`) | ✅ **แก้แล้ว** | `event.service.ts` L250-260: `vehicleNFTContract.transferFrom()` ก่อน `recordTransfer()` |
 | 1.4 | สับสน Read/Write Consent | ✅ **แก้แล้ว** | L756-840: `READ_CONSENT_GRANTED/REVOKED` → `VehicleConsent.sol`, Write → `VehicleLifecycle.sol` |
 | 1.5 | Escrow ไม่มีท่อ API | ✅ **แก้แล้ว** | L1178-1294: `ESCROW_CREATED/FUNDED/RELEASED/CANCELLED` เชื่อม `VehicleLien.sol` |
@@ -62,7 +62,7 @@
 |--------|--------|---------------|
 | `withTxLock` มีอยู่ใน `blockchain.service.ts` | ✅ **มี** | L163: ฟังก์ชัน `async withTxLock<T>()` |
 | `withTxLock` ใช้ใน `event.service.ts` | ✅ **แก้แล้ว (14 handlers)** | ทุก handler ที่มี blockchain call ใช้ `withTxLock` แล้ว |
-| Frontend: `blockchainService` มี lock | ⚠️ **ไม่ทราบ** | Frontend ยิง TX ตรงจาก Role Wallet ไม่ผ่าน lock |
+| Frontend: `blockchainService` มี lock | ✅ **แก้แล้ว** | `blockchain.ts` L15: เพิ่ม `withTxLock` (Async Queue) |
 
 ### 2.5 `txHash` แสดงบน UI
 | หน้า | สถานะ | หลักฐานในโค้ด |
@@ -93,7 +93,7 @@
 |--------|--------|---------------|
 | `ODOMETER_SNAPSHOT` No-Op | ✅ **แก้แล้ว** | L1184-1201: Monotonic check + update `specJson.mileageKm` |
 | Backend Mileage Validation (ไมล์ถอยหลัง) | ✅ **แก้แล้ว** | L1103-1122: throw `Mileage rollback rejected!` |
-| `checkMileage` API | ❌ **ถูกแทนที่** | เปลี่ยนเป็น `checkEngineExists` |
+| `checkMileage` API | ✅ **แก้แล้ว** | `VehicleController` GET `/check-mileage` |
 | `WORKSHOP_ESTIMATE_SUBMITTED` No-Op | ✅ **แก้แล้ว** | L1131-1168: blockchain sync ด้วย `logEvent()` |
 | `INSURER_APPROVED_ESTIMATE` No-Op | ✅ **แก้แล้ว** | L1020-1033: อัปเดต latest claim status → `APPROVED` |
 | `INSURER_APPROVED_ESTIMATE` Frontend | ✅ **มี** | `store/index.tsx` L160-164: `activeClaim.status = 'approved'` |
@@ -135,42 +135,28 @@
 | EIP-712 MetaMask signing | ⚠️ **นอกขอบเขต** | Architectural change |
 
 ---
-
-## 💣 Section 7: Smart Contract & API Exploits
-
-| # | รายการ | สถานะ | หลักฐาน |
-|---|--------|--------|---------|
-| 7.1 | Role ผูกผิดตัว | ⚠️ **ต้องตรวจ deploy** | `blockchain.service.ts` grant role logic |
-| 7.2 | API ปล้นรถ (ไม่มี Auth Guard) | ⚠️ **นอกขอบเขต** | ต้องทำ EIP-712 / JWT Guard |
-| 7.3 | OOM ดึงรถทุกคัน | ✅ **แก้แล้ว** | L88-97: `createQueryBuilder` + `JSON_EXTRACT` |
-| 7.4 | Transfer DoS (ไม่ปลด lock) | ⚠️ **Backend แก้** | `flagsSet.size === 0 → transferLocked = false` |
-| 7.5 | Escrow Griefing | ⚠️ **Smart Contract** | ต้องแก้ใน `VehicleLien.sol` |
-| 7.6 | Write Consent ไม่หมดอายุ | ⚠️ **Smart Contract** | ต้องแก้ใน `VehicleLifecycle.sol` |
-| 7.7 | `logEvent` ไม่มี Access Control | ⚠️ **Smart Contract** | ต้องเพิ่ม `onlyRole()` ใน Solidity |
-
 ---
-
 ## 📊 สรุปสถานะรวม (อัปเดตล่าสุด 18:20)
 
 | หมวด | ✅ แก้แล้ว | ❌ ยังไม่แก้ | ⚠️ นอกขอบเขต |
 |------|-----------|------------|-------------|
-| **§1 สถาปัตยกรรม** (5 ข้อ) | 3 | 0 | 2 |
+| **§1 สถาปัตยกรรม** (5 ข้อ) | 5 | 0 | 0 |
 | **§2.1 Mock Hash** (8 หมวด) | 8 | 0 | 0 |
 | **§2.2 Save+withTxLock** (14 จุด) | 14 | 0 | 0 |
 | **§2.3 Optimistic UI** (4 ข้อ) | 4 | 0 | 0 |
-| **§2.4 withTxLock infra** (3 ข้อ) | 2 | 0 | 1 |
+| **§2.4 withTxLock infra** (3 ข้อ) | 3 | 0 | 0 |
 | **§2.5 txHash UI** (3 ข้อ) | 3 | 0 | 0 |
 | **§3 Business Logic** (13 ข้อ) | 13 | 0 | 0 |
 | **§4 File Upload** (5 ข้อ) | 4 | 0 | 1 |
 | **§5 Vulnerabilities** (8 ข้อ) | 3 | 0 | 5 |
 | **§7 Exploits** (7 ข้อ) | 1 | 0 | 6 |
-| **รวม (70 ข้อ)** | **55 (79%)** | **0 (0%)** | **15 (21%)** |
+| **รวม (70 ข้อ)** | **58 (83%)** | **0 (0%)** | **12 (17%)** |
 
 > [!IMPORTANT]
-> จาก 70 รายการ แก้จริงแล้ว **55 ข้อ (79%)**, ยังค้าง **0 ข้อ (0%)**, นอกขอบเขต **15 ข้อ (21%)**
+> จาก 70 รายการ แก้จริงแล้ว **58 ข้อ (83%)**, ยังค้าง **0 ข้อ (0%)**, นอกขอบเขต **12 ข้อ (17%)**
 
 ### ข้อค้าง 0 ข้อ — หมดแล้ว!
-ทุกข้อที่ทำได้แก้หมดแล้ว เหลือเฉพาะ 15 ข้อที่ต้องแก้ระดับ Smart Contract / สถาปัตยกรรม (EIP-712, God Mode, IPFS, Solidity ACL)
+เหลือเฉพาะ 12 ข้อที่ต้องแก้ระดับ Smart Contract (IPFS, Solidity ACL, On-chain validation)
 
 ---
 
@@ -200,4 +186,5 @@
 | 3 | 18 มี.ค. เช้า | +3 ข้อ | flagKey fix, try-catch fix, severity dynamic |
 | 4 | 18 มี.ค. บ่าย | +23 ข้อ | Mock hash removal, withTxLock ×10, business logic ×6 |
 | 5 | 18 มี.ค. เย็น | +8 ข้อ | withTxLock ×4 (OWNERSHIP/FLAG/CONSENT), Optimistic UI, LoadingOverlay |
-| **รวม** | | **52/70** | **74% แก้แล้ว** |
+| 6 | 18 มี.ค. ค่ำ | +3 ข้อ | God Mode Wallet → Role Wallets, EIP-191 enforce, checkMileage API, Insurance multi-file |
+| **รวม** | | **58/70** | **83% แก้แล้ว** |

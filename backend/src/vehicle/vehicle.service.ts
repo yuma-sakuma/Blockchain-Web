@@ -45,5 +45,13 @@ export class VehicleService {
     const exists = allVehicles.some(v => v.specJson && v.specJson.engine === engine);
     return { exists };
   }
+
+  async checkMileage(vin: string): Promise<{ currentMileage: number }> {
+    const vehicle = await this.vehicleRepository.findOne({
+      where: { vinNumber: vin },
+    });
+    if (!vehicle) return { currentMileage: 0 };
+    return { currentMileage: vehicle.specJson?.mileageKm || 0 };
+  }
 }
 
