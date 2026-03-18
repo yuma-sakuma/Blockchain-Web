@@ -6,3 +6,4 @@ git_status_output.txt
 dir_output.txt
 backend_git_backup/
 backend_temp/
+smart-contracts/scripts/deployed-addresses.json
