@@ -17,7 +17,7 @@ export const blockchainService = {
     const lock = this._txMutex.then(async () => {
       return await fn();
     });
-    this._txMutex = lock.catch(() => {});
+    this._txMutex = lock.catch(() => { });
     return lock;
   },
 
@@ -58,7 +58,7 @@ export const blockchainService = {
       const lifecycleContract = getContract("VEHICLE_LIFECYCLE", wallet);
       const reasonMap: Record<string, number> = { inventory_transfer: 0, first_sale: 1, resale: 2, trade_in: 3 };
       const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
-      
+
       // --- FIX: Actually transfer the NFT on-chain ---
       const currentOwner = await nftContract.ownerOf(tokenId);
       if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
