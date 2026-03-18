@@ -30,6 +30,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  const checkConnection = async (savedAddress?: string) => {
+    if (window.ethereum) {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          const currentAccount = accounts[0].address;
+          const compareAddress = savedAddress || address;
+
+          // If address changed in metamask, we should probably update or logout
+          // Only if we already have a session address to compare with
+          if (compareAddress && currentAccount.toLowerCase() !== compareAddress.toLowerCase()) {
+            console.warn("Metamask address differs from session. Logging out.");
+            logout();
+          } else if (!compareAddress) {
+            // No session yet, but we have a metamask account, so use it
+            setAddress(currentAccount);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to check connection:", err);
+      }
+    }
+  };
+
   // Restore session on load
   useEffect(() => {
     const savedAddress = sessionStorage.getItem('auth_address');
@@ -37,36 +62,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (savedAddress) {
       setAddress(savedAddress);
-      // Verify if still connected to Metamask
-      checkConnection();
+      // Verify if still connected to Metamask, passing the savedAddress to avoid race condition
+      checkConnection(savedAddress);
     }
     if (savedRole) {
       setRole(savedRole);
     }
   }, []);
-
-  const checkConnection = async () => {
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          const currentAccount = accounts[0].address;
-           // If address changed in metamask, we should probably update or logout
-           if (address && currentAccount.toLowerCase() !== address.toLowerCase()) {
-              logout();
-           } else {
-             setAddress(currentAccount);
-           }
-        } else {
-          // Keep session if it exists? Or logout? 
-          // For now, let's not auto-logout simply on check, unless explicit disconnect
-        }
-      } catch (err) {
-        console.error("Failed to check connection:", err);
-      }
-    }
-  };
 
   const connectWallet = async () => {
     if (!window.ethereum) {

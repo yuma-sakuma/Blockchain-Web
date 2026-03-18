@@ -241,36 +241,68 @@ export const DLTPage = () => {
                                     <span className="text-secondary">Loss/Theft</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.stolen ? <span className="badge badge-danger">STOLEN</span> : <span className="badge badge-success">CLEAN</span>}
-                                        <button onClick={async () => {
-                                            const reason = prompt("Enter Police Report / Case Number:");
-                                            if (!reason) return;
-                                            await addEvent({
-                                                type: 'FLAG_UPDATED',
-                                                actor: actorId,
-                                                tokenId: searchResult.tokenId,
-                                                payload: { flagType: 'stolen', value: !searchResult.flags.stolen, reason, ref: 'POL-' + Date.now() }
-                                            });
-                                        }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
-                                            {searchResult.flags.stolen ? 'REVOKE' : 'REPORT'}
-                                        </button>
+                                        {searchResult.flags.stolen ? (
+                                            <button onClick={async () => {
+                                                if (!confirm('Confirm this vehicle has been returned to its original owner? This will clear the STOLEN flag.')) return;
+                                                await addEvent({
+                                                    type: 'FLAG_UPDATED',
+                                                    actor: actorId,
+                                                    tokenId: searchResult.tokenId,
+                                                    payload: { flagType: 'stolen', value: false }
+                                                });
+                                                alert('Vehicle flag cleared. Status returned to CLEAN.');
+                                            }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--success)', color: 'var(--success)' }}>
+                                                RETURN TO OWNER
+                                            </button>
+                                        ) : (
+                                            <button onClick={async () => {
+                                                const caseNo = prompt('Enter Police Report / Case Number:');
+                                                if (!caseNo) return;
+                                                await addEvent({
+                                                    type: 'FLAG_UPDATED',
+                                                    actor: actorId,
+                                                    tokenId: searchResult.tokenId,
+                                                    payload: { flagType: 'stolen', value: true, caseDocUrl: caseNo, ref: 'POL-' + Date.now() }
+                                                });
+                                                alert('Vehicle flagged as STOLEN. Transfer locked.');
+                                            }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
+                                                REPORT
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span className="text-secondary">Legal Seizure</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                        {searchResult.flags.seized ? <span className="badge badge-danger">SEIZED</span> : <span className="badge badge-success">NONE</span>}
-                                        <button onClick={async () => {
-                                            const reason = prompt("Enter Court Order Number:");
-                                            if (!reason) return;
-                                            await addEvent({
-                                                type: 'FLAG_UPDATED',
-                                                actor: actorId,
-                                                tokenId: searchResult.tokenId,
-                                                payload: { flagType: 'seized', value: !searchResult.flags.seized, reason, ref: 'CRT-' + Date.now() }
-                                            });
-                                        }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
-                                            {searchResult.flags.seized ? 'RELEASE' : 'SEIZE'}
-                                        </button>
+                                        {searchResult.flags.seized ? <span className="badge badge-danger">SEIZURE</span> : <span className="badge badge-success">NONE</span>}
+                                        {searchResult.flags.seized ? (
+                                            <button onClick={async () => {
+                                                if (!confirm('Confirm this vehicle seizure has been released and returned to its original owner?')) return;
+                                                await addEvent({
+                                                    type: 'FLAG_UPDATED',
+                                                    actor: actorId,
+                                                    tokenId: searchResult.tokenId,
+                                                    payload: { flagType: 'seized', value: false }
+                                                });
+                                                alert('Vehicle seizure cleared. Status returned to NONE.');
+                                            }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--success)', color: 'var(--success)' }}>
+                                                RETURN TO OWNER
+                                            </button>
+                                        ) : (
+                                            <button onClick={async () => {
+                                                const courtOrder = prompt('Enter Court Order Number:');
+                                                if (!courtOrder) return;
+                                                await addEvent({
+                                                    type: 'FLAG_UPDATED',
+                                                    actor: actorId,
+                                                    tokenId: searchResult.tokenId,
+                                                    payload: { flagType: 'seized', value: true, caseDocUrl: courtOrder, ref: 'CRT-' + Date.now() }
+                                                });
+                                                alert('Vehicle flagged as SEIZURE. Transfer locked.');
+                                            }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
+                                                SEIZE
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

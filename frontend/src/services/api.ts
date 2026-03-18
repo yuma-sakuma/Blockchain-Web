@@ -43,9 +43,43 @@ export const createEvent = async (eventData: any) => {
   return response.json();
 };
 
+/**
+ * Authenticated event creation — signs a message with the role wallet
+ * and sends x-address, x-signature, x-timestamp headers for backend verification
+ */
+export const createAuthenticatedEvent = async (eventData: any, wallet: import('ethers').Wallet | null) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (wallet) {
+    const timestamp = Date.now().toString();
+    const message = `vehicle-nft-auth:${wallet.address.toLowerCase()}:${timestamp}`;
+    const signature = await wallet.signMessage(message);
+    
+    headers['x-address'] = wallet.address;
+    headers['x-signature'] = signature;
+    headers['x-timestamp'] = timestamp;
+  }
+
+  const response = await fetch(`${API_URL}/events`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(eventData),
+  });
+  if (!response.ok) throw new Error('Failed to create event');
+  return response.json();
+};
+
 export const checkVinExists = async (vin: string): Promise<{ exists: boolean }> => {
   const response = await fetch(`${API_URL}/vehicles/check-vin?vin=${encodeURIComponent(vin)}`);
   if (!response.ok) throw new Error('Failed to check VIN');
+  return response.json();
+};
+
+export const checkEngineExists = async (engine: string): Promise<{ exists: boolean }> => {
+  const response = await fetch(`${API_URL}/vehicles/check-engine?engine=${encodeURIComponent(engine)}`);
+  if (!response.ok) throw new Error('Failed to check Engine Serial');
   return response.json();
 };
 

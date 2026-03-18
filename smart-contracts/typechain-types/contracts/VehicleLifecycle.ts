@@ -709,7 +709,7 @@ export interface VehicleLifecycle extends BaseContract {
 
   writeConsents: TypedContractMethod<
     [arg0: BigNumberish, arg1: AddressLike],
-    [bigint],
+    [[bigint, bigint] & { scopeMask: bigint; expiresAt: bigint }],
     "view"
   >;
 
@@ -878,7 +878,7 @@ export interface VehicleLifecycle extends BaseContract {
     nameOrSignature: "writeConsents"
   ): TypedContractMethod<
     [arg0: BigNumberish, arg1: AddressLike],
-    [bigint],
+    [[bigint, bigint] & { scopeMask: bigint; expiresAt: bigint }],
     "view"
   >;
 

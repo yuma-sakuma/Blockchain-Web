@@ -39,14 +39,20 @@ export const blockchainService = {
   },
 
   async recordTransfer(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
-    const contract = getContract("VEHICLE_LIFECYCLE", wallet);
+    const nftContract = getContract("VEHICLE_NFT", wallet);
+    const lifecycleContract = getContract("VEHICLE_LIFECYCLE", wallet);
     const reasonMap: Record<string, number> = { inventory_transfer: 0, first_sale: 1, resale: 2, trade_in: 3 };
     const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
+    
+    // --- FIX: Actually transfer the NFT on-chain ---
+    const currentOwner = await nftContract.ownerOf(tokenId);
+    if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
+      const transferTx = await nftContract.transferFrom(currentOwner, toAddress, tokenId);
+      await transferTx.wait();
+    }
 
-    // Calculate ETH value to send (pays the seller via smart contract)
-    const ethValue = payload.price ? ethers.parseEther(payload.price.toString()) : 0n;
-
-    const tx = await contract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id("payment-ref"), { value: ethValue });
+    // Record the transfer event
+    const tx = await lifecycleContract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id("payment-ref"));
     const receipt = await tx.wait();
     return { txHash: receipt.hash };
   },
@@ -107,6 +113,25 @@ export const blockchainService = {
     return { txHash: receipt.hash };
   },
 
+  // --- Read Consent: routes to VehicleConsent.sol ---
+  async grantReadConsent(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_CONSENT", wallet);
+    const granteeDid = ethers.id(payload.grantTo);
+    const scopeMask = payload.scopeMask || 1;
+    const expiresAt = Math.floor(new Date(payload.expiresAt).getTime() / 1000);
+    const nonce = Date.now();
+    const tx = await contract.grantConsent(tokenId, granteeDid, scopeMask, expiresAt, payload.singleUse || false, nonce);
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
+  async revokeReadConsent(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_CONSENT", wallet);
+    const tx = await contract.revokeConsent(tokenId, payload.grantHash);
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
   async recordInsurancePolicy(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     const contract = getContract("VEHICLE_LIFECYCLE", wallet);
     const policyNumber = payload.policyNo || payload.policyNumber;
@@ -142,6 +167,39 @@ export const blockchainService = {
   async logPartCertification(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     const contract = getContract("VEHICLE_LIFECYCLE", wallet);
     const tx = await contract.logEvent(tokenId, 200, Math.floor(Date.now() / 1000), ethers.id(JSON.stringify({ type: payload.partType, sn: payload.newPartNo })), ethers.id(payload.reason || "Certification"));
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
+  // --- Escrow: routes to VehicleLien.sol ---
+  async createEscrow(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_LIEN", wallet);
+    const escrowId = ethers.id(`escrow-${tokenId}-${Date.now()}`);
+    const buyerAddress = ethers.isAddress(payload.buyer) ? ethers.getAddress(payload.buyer) : ethers.ZeroAddress;
+    const conditionsMask = payload.conditionsMask || 3;
+    const depositAmount = ethers.parseEther(payload.depositAmount?.toString() || "0");
+    const tx = await contract.createEscrow(escrowId, tokenId, buyerAddress, conditionsMask, ethers.ZeroAddress, depositAmount);
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
+  async fundEscrowNative(wallet: ethers.Wallet, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_LIEN", wallet);
+    const tx = await contract.fundEscrowNative(payload.escrowId, { value: ethers.parseEther(payload.amount?.toString() || "0") });
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
+  async fulfillCondition(wallet: ethers.Wallet, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_LIEN", wallet);
+    const tx = await contract.fulfillCondition(payload.escrowId, payload.condition);
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  },
+
+  async cancelEscrow(wallet: ethers.Wallet, payload: any): Promise<BlockchainResult> {
+    const contract = getContract("VEHICLE_LIEN", wallet);
+    const tx = await contract.cancelEscrow(payload.escrowId);
     const receipt = await tx.wait();
     return { txHash: receipt.hash };
   },

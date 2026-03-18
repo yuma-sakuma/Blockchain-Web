@@ -38,5 +38,12 @@ export class VehicleService {
     });
     return { exists: !!vehicle };
   }
+
+  async checkEngineExists(engine: string): Promise<{ exists: boolean }> {
+    // Search across all vehicles for the engine serial in specifyJson
+    const allVehicles = await this.vehicleRepository.find({ select: ['tokenId', 'specJson'] });
+    const exists = allVehicles.some(v => v.specJson && v.specJson.engine === engine);
+    return { exists };
+  }
 }
 

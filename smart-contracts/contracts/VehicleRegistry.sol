@@ -197,6 +197,13 @@ contract VehicleRegistry is AccessControl {
         if (active && (flagBit == FLAG_STOLEN || flagBit == FLAG_SEIZED || flagBit == FLAG_TOTAL_LOSS)) {
             vehicleNFT.setTransferLock(tokenId, true);
         }
+        // Audit Fix §7.4: ถ้าถอด flag ที่เคยล็อก → ตรวจสอบว่ายังมี flag อื่นที่ต้องล็อกอยู่ไหม ถ้าไม่มี → ปลดล็อก
+        if (!active && (flagBit == FLAG_STOLEN || flagBit == FLAG_SEIZED || flagBit == FLAG_TOTAL_LOSS)) {
+            uint64 lockingFlags = flags[tokenId] & (FLAG_STOLEN | FLAG_SEIZED | FLAG_TOTAL_LOSS);
+            if (lockingFlags == 0) {
+                vehicleNFT.setTransferLock(tokenId, false);
+            }
+        }
     }
 
     function _setFlag(uint256 tokenId, uint64 flagBit, bool active, bytes32 refHash) internal {

@@ -1,7 +1,7 @@
 import { ArrowRightLeft, PackagePlus, ShieldCheck, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { checkVinExists } from '../services/api';
+import { checkEngineExists, checkVinExists } from '../services/api';
 import { useVehicleStore } from '../store';
 
 
@@ -10,17 +10,20 @@ export const ManufacturerPage = () => {
   const { address } = useAuth();
   const [isSigning, setIsSigning] = useState(false);
   const [vinError, setVinError] = useState('');
+  const [engineError, setEngineError] = useState('');
   const [isCheckingVin, setIsCheckingVin] = useState(false);
+  const [isCheckingEngine, setIsCheckingEngine] = useState(false);
   const vinCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const engineCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formData, setFormData] = useState({
     vin: '',
     model: '',
     color: '',
     engineNo: '',
-    batteryKwh: '60',
+    batteryKwh: '',
     options: '',
-    warrantyYears: '3',
-    warrantyMileage: '100000'
+    warrantyYears: '',
+    warrantyMileage: ''
   });
 
   // Debounced VIN uniqueness check
@@ -54,37 +57,78 @@ export const ManufacturerPage = () => {
     };
   }, [formData.vin]);
 
+  // Debounced Engine uniqueness check
+  useEffect(() => {
+    if (engineCheckTimer.current) clearTimeout(engineCheckTimer.current);
+
+    if (!formData.engineNo.trim()) {
+      setEngineError('');
+      setIsCheckingEngine(false);
+      return;
+    }
+
+    setIsCheckingEngine(true);
+    engineCheckTimer.current = setTimeout(async () => {
+      try {
+        const result = await checkEngineExists(formData.engineNo.trim());
+        if (result.exists) {
+          setEngineError('Engine/Motor serial already exists in the database');
+        } else {
+          setEngineError('');
+        }
+      } catch {
+        setEngineError('');
+      } finally {
+        setIsCheckingEngine(false);
+      }
+    }, 500);
+
+    return () => {
+      if (engineCheckTimer.current) clearTimeout(engineCheckTimer.current);
+    };
+  }, [formData.engineNo]);
+
   const handleMint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vin || !formData.model) return;
 
-    // Final VIN uniqueness check before submitting
+    // Final uniqueness checks before submitting
     try {
-      const result = await checkVinExists(formData.vin.trim());
-      if (result.exists) {
+      const [vinResult, engineResult] = await Promise.all([
+        checkVinExists(formData.vin.trim()),
+        checkEngineExists(formData.engineNo.trim())
+      ]);
+
+      let hasError = false;
+      if (vinResult.exists) {
         setVinError('VIN number already exists in the database');
-        return;
+        hasError = true;
       }
+      if (engineResult.exists) {
+        setEngineError('Engine/Motor serial already exists in the database');
+        hasError = true;
+      }
+      
+      if (hasError) return;
     } catch {
-      // If check fails, allow submission (backend will also validate)
+      // If checks fail, allow submission (backend will also validate)
     }
 
     setIsSigning(true);
     // Simulate digital signing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const tokenId = Math.floor(Math.random() * 1000000000).toString();
     const signature = 'sig_' + Math.random().toString(36).substring(7).toUpperCase();
     const actorId = `MANUFACTURER:${address?.substring(0, 6)}...`;
 
-    // 1. Mint Event
+    // 1. Mint Event (Await Real Token ID from Blockchain)
     try {
       const response = await addEvent({
         type: 'MANUFACTURER_MINTED',
         actor: actorId,
-        tokenId: tokenId,
+        // Remove simulated tokenId, now 'store/index.tsx' handles getting and assigning the real one
+        tokenId: "", 
         payload: {
-          tokenId: tokenId,
           vin: formData.vin,
           makeModelTrim: formData.model,
           spec: {
@@ -102,9 +146,13 @@ export const ManufacturerPage = () => {
         }
       });
       
-      const actualTokenId = response?.tokenId || tokenId;
+      const actualTokenId = response?.tokenId;
 
-      // 2. Warranty Definition
+      if (!actualTokenId) {
+         throw new Error("Missing Token ID after Minting process.");
+      }
+
+      // 2. Warranty Definition (Uses Actual Token ID)
       await addEvent({
         type: 'WARRANTY_DEFINED',
         actor: actorId,
@@ -119,7 +167,7 @@ export const ManufacturerPage = () => {
         }
       });
 
-      setFormData({ vin: '', model: '', color: '', engineNo: '', batteryKwh: '60', options: '', warrantyYears: '3', warrantyMileage: '100000' });
+      setFormData({ vin: '', model: '', color: '', engineNo: '', batteryKwh: '', options: '', warrantyYears: '', warrantyMileage: '' });
     } catch (err) {
       console.error("Failed executing minting flow", err);
     } finally {
@@ -148,7 +196,7 @@ export const ManufacturerPage = () => {
     });
   };
 
-  const myStock = vehicles.filter(v => v.currentOwner.startsWith('MANUFACTURER')); // Simple check, could look for specific address match if we tracked exact owner string format consistently
+  const myStock = vehicles.filter(v => v.currentOwner.toUpperCase().startsWith('MANUFACTURER')); 
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
@@ -205,7 +253,19 @@ export const ManufacturerPage = () => {
 
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Engine/Motor Serial</label>
-            <input value={formData.engineNo} onChange={e => setFormData({ ...formData, engineNo: e.target.value })} placeholder="SN-XXXXX" required />
+            <input
+              value={formData.engineNo}
+              onChange={e => setFormData({ ...formData, engineNo: e.target.value })}
+              placeholder="SN-XXXXX"
+              required
+              style={{ borderColor: engineError ? '#ef4444' : undefined }}
+            />
+            {isCheckingEngine && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', marginTop: '0.35rem' }}>Checking Engine...</div>
+            )}
+            {engineError && !isCheckingEngine && (
+              <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.35rem', fontWeight: 600 }}>{engineError}</div>
+            )}
           </div>
 
           <div>
@@ -230,7 +290,7 @@ export const ManufacturerPage = () => {
             <textarea value={formData.options} onChange={e => setFormData({ ...formData, options: e.target.value })} placeholder="Sunroof, Leather Seats, Autopilot v2..." style={{ height: '80px' }} />
           </div>
 
-          <button type="submit" className="premium-btn" style={{ gridColumn: '1 / -1', padding: '1.25rem' }} disabled={isSigning || !!vinError || isCheckingVin}>
+          <button type="submit" className="premium-btn" style={{ gridColumn: '1 / -1', padding: '1.25rem' }} disabled={isSigning || !!vinError || isCheckingVin || !!engineError || isCheckingEngine}>
             Generate Certified Vehicle NFT
           </button>
         </form>

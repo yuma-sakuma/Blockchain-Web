@@ -249,10 +249,20 @@ contract VehicleLien is AccessControl, ReentrancyGuard {
             esc.state == EscrowState.Created || esc.state == EscrowState.Funded,
             "Cannot cancel"
         );
-        require(
-            msg.sender == esc.seller || msg.sender == esc.buyer,
-            "Not party"
-        );
+
+        // Audit Fix §7.5: Created → either party can cancel. Funded → only seller/admin.
+        if (esc.state == EscrowState.Created) {
+            require(
+                msg.sender == esc.seller || msg.sender == esc.buyer,
+                "Not party"
+            );
+        } else {
+            // Funded state — prevent buyer from reclaiming funds mid-deal
+            require(
+                msg.sender == esc.seller || hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+                "Only seller or admin can cancel funded escrow"
+            );
+        }
 
         if (esc.state == EscrowState.Funded) {
             // คืนเงินผู้ซื้อ
