@@ -12,7 +12,7 @@
 - [x] ออกแบบระบบ Role-based Wallet ให้แต่ละบทบาท (Manufacturer, Dealer, DLT Officer, Workshop) ใช้กระเป๋าของตัวเองในการส่ง Transaction
 - [x] แก้ไข `blockchain.service.ts` ให้ `grantRole()` มอบสิทธิ์ให้ Wallet ของผู้ใช้จริง แทนที่จะมอบให้ Admin ทั้งหมด
 - [x] ปรับ Deploy Script ให้ Grant Role ให้แต่ละ Wallet Address ตาม Role ที่กำหนดตอน Deploy
-- [ ] ทดสอบว่าแต่ละ Role สามารถส่ง Transaction ด้วยกระเป๋าของตัวเองได้ถูกต้อง
+- [x] ทดสอบว่าแต่ละ Role สามารถส่ง Transaction ด้วยกระเป๋าของตัวเองได้ถูกต้อง
 
 ---
 
@@ -25,7 +25,7 @@
 - [x] เพิ่ม Nonce/Timestamp ใน Signed Message เพื่อป้องกัน Replay Attack (5 นาที max age)
 - [x] ลบระบบ `actor` field แบบเดิมที่ไม่มีการ Verify ออก (ใช้ verified signer แทน)
 - [x] เพิ่ม Auth Guard (`@UseGuards(SignatureGuard)`) ที่ `event.controller.ts` ให้ตรวจสอบทุก Endpoint
-- [ ] ทดสอบว่า Request ที่ไม่มี Valid Signature จะถูก Reject (ทดสอบด้วย Postman/cURL)
+- [x] ทดสอบว่า Request ที่ไม่มี Valid Signature จะถูก Reject (ทดสอบด้วย Postman/cURL/Jest)
 
 ---
 
@@ -37,8 +37,8 @@
 - [x] ตรวจสอบว่า `from` address มี Approval หรือเป็น Owner ก่อนทำ Transfer
 - [x] ปรับ Frontend ให้ผู้ขาย (from) ต้อง Sign Approve Transaction ก่อนโอน
 - [x] ปรับ Frontend ให้ผู้ซื้อ (to) ต้อง Sign Accept Transaction
-- [ ] ทดสอบว่าหลังโอนเสร็จ `ownerOf(tokenId)` ชี้ไปที่ Wallet ผู้ซื้อจริง
-- [ ] ทดสอบว่า NFT ไม่ได้ค้างอยู่ที่ Admin Wallet อีกต่อไป
+- [x] ทดสอบว่าหลังโอนเสร็จ `ownerOf(tokenId)` ชี้ไปที่ Wallet ผู้ซื้อจริง
+- [x] ทดสอบว่า NFT ไม่ได้ค้างอยู่ที่ Admin Wallet อีกต่อไป
 
 ---
 
@@ -50,8 +50,8 @@
 - [x] แยก Flow การให้สิทธิ์ Write Consent → เรียก `VehicleLifecycle.sol` (เพิ่มประวัติซ่อม)
 - [x] แก้ไข Backend ให้แยก API Endpoint สำหรับ Read vs Write Consent
 - [x] แก้ไข Frontend ให้เจ้าของรถเลือกให้สิทธิ์ Read หรือ Write แยกกันได้
-- [ ] ตรวจสอบว่าอู่ซ่อมที่ได้รับ Read Consent ไม่สามารถ Write ข้อมูลได้
-- [ ] ตรวจสอบว่าอู่ซ่อมที่ได้รับ Write Consent สามารถเพิ่มประวัติซ่อมได้ถูกต้อง
+- [x] ตรวจสอบว่าอู่ซ่อมที่ได้รับ Read Consent ไม่สามารถ Write ข้อมูลได้
+- [x] ตรวจสอบว่าอู่ซ่อมที่ได้รับ Write Consent สามารถเพิ่มประวัติซ่อมได้ถูกต้อง
 
 ---
 
@@ -64,4 +64,4 @@
 - [x] สร้างหน้า UI บน Frontend สำหรับ Buyer/Seller ใช้ฝากเงิน/ปล่อยเงิน (Direct TX routing ใน store)
 - [x] เชื่อม Frontend กับ Role Wallet ให้ผู้ซื้อ Sign Transaction ฝากเงินเข้า Escrow ด้วยตัวเอง
 - [x] แสดงสถานะ Escrow (Created → Funded → Released/Cancelled) บนหน้า UI (Event Type routing)
-- [ ] ทดสอบ Flow ครบวงจร: สร้าง Escrow → ฝากเงิน → ปล่อยเงิน/ยกเลิก
+- [x] ทดสอบ Flow ครบวงจร: สร้าง Escrow → ฝากเงิน → ปล่อยเงิน/ยกเลิก

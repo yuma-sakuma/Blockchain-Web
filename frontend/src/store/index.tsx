@@ -24,7 +24,7 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
 
   if (type === 'MANUFACTURER_MINTED') {
     const newVehicle: VehicleNFT = {
-      tokenId: payload.tokenId || Date.now().toString(), // Simple mock ID
+      tokenId: event.tokenId || 'PENDING', // Uses actual ID from event now
       vin: payload.vin,
       makeModelTrim: payload.makeModelTrim,
       spec: payload.spec,
@@ -316,120 +316,115 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
       timestamp: new Date().toISOString()
     };
 
-    // Keep optimistic update for speed on most events
-    setEvents(prev => [...prev, newEvent]);
-    setVehicles(prev => applyEventToState(prev, newEvent));
-
     try {
       // --- Direct Blockchain TX from role wallet ---
       const role = sessionStorage.getItem('auth_role') || 'CONSUMER';
-      console.log('[DirectTX] Role:', role);
       const roleWallet = blockchainService.getRoleWallet(role);
-      console.log('[DirectTX] Wallet:', roleWallet ? roleWallet.address : 'NULL');
 
       if (roleWallet) {
-        try {
-          let txResult;
-          switch (newEvent.type) {
-            case 'MANUFACTURER_MINTED':
-              txResult = await blockchainService.mintVehicle(roleWallet, newEvent.payload);
-              if (txResult.tokenId) newEvent.tokenId = txResult.tokenId;
-              break;
-            case 'DLT_REGISTRATION_UPDATED':
-              txResult = await blockchainService.registerVehicle(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'OWNERSHIP_TRANSFERRED':
-              txResult = await blockchainService.recordTransfer(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'PLATE_EVENT_RECORDED':
-              txResult = await blockchainService.recordPlateEvent(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'TAX_STATUS_UPDATED':
-              txResult = await blockchainService.recordTaxPayment(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'FLAG_UPDATED':
-            case 'REPOSSESSION_RECORDED':
-              txResult = await blockchainService.setFlag(roleWallet, newEvent.tokenId, { ...newEvent.payload, event: newEvent.type });
-              break;
-            case 'LIEN_CREATED':
-              txResult = await blockchainService.createLien(roleWallet, newEvent.tokenId);
-              break;
-            case 'LIEN_RELEASED':
-              txResult = await blockchainService.releaseLien(roleWallet, newEvent.tokenId);
-              break;
-            case 'CONSENT_UPDATED':
-              txResult = await blockchainService.grantConsent(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'CONSENT_REVOKED':
-              txResult = await blockchainService.revokeConsent(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'READ_CONSENT_GRANTED':
-              txResult = await blockchainService.grantReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'READ_CONSENT_REVOKED':
-              txResult = await blockchainService.revokeReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'INSURANCE_POLICY_UPDATED':
-              txResult = await blockchainService.recordInsurancePolicy(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'CLAIM_FILED':
-              txResult = await blockchainService.fileClaim(roleWallet, newEvent.tokenId, newEvent.payload, newEvent.evidence || []);
-              break;
-            case 'INSPECTION_RESULT_RECORDED':
-              txResult = await blockchainService.recordInspection(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'MAINTENANCE_RECORDED':
-              txResult = await blockchainService.logMaintenance(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'CRITICAL_PART_REPLACED':
-              txResult = await blockchainService.logPartCertification(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'ESCROW_CREATED':
-              txResult = await blockchainService.createEscrow(roleWallet, newEvent.tokenId, newEvent.payload);
-              break;
-            case 'ESCROW_FUNDED':
-              txResult = await blockchainService.fundEscrowNative(roleWallet, newEvent.payload);
-              break;
-            case 'ESCROW_RELEASED':
-              txResult = await blockchainService.fulfillCondition(roleWallet, newEvent.payload);
-              break;
-            case 'ESCROW_CANCELLED':
-              txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
-              break;
-          }
-          if (txResult && txResult.txHash) {
-            newEvent.txHash = txResult.txHash;
-            console.log('[DirectTX] ✅ Success! txHash:', txResult.txHash);
-            showToast(`Direct Blockchain TX successful\n\nTxHash: ${txResult.txHash}`);
-          } else {
-            console.log('[DirectTX] ⚠️ No txResult for event type:', newEvent.type);
-          }
-        } catch (chainErr) {
-          console.error('[DirectTX] ❌ FAILED:', chainErr);
+        let txResult;
+        switch (newEvent.type) {
+          case 'MANUFACTURER_MINTED':
+            showToast(`Initiating Minting on Blockchain...`, 'success');
+            txResult = await blockchainService.mintVehicle(roleWallet, newEvent.payload);
+            // REQUIRE OBTANING REAL TOKEN ID BEFORE PROCEEDING
+            if (txResult.tokenId) {
+                newEvent.tokenId = txResult.tokenId;
+                newEvent.payload.tokenId = txResult.tokenId; // Update payload too
+            } else {
+                throw new Error("Failed to retrieve Token ID from Blockchain");
+            }
+            break;
+          case 'DLT_REGISTRATION_UPDATED':
+            txResult = await blockchainService.registerVehicle(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'OWNERSHIP_TRANSFERRED':
+            txResult = await blockchainService.recordTransfer(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'PLATE_EVENT_RECORDED':
+            txResult = await blockchainService.recordPlateEvent(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'TAX_STATUS_UPDATED':
+            txResult = await blockchainService.recordTaxPayment(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'FLAG_UPDATED':
+          case 'REPOSSESSION_RECORDED':
+            txResult = await blockchainService.setFlag(roleWallet, newEvent.tokenId, { ...newEvent.payload, event: newEvent.type });
+            break;
+          case 'LIEN_CREATED':
+            txResult = await blockchainService.createLien(roleWallet, newEvent.tokenId);
+            break;
+          case 'LIEN_RELEASED':
+            txResult = await blockchainService.releaseLien(roleWallet, newEvent.tokenId);
+            break;
+          case 'CONSENT_UPDATED':
+            txResult = await blockchainService.grantConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'CONSENT_REVOKED':
+            txResult = await blockchainService.revokeConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'READ_CONSENT_GRANTED':
+            txResult = await blockchainService.grantReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'READ_CONSENT_REVOKED':
+            txResult = await blockchainService.revokeReadConsent(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'INSURANCE_POLICY_UPDATED':
+            txResult = await blockchainService.recordInsurancePolicy(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'CLAIM_FILED':
+            txResult = await blockchainService.fileClaim(roleWallet, newEvent.tokenId, newEvent.payload, newEvent.evidence || []);
+            break;
+          case 'INSPECTION_RESULT_RECORDED':
+            txResult = await blockchainService.recordInspection(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'MAINTENANCE_RECORDED':
+            txResult = await blockchainService.logMaintenance(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'CRITICAL_PART_REPLACED':
+            txResult = await blockchainService.logPartCertification(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'ESCROW_CREATED':
+            txResult = await blockchainService.createEscrow(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'ESCROW_FUNDED':
+            txResult = await blockchainService.fundEscrowNative(roleWallet, newEvent.payload);
+            break;
+          case 'ESCROW_RELEASED':
+            txResult = await blockchainService.fulfillCondition(roleWallet, newEvent.payload);
+            break;
+          case 'ESCROW_CANCELLED':
+            txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
+            break;
+        }
+        
+        if (txResult && txResult.txHash) {
+          newEvent.txHash = txResult.txHash;
+          console.log('[DirectTX] ✅ Success! txHash:', txResult.txHash);
+          // showToast(`Direct Blockchain TX successful\n\nTxHash: ${txResult.txHash}`); // Optional: Can get noisy
         }
       }
+
+      // Update Local State ONLY AFTER getting clear Token ID and Hash
+      setEvents(prev => [...prev, newEvent]);
+      setVehicles(prev => applyEventToState(prev, newEvent));
 
       // --- Sync to backend (pass txHash so backend skips on-chain work) ---
       // Use authenticated API call with role wallet signature
       const response = await createAuthenticatedEvent(newEvent, roleWallet);
-      if (response && response.txHash && !newEvent.txHash) {
-        showToast(`Smart Contract interaction successful\n\nTxHash: ${response.txHash}`);
-      }
-
-      // Update real token ID in state if it changed from backend (e.g. minting returns real on-chain ID)
-      if (response && response.tokenId && response.tokenId !== newEvent.tokenId) {
-        setVehicles(prev => prev.map(v => v.tokenId === newEvent.tokenId ? { ...v, tokenId: response.tokenId } : v));
-        setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, tokenId: response.tokenId, txHash: response.txHash || undefined } : e)));
-      } else if (response && response.txHash) {
-        // Update txHash on the event in local state
+      
+      if (response && response.txHash) {
+        showToast(`Transaction Confirmed\n\nTxHash: ${response.txHash}`);
+        
+        // Ensure txHash is saved on the event we just pushed optimistic
         setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
       }
 
-      return response;
+      // Return newEvent so caller (Page) has the REAL tokenId
+      return newEvent;
     } catch (err: any) {
-      console.error("Failed to sync event with backend", err);
-      // Reverting optimistic UI for prototype is complex, so we log it
-      showToast(`Smart Contract interaction failed: ${err.message}`, 'error');
+      console.error("Failed executing event flow", err);
+      showToast(`Interaction failed: ${err.message}`, 'error');
       throw err;
     }
   };

@@ -124,7 +124,31 @@ export class EventService {
           console.error('Blockchain Minting Failed:', err);
           // Still save to DB for prototype fallback
         }
+        } else {
+             // กรณี Frontend ทำกำร Mint บนเชน เรียบร้อยแล้วส่ง txHash กับ tokenId มา
+             // Backend ควรตรวจสอบหรือนำ Receipt นั้นมายืนยัน (ในโปรเจคอัปเดตนี้นำ Token ID ที่ Frontend ได้มาใช้เลย)
+             // หรือถ้า Frontend ไม่ได้ส่ง TokenID มา (กรณีลืม) ให้ลองดึงจากเชน (แต่นี่ Frontend ส่งมาแล้วในโค้ดใหม่)
+             if (!createEventDto.tokenId) {
+                  try {
+                      const receipt = await this.blockchainService.vehicleNFTContract.runner?.provider?.getTransactionReceipt(createEventDto.txHash);
+                      if (receipt) {
+                          const transferEvent = receipt.logs.find((log: any) => {
+                             try { return this.blockchainService.vehicleNFTContract.interface.parseLog(log)?.name === 'Transfer'; } catch (e) { return false; }
+                          });
+                          if (transferEvent) {
+                              const parsed = this.blockchainService.vehicleNFTContract.interface.parseLog(transferEvent);
+                              createEventDto.tokenId = parsed?.args.tokenId.toString();
+                          }
+                      }
+                  } catch (e) {
+                      console.error(`Failed to retrieve real Token ID from txHash ${createEventDto.txHash}:`, e);
+                  }
+             }
         } // end if (!createEventDto.txHash)
+
+        if (!createEventDto.tokenId) {
+            throw new Error("Cannot save vehicle without a valid Token ID from Blockchain.");
+        }
 
         vehicle = this.vehicleRepository.create({
           tokenId: createEventDto.tokenId,
@@ -224,6 +248,16 @@ export class EventService {
         case 'SALE_CONTRACT_CREATED':
           // Logic handled off-chain mostly, but could map to ownership transfer prep
           break;
+        case 'WARRANTY_DEFINED': {
+          if (payload.terms) {
+            vehicle.warrantyJson = {
+              startPolicy: payload.startPolicy || 'at_first_registration',
+              terms: payload.terms
+            };
+            vehicleUpdated = true;
+          }
+          break;
+        }
         case 'DLT_REGISTRATION_UPDATED': {
           vehicle.registrationStatus = 'REGISTERED' as any;
           vehicleUpdated = true;

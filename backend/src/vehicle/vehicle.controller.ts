@@ -14,8 +14,12 @@ export class VehicleController {
 
   @Get()
   @ApiQuery({ name: 'owner', required: false })
-  async findAll(@Query('owner') owner?: string): Promise<Vehicle[]> {
-    return this.vehicleService.findAll(owner);
+  async findAll(@Query('owner') owner?: string): Promise<any[]> {
+    const vehicles = await this.vehicleService.findAll(owner);
+    return vehicles.map(v => ({
+      ...v,
+      warranty: v.warrantyJson
+    }));
   }
 
   @Get('check-vin')
@@ -25,8 +29,12 @@ export class VehicleController {
   }
 
   @Get(':tokenId')
-  async findOne(@Param('tokenId') tokenId: string): Promise<Vehicle> {
-    return this.vehicleService.findOne(tokenId);
+  async findOne(@Param('tokenId') tokenId: string): Promise<any> {
+    const v = await this.vehicleService.findOne(tokenId);
+    return {
+      ...v,
+      warranty: v.warrantyJson
+    };
   }
 
   @Get(':tokenId/onchain')

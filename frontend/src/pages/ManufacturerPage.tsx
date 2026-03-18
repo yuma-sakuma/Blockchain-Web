@@ -73,18 +73,17 @@ export const ManufacturerPage = () => {
     // Simulate digital signing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const tokenId = Math.floor(Math.random() * 1000000000).toString();
     const signature = 'sig_' + Math.random().toString(36).substring(7).toUpperCase();
     const actorId = `MANUFACTURER:${address?.substring(0, 6)}...`;
 
-    // 1. Mint Event
+    // 1. Mint Event (Await Real Token ID from Blockchain)
     try {
       const response = await addEvent({
         type: 'MANUFACTURER_MINTED',
         actor: actorId,
-        tokenId: tokenId,
+        // Remove simulated tokenId, now 'store/index.tsx' handles getting and assigning the real one
+        tokenId: "", 
         payload: {
-          tokenId: tokenId,
           vin: formData.vin,
           makeModelTrim: formData.model,
           spec: {
@@ -102,9 +101,13 @@ export const ManufacturerPage = () => {
         }
       });
       
-      const actualTokenId = response?.tokenId || tokenId;
+      const actualTokenId = response?.tokenId;
 
-      // 2. Warranty Definition
+      if (!actualTokenId) {
+         throw new Error("Missing Token ID after Minting process.");
+      }
+
+      // 2. Warranty Definition (Uses Actual Token ID)
       await addEvent({
         type: 'WARRANTY_DEFINED',
         actor: actorId,
