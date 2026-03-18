@@ -24,11 +24,18 @@ contract VehicleLifecycle is AccessControl {
     enum ClaimStatus      { Filed, Estimating, Approved, Repairing, Closed, Rejected }
     enum ClaimSeverity    { Minor, Major, Structural, TotalLoss }
 
+    // ─── Structs ─────────────────────────────────────────────
+    /// Audit Fix §7.6: Store expiry alongside scope to enforce consent lifetime
+    struct WriteConsent {
+        uint64 scopeMask;
+        uint64 expiresAt;
+    }
+
     // ─── State ───────────────────────────────────────────────
     VehicleNFT public vehicleNFT;
 
-    /// tokenId → consent address → scope mask (delegated write)
-    mapping(uint256 => mapping(address => uint64)) public writeConsents;
+    /// tokenId → consent address → WriteConsent (scope + expiry)
+    mapping(uint256 => mapping(address => WriteConsent)) public writeConsents;
 
     // ─── Events ──────────────────────────────────────────────
 
@@ -132,8 +139,12 @@ contract VehicleLifecycle is AccessControl {
         bool    singleUse,
         uint64  nonce
     ) external onlyVehicleOwner(tokenId) {
-        // encode expiry + singleUse + nonce into scope
-        writeConsents[tokenId][workshop] = scopeMask;
+        // Audit Fix §7.6: Validate and store expiry time
+        require(expiresAt > block.timestamp, "Consent already expired");
+        writeConsents[tokenId][workshop] = WriteConsent({
+            scopeMask: scopeMask,
+            expiresAt: expiresAt
+        });
         // emit for off-chain indexing
         emit GenericEvent(
             tokenId,
@@ -172,7 +183,10 @@ contract VehicleLifecycle is AccessControl {
         uint8   accidentSeverity,
         uint64  occurredAt
     ) external onlyRole(WORKSHOP_ROLE) vehicleExists(tokenId) {
-        require(writeConsents[tokenId][msg.sender] > 0, "No write consent");
+        // Audit Fix §7.6: Check both scope and expiry
+        WriteConsent memory consent = writeConsents[tokenId][msg.sender];
+        require(consent.scopeMask > 0, "No write consent");
+        require(consent.expiresAt > block.timestamp, "Write consent expired");
         require(accidentSeverity <= 3, "Invalid severity");
 
         emit MaintenanceLogged(
@@ -310,6 +324,15 @@ contract VehicleLifecycle is AccessControl {
         bytes32 payloadHash,
         bytes32 evidenceHash
     ) external vehicleExists(tokenId) {
+        // Audit Fix §7.7: Restrict access to authorized callers only
+        require(
+            vehicleNFT.ownerOf(tokenId) == msg.sender ||
+            writeConsents[tokenId][msg.sender].scopeMask > 0 ||
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
+            hasRole(WORKSHOP_ROLE, msg.sender) ||
+            hasRole(INSURER_ROLE, msg.sender),
+            "Not authorized to log event"
+        );
         emit GenericEvent(tokenId, eventType, msg.sender, occurredAt, payloadHash, evidenceHash);
     }
 }

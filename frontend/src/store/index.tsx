@@ -76,11 +76,31 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
             taxValidUntil: payload.validUntil
           }
         };
-      case 'FLAG_UPDATED':
+      case 'FLAG_UPDATED': {
+        const flagKey = payload.flagType || payload.flag;
+        if (!flagKey) return v;
+        const isStolen = flagKey === 'stolen';
+        const isSeized = flagKey === 'seized';
+        const newFlags = { ...v.flags, [flagKey]: payload.value };
+        // Update transferLocked when toggling stolen/seized
+        let newTransferLocked = v.lien.transferLocked;
+        if (isStolen || isSeized) {
+          if (payload.value) {
+            newTransferLocked = true;
+          } else {
+            // Only unlock if no other enforcement flags active
+            const otherFlagsActive = (isStolen ? newFlags.seized : newFlags.stolen);
+            if (!otherFlagsActive) {
+              newTransferLocked = false;
+            }
+          }
+        }
         return {
           ...v,
-          flags: { ...v.flags, [payload.flag]: payload.value }
+          flags: newFlags,
+          lien: { ...v.lien, transferLocked: newTransferLocked }
         };
+      }
       case 'LIEN_CREATED':
         return {
           ...v,
@@ -310,6 +330,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
+    // Track original tokenId so we can reconcile after blockchain returns real one
+    const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
@@ -330,10 +352,10 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             txResult = await blockchainService.mintVehicle(roleWallet, newEvent.payload);
             // REQUIRE OBTANING REAL TOKEN ID BEFORE PROCEEDING
             if (txResult.tokenId) {
-                newEvent.tokenId = txResult.tokenId;
-                newEvent.payload.tokenId = txResult.tokenId; // Update payload too
+              newEvent.tokenId = txResult.tokenId;
+              newEvent.payload.tokenId = txResult.tokenId; // Update payload too
             } else {
-                throw new Error("Failed to retrieve Token ID from Blockchain");
+              throw new Error("Failed to retrieve Token ID from Blockchain");
             }
             break;
           case 'DLT_REGISTRATION_UPDATED':
@@ -398,7 +420,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
             break;
         }
-        
+
         if (txResult && txResult.txHash) {
           newEvent.txHash = txResult.txHash;
           console.log('[DirectTX] ✅ Success! txHash:', txResult.txHash);
@@ -413,10 +435,10 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
       // --- Sync to backend (pass txHash so backend skips on-chain work) ---
       // Use authenticated API call with role wallet signature
       const response = await createAuthenticatedEvent(newEvent, roleWallet);
-      
+
       if (response && response.txHash) {
         showToast(`Transaction Confirmed\n\nTxHash: ${response.txHash}`);
-        
+
         // Ensure txHash is saved on the event we just pushed optimistic
         setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
       }

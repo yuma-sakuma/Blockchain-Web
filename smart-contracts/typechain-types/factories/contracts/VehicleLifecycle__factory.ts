@@ -919,7 +919,12 @@ const _abi = [
     outputs: [
       {
         internalType: "uint64",
-        name: "",
+        name: "scopeMask",
+        type: "uint64",
+      },
+      {
+        internalType: "uint64",
+        name: "expiresAt",
         type: "uint64",
       },
     ],

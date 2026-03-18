@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/comm
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SignatureGuard } from '../auth/signature.guard';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { EventLog } from '../database/entities/event-log.entity';
 import { EventService } from './event.service';
 
