@@ -9,15 +9,18 @@ export const DealerPage = () => {
     const [tradeInVin, setTradeInVin] = useState('');
     const [showDisclosure, setShowDisclosure] = useState<string | null>(null);
     const [disclosures, setDisclosures] = useState('');
-    
+
     // Dynamic Dealer ID from Auth
     const dealerId = `DEALER:${address}`;
     const displayId = address ? `${address.substring(0, 6)}...${address.substring(38)}` : 'Unknown';
 
-    // In a real app, we'd query "my pending incoming transfers" too. 
-    // For this prototype, we assume Manufacturer transfer set owner directly to us (or we filter by prefix if we want to be loose)
-    // But strict check is better:
-    const myStock = vehicles.filter(v => v.currentOwner === dealerId || v.currentOwner === `DEALER:${address?.toLowerCase()}` || (v.currentOwner.includes('DEALER') && v.currentOwner.includes(address || '')));
+    const normalizedAddress = address?.toLowerCase() || '';
+    const myStock = vehicles.filter(v => {
+        const ownerLower = v.currentOwner.toLowerCase();
+        return ownerLower === `dealer:${normalizedAddress}` || 
+               ownerLower === normalizedAddress ||
+               (ownerLower.includes('dealer') && ownerLower.includes(normalizedAddress));
+    });
 
     const handleSellToCustomer = async (tokenId: string) => {
         const vehicle = vehicles.find(v => v.tokenId === tokenId);
@@ -33,7 +36,7 @@ export const DealerPage = () => {
             }
         }
 
-        const defaultConsumer = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
+        const defaultConsumer = "0xF039e6aA859239a880CCc7CB31eb47237c3893cf";
         const customerName = prompt("Buyer Identity (Wallet Address or Name):", defaultConsumer);
         if (!customerName) return;
 
@@ -67,14 +70,14 @@ export const DealerPage = () => {
     const handleApplyDisclosure = async () => {
         if (!showDisclosure || !disclosures) return;
         await addEvent({
-             type: 'DISCLOSURE_SIGNED',
-             actor: dealerId,
-             tokenId: showDisclosure,
-             payload: {
-                 seller: dealerId,
-                 disclosed: disclosures.split(',').map(s => s.trim()),
-                 acknowledgementHash: "SIG_ACK_" + Date.now()
-             }
+            type: 'DISCLOSURE_SIGNED',
+            actor: dealerId,
+            tokenId: showDisclosure,
+            payload: {
+                seller: dealerId,
+                disclosed: disclosures.split(',').map(s => s.trim()),
+                acknowledgementHash: "SIG_ACK_" + Date.now()
+            }
         });
         setShowDisclosure(null);
         setDisclosures('');
@@ -86,23 +89,23 @@ export const DealerPage = () => {
             alert("Vehicle not found!");
             return;
         }
-        
+
         const evaluationPrice = 500000;
-        
+
         await addEvent({
             type: 'TRADEIN_EVALUATED',
             actor: dealerId,
             tokenId: vehicle.tokenId,
             payload: {
                 dealer: dealerId,
-                mileageKm: vehicle.warranty.terms.mileageKm + 500, 
+                mileageKm: vehicle.warranty.terms.mileageKm + 500,
                 evaluation: { score: 85, priceOffer: evaluationPrice },
                 inputsUsed: ["odometer_history", "accident_flags"]
             }
         });
-        
+
         if (confirm(`Market Evaluation: ${evaluationPrice.toLocaleString()} THB. Buyback this asset into inventory?`)) {
-             await addEvent({
+            await addEvent({
                 type: 'OWNERSHIP_TRANSFERRED',
                 actor: dealerId,
                 tokenId: vehicle.tokenId,
@@ -138,10 +141,10 @@ export const DealerPage = () => {
                             This vehicle has structural damage or flood history. You must document that the buyer accepts these risks.
                         </p>
                         <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Incident Details to Disclose</label>
-                        <textarea 
-                            value={disclosures} 
-                            onChange={e => setDisclosures(e.target.value)} 
-                            placeholder="e.g. Minor flood damage 2024, Frame repair (Structural)..." 
+                        <textarea
+                            value={disclosures}
+                            onChange={e => setDisclosures(e.target.value)}
+                            placeholder="e.g. Minor flood damage 2024, Frame repair (Structural)..."
                             style={{ minHeight: '120px' }}
                         />
                         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -160,7 +163,7 @@ export const DealerPage = () => {
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
                     <div style={{ flex: 1 }}>
                         <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Customer Vehicle VIN</label>
-                        <input 
+                        <input
                             value={tradeInVin}
                             onChange={(e) => setTradeInVin(e.target.value)}
                             placeholder="Search asset for buyback..."
@@ -178,7 +181,7 @@ export const DealerPage = () => {
                     <Store color="var(--accent-primary)" size={20} />
                     Current Inventory Stock
                 </h2>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
                     {myStock.length === 0 ? (
                         <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>Warehouse is empty.</div>
@@ -194,7 +197,7 @@ export const DealerPage = () => {
                                         </div>
                                         <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{v.makeModelTrim}</h3>
                                         <p className="text-secondary" style={{ fontSize: '0.85rem' }}>VIN: {v.vin}</p>
-                                        
+
                                         <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
                                                 <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Color</div>
@@ -208,8 +211,8 @@ export const DealerPage = () => {
                                     </div>
 
                                     <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: '1rem' }}>
-                                        <button 
-                                            className="premium-btn" 
+                                        <button
+                                            className="premium-btn"
                                             onClick={() => handleSellToCustomer(v.tokenId)}
                                             style={{ flex: 1.5 }}
                                         >

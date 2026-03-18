@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { EventLog } from '../database/entities/event-log.entity';
 import { EventService } from './event.service';
 
@@ -24,6 +25,7 @@ export class EventController {
   }
 
   @Post()
+  @UseGuards(ApiKeyGuard)
   async create(@Body() createEventDto: any): Promise<EventLog> {
     return this.eventService.create(createEventDto);
   }

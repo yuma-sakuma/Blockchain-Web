@@ -148,7 +148,7 @@ export const ManufacturerPage = () => {
     });
   };
 
-  const myStock = vehicles.filter(v => v.currentOwner.startsWith('MANUFACTURER')); // Simple check, could look for specific address match if we tracked exact owner string format consistently
+  const myStock = vehicles.filter(v => v.currentOwner.toUpperCase().startsWith('MANUFACTURER')); 
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1000px', margin: '0 auto' }}>

@@ -61,7 +61,7 @@ export class EventService {
     let vehicle = await this.vehicleRepository.findOne({ where: { tokenId: createEventDto.tokenId } });
 
     let txHash = createEventDto.txHash || null;
-    const payloadHash = ethers.id(JSON.stringify(createEventDto.payload));
+    const payloadHash = ethers.id(JSON.stringify(createEventDto.payload || {}));
 
     if (createEventDto.type === 'MANUFACTURER_MINTED') {
       if (!vehicle) {
@@ -73,15 +73,14 @@ export class EventService {
           throw new Error(`VIN ${payload.vin} already exists in the database.`);
         }
 
-        // 2. Engine/Motor Serial Uniqueness Check
+        // 2. Engine/Motor Serial Uniqueness Check (using DB query to avoid OOM — Audit Fix §7.3)
         if (payload.spec && payload.spec.engine) {
-          // Find all vehicles and check inside specJson.
-          // (Using pure JS for cross-db compatibility since specJson is a simple object)
-          const allVehicles = await this.vehicleRepository.find({ select: ['tokenId', 'specJson'] });
-          for (const v of allVehicles) {
-            if (v.specJson && v.specJson.engine === payload.spec.engine) {
-              throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
-            }
+          const existingEngine = await this.vehicleRepository
+            .createQueryBuilder('v')
+            .where("JSON_UNQUOTE(JSON_EXTRACT(v.specJson, '$.engine')) = :engine", { engine: payload.spec.engine })
+            .getOne();
+          if (existingEngine) {
+            throw new Error(`Engine/Motor Serial ${payload.spec.engine} already belongs to another vehicle.`);
           }
         }
 
@@ -162,6 +161,7 @@ export class EventService {
             vehicleUpdated = true;
 
             const transfer = this.ownershipTransferRepository.create({
+              tokenId: vehicle.tokenId,
               fromAddress: payload.from || createEventDto.actor,
               toAddress: payload.to,
               reason: 'RESALE' as any,

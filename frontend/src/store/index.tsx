@@ -330,6 +330,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
+    // Track original tokenId so we can reconcile after blockchain returns real one
+    const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
@@ -349,11 +351,21 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
       if (roleWallet) {
         try {
-          let txResult;
+          let txResult: { txHash: string; tokenId?: string } | undefined;
           switch (newEvent.type) {
             case 'MANUFACTURER_MINTED':
               txResult = await blockchainService.mintVehicle(roleWallet, newEvent.payload);
-              if (txResult.tokenId) newEvent.tokenId = txResult.tokenId;
+              if (txResult.tokenId) {
+                const realTokenId = txResult.tokenId;
+                // Immediately reconcile: update vehicles & events arrays from random → real tokenId
+                setVehicles(prev => prev.map(v =>
+                  v.tokenId === originalTokenId ? { ...v, tokenId: realTokenId } : v
+                ));
+                setEvents(prev => prev.map(e =>
+                  e.id === newEvent.id ? { ...e, tokenId: realTokenId } : e
+                ));
+                newEvent.tokenId = realTokenId;
+              }
               break;
             case 'DLT_REGISTRATION_UPDATED':
               txResult = await blockchainService.registerVehicle(roleWallet, newEvent.tokenId, newEvent.payload);

@@ -724,8 +724,8 @@
       ]
     },
     "C:\\Users\\Acer\\Documents\\GitHub\\Blockchain-Web\\smart-contracts\\contracts\\VehicleRegistry.sol": {
-      "lastModificationDate": 1773325154333,
-      "contentHash": "11e6a557f300500c5db1457190371ee8",
+      "lastModificationDate": 1773801440663,
+      "contentHash": "8372a463bbbcc2f2be63792055dd9950",
       "sourceName": "contracts/VehicleRegistry.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -763,8 +763,8 @@
       ]
     },
     "C:\\Users\\Acer\\Documents\\GitHub\\Blockchain-Web\\smart-contracts\\contracts\\VehicleLifecycle.sol": {
-      "lastModificationDate": 1771761237526,
-      "contentHash": "dafcf00576c68daf7538dadf6004d90d",
+      "lastModificationDate": 1773801472724,
+      "contentHash": "b896b5289c6b1ecd648f9e29ea5957a9",
       "sourceName": "contracts/VehicleLifecycle.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -802,8 +802,8 @@
       ]
     },
     "C:\\Users\\Acer\\Documents\\GitHub\\Blockchain-Web\\smart-contracts\\contracts\\VehicleLien.sol": {
-      "lastModificationDate": 1771761237525,
-      "contentHash": "591f14ac3d359de2492bcf164c1eb324",
+      "lastModificationDate": 1773801442700,
+      "contentHash": "8527974eefd522d2102406834c65c18c",
       "sourceName": "contracts/VehicleLien.sol",
       "solcConfig": {
         "version": "0.8.20",
