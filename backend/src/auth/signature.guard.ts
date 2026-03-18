@@ -28,13 +28,6 @@ export class SignatureGuard implements CanActivate {
     const signature = request.headers['x-signature'] as string;
     const timestamp = request.headers['x-timestamp'] as string;
 
-    // Allow requests without auth headers if they provide a txHash (direct blockchain TX already done)
-    // This is a graceful fallback for frontend direct-TX flow
-    if (!address && !signature && request.body?.txHash) {
-      request.signer = request.body.actor || '0x00';
-      return true;
-    }
-
     if (!address || !signature || !timestamp) {
       throw new UnauthorizedException(
         'Missing authentication headers: x-address, x-signature, x-timestamp',

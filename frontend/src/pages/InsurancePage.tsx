@@ -1,8 +1,10 @@
-import { AlertCircle, ClipboardCheck, FileText, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ClipboardCheck, FileText, Image, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
 import { uploadFile } from '../services/api';
+
+const API_BASE = 'http://localhost:3000';
 
 export const InsurancePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -15,9 +17,10 @@ export const InsurancePage = () => {
     const [claimVin, setClaimVin] = useState('');
     const [description, setDescription] = useState('');
     const [severity, setSeverity] = useState('minor');
-    const [claimFile, setClaimFile] = useState<any>(null);
-    const [policyFile, setPolicyFile] = useState<any>(null);
+    const [claimFiles, setClaimFiles] = useState<any[]>([]);
+    const [policyFiles, setPolicyFiles] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     const insurerId = address ? `INSURER:${address}` : "INSURER:ABC-Insurance-Thailand";
     const targetVehicle = vehicles.find(v => v.vin === vin);
@@ -42,34 +45,35 @@ export const InsurancePage = () => {
                 validFrom: new Date().toISOString(),
                 validUntil: new Date(Date.now() + 86400000 * 365).toISOString(),
                 coverageType: coverage,
-                evidenceHash: policyFile?.hash || undefined
+                evidenceHash: policyFiles.length > 0 ? policyFiles[0].hash : undefined
             },
-            evidence: policyFile ? [{
-                hash: policyFile.hash,
-                url: policyFile.path,
-                mime: policyFile.mime,
-                size: policyFile.size
-            }] : undefined
+            evidence: policyFiles.length > 0
+                ? policyFiles.map(f => ({ hash: f.hash, url: f.path, mime: f.mime, size: f.size }))
+                : undefined
         });
 
         setPolicyNo('');
-        setPolicyFile(null);
+        setPolicyFiles([]);
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'claim' | 'policy') => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
         setIsUploading(true);
         try {
-            const result = await uploadFile(file);
-            if (target === 'claim') setClaimFile(result);
-            if (target === 'policy') setPolicyFile(result);
+            for (const file of files) {
+                const result = await uploadFile(file);
+                if (target === 'claim') setClaimFiles(prev => [...prev, result]);
+                if (target === 'policy') setPolicyFiles(prev => [...prev, result]);
+            }
         } catch (err) {
             console.error("Upload failed", err);
             alert("File upload failed");
         } finally {
             setIsUploading(false);
+            // Reset input so same file can be selected again
+            e.target.value = '';
         }
     };
 
@@ -88,18 +92,15 @@ export const InsurancePage = () => {
                 date: new Date().toISOString(),
                 description,
                 severity,
-                evidenceHashes: claimFile ? [claimFile.hash] : []
+                evidenceHashes: claimFiles.map(f => f.hash)
             },
-            evidence: claimFile ? [{
-                hash: claimFile.hash,
-                url: claimFile.path,
-                mime: claimFile.mime,
-                size: claimFile.size
-            }] : undefined
+            evidence: claimFiles.length > 0
+                ? claimFiles.map(f => ({ hash: f.hash, url: f.path, mime: f.mime, size: f.size }))
+                : undefined
         });
 
         setDescription('');
-        setClaimFile(null);
+        setClaimFiles([]);
     };
 
     const handleApproveEstimate = async (estimate: any) => {
@@ -115,6 +116,98 @@ export const InsurancePage = () => {
                 notes: "Standard labor rates applied."
             }
         });
+    };
+
+    // Helper: render evidence thumbnails for an event
+    const renderEvidence = (ev: any) => {
+        if (!ev.evidence || ev.evidence.length === 0) return null;
+        return (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                {ev.evidence.map((file: any, idx: number) => (
+                    <div
+                        key={idx}
+                        onClick={() => {
+                            const url = file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`;
+                            if (file.mime?.startsWith('image/')) {
+                                setLightboxUrl(url);
+                            } else {
+                                window.open(url, '_blank');
+                            }
+                        }}
+                        style={{
+                            width: '56px', height: '56px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--border-subtle)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            background: 'rgba(255,255,255,0.05)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
+                        }}
+                        title={file.url || file.hash}
+                    >
+                        {file.mime?.startsWith('image/') ? (
+                            <img
+                                src={file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`}
+                                alt="evidence"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        ) : (
+                            <FileText size={24} color="var(--accent-primary)" />
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    // Helper: render uploaded files preview grid (for form state)
+    const renderUploadedFiles = (files: any[], setFiles: (fn: (prev: any[]) => any[]) => void) => {
+        if (files.length === 0) return null;
+        return (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                {files.map((f, idx) => (
+                    <div key={idx} style={{
+                        position: 'relative',
+                        width: '80px', height: '80px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--border-subtle)',
+                        background: 'rgba(255,255,255,0.05)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        {f.mime?.startsWith('image/') ? (
+                            <img
+                                src={`${API_BASE}${f.path}`}
+                                alt={f.originalname}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
+                            />
+                        ) : (
+                            <div style={{ textAlign: 'center' }}>
+                                <FileText size={28} color="var(--accent-primary)" />
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', marginTop: '2px', wordBreak: 'break-all', padding: '0 4px' }}>
+                                    {f.originalname?.slice(0, 12)}
+                                </div>
+                            </div>
+                        )}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter((_, i) => i !== idx)); }}
+                            style={{
+                                position: 'absolute', top: '2px', right: '2px',
+                                background: 'rgba(239, 68, 68, 0.9)', color: 'white',
+                                border: 'none', borderRadius: '50%',
+                                width: '18px', height: '18px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', padding: 0
+                            }}
+                        >
+                            <Trash2 size={10} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        );
     };
 
     return (
@@ -140,7 +233,7 @@ export const InsurancePage = () => {
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Target Asset (VIN)</label>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <input value={vin} onChange={e => setVin(e.target.value)} placeholder="Enter VIN to link policy..." style={{ marginBottom: 0 }} />
-                                    <button className="btn" onClick={() => {/* Search trigger implied by state change for now */ }}><Search size={18} /></button>
+                                    <button className="btn" onClick={() => {}}><Search size={18} /></button>
                                 </div>
                             </div>
 
@@ -171,7 +264,7 @@ export const InsurancePage = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Policy Document (Application/Photo)</label>
+                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Policy Documents</label>
                                 <div
                                     onClick={() => document.getElementById('policy-upload')?.click()}
                                     style={{
@@ -183,16 +276,17 @@ export const InsurancePage = () => {
                                         background: 'rgba(255,255,255,0.02)'
                                     }}
                                 >
-                                    {policyFile ? (
-                                        <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                                            <ClipboardCheck size={18} />
-                                            <span>{policyFile.originalname} Ready</span>
-                                        </div>
+                                    {isUploading ? (
+                                        <span>Uploading...</span>
                                     ) : (
-                                        <span className="text-secondary" style={{ fontSize: '0.85rem' }}>+ Upload Policy Evidence</span>
+                                        <span className="text-secondary" style={{ fontSize: '0.85rem' }}>
+                                            <Image size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+                                            Click to upload policy documents (multiple files supported)
+                                        </span>
                                     )}
-                                    <input id="policy-upload" type="file" hidden onChange={(e) => handleFileChange(e, 'policy')} />
+                                    <input id="policy-upload" type="file" hidden multiple onChange={(e) => handleFileChange(e, 'policy')} />
                                 </div>
+                                {renderUploadedFiles(policyFiles, setPolicyFiles)}
                             </div>
                             <button className="premium-btn" onClick={handleIssuePolicy} disabled={!targetVehicle || !policyNo}>
                                 Bind Policy to Vehicle NFT
@@ -275,6 +369,7 @@ export const InsurancePage = () => {
                         </div>
                     </div>
 
+                    {/* Evidence Upload */}
                     <div className="card">
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                             <FileText size={18} color="var(--accent-primary)" />
@@ -283,7 +378,7 @@ export const InsurancePage = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div
                                 style={{
-                                    height: '100px',
+                                    minHeight: '100px',
                                     background: 'rgba(255,255,255,0.05)',
                                     borderRadius: '8px',
                                     border: '1px dashed var(--border-subtle)',
@@ -291,85 +386,115 @@ export const InsurancePage = () => {
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.8rem',
                                     cursor: 'pointer',
-                                    position: 'relative'
+                                    padding: '1rem'
                                 }}
                                 className="text-secondary"
                                 onClick={() => document.getElementById('claim-file-input')?.click()}
                             >
                                 {isUploading ? (
                                     <span>Uploading...</span>
-                                ) : claimFile ? (
-                                    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                        {claimFile.mime.startsWith('image/') ? (
-                                            <img
-                                                src={`http://localhost:3000${claimFile.path}`}
-                                                alt="Preview"
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
-                                            />
-                                        ) : (
-                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <FileText size={48} />
-                                            </div>
-                                        )}
-                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
-                                            <ClipboardCheck size={28} color="var(--success)" style={{ marginBottom: '0.25rem' }} />
-                                            <div style={{ color: 'white', fontWeight: 700, fontSize: '0.8rem' }}>{claimFile.originalname}</div>
-                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)' }}>{claimFile.hash.substring(0, 16)}...</div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setClaimFile(null); }}
-                                                style={{ marginTop: '0.5rem', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem' }}
-                                            >
-                                                Change File
-                                            </button>
-                                        </div>
-                                    </div>
                                 ) : (
                                     <>
-                                        <span>Click to upload accident photo or report</span>
-                                        <input
-                                            id="claim-file-input"
-                                            type="file"
-                                            hidden
-                                            onChange={(e) => handleFileChange(e, 'claim')}
-                                        />
+                                        <Image size={28} style={{ marginBottom: '0.5rem', opacity: 0.6 }} />
+                                        <span>Click to upload accident photos, police reports, or other evidence</span>
+                                        <span style={{ fontSize: '0.7rem', marginTop: '0.25rem', opacity: 0.7 }}>Multiple files supported — images and documents</span>
                                     </>
                                 )}
+                                <input
+                                    id="claim-file-input"
+                                    type="file"
+                                    hidden
+                                    multiple
+                                    onChange={(e) => handleFileChange(e, 'claim')}
+                                />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Photo_Event_Link_01.hash</div>
-                                <div style={{ height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px dashed var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }} className="text-secondary">Police_Report.hash</div>
-                            </div>
+                            {renderUploadedFiles(claimFiles, setClaimFiles)}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Blockchain Transaction Log */}
-            {targetVehicle && (() => {
-                const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['INSURANCE_POLICY_UPDATED', 'CLAIM_FILED', 'INSURER_APPROVED_ESTIMATE'].includes(e.type));
-                return vehicleEvents.length > 0 ? (
+            {/* Blockchain Transaction Log with Evidence Gallery */}
+            {(() => {
+                // Show events for either target vehicle or claim vehicle
+                const activeTokenId = targetVehicle?.tokenId || claimVehicle?.tokenId;
+                if (!activeTokenId) return null;
+                const vehicleEvents = events.filter(e => e.tokenId === activeTokenId && ['INSURANCE_POLICY_UPDATED', 'CLAIM_FILED', 'INSURER_APPROVED_ESTIMATE'].includes(e.type));
+                if (vehicleEvents.length === 0) return null;
+                return (
                     <div className="card" style={{ marginTop: '1rem' }}>
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            🔗 Insurance Blockchain Transactions
+                            🔗 Insurance Blockchain Transactions & Evidence
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {vehicleEvents.slice(-8).map((ev, i) => (
-                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                                    <div>
-                                        <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
-                                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                            {vehicleEvents.slice(-10).map((ev, i) => (
+                                <div key={i} style={{
+                                    padding: '0.75rem 1rem',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-subtle)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        {ev.txHash && (
+                                            <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                                {ev.txHash.slice(0, 10)}...{ev.txHash.slice(-8)}
+                                            </code>
+                                        )}
                                     </div>
-                                    <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
-                                        {ev.txHash!.slice(0, 10)}...{ev.txHash!.slice(-8)}
-                                    </code>
+                                    {/* Evidence Gallery */}
+                                    {renderEvidence(ev)}
                                 </div>
                             ))}
                         </div>
                     </div>
-                ) : null;
+                );
             })()}
+
+            {/* Lightbox Modal for image preview */}
+            {lightboxUrl && (
+                <div
+                    onClick={() => setLightboxUrl(null)}
+                    style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.9)',
+                        backdropFilter: 'blur(10px)',
+                        zIndex: 10000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'zoom-out',
+                        padding: '2rem'
+                    }}
+                >
+                    <button
+                        onClick={() => setLightboxUrl(null)}
+                        style={{
+                            position: 'absolute', top: '1rem', right: '1rem',
+                            background: 'rgba(255,255,255,0.1)', border: 'none',
+                            borderRadius: '50%', width: '40px', height: '40px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: 'white'
+                        }}
+                    >
+                        <X size={24} />
+                    </button>
+                    <img
+                        src={lightboxUrl}
+                        alt="Evidence Preview"
+                        style={{
+                            maxWidth: '90vw', maxHeight: '85vh',
+                            borderRadius: '12px',
+                            objectFit: 'contain',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

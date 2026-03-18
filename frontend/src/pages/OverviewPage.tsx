@@ -175,15 +175,15 @@ export const OverviewPage = () => {
                       <div className="text-secondary" style={{ fontSize: '0.8rem' }}>{new Date(e.timestamp).toLocaleString()}</div>
                     </div>
                     <div className="text-secondary" style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      Actor Authority: <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{e.actor}</span>
+                      Actor Authority: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, wordBreak: 'break-all' }}>{e.actor}</span>
                     </div>
                     <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         {Object.entries(e.payload as object).map(([key, value]) => (
                           typeof value !== 'object' && (
-                            <div key={key}>
+                            <div key={key} style={{ minWidth: 0 }}>
                               <span className="text-secondary" style={{ textTransform: 'capitalize' }}>{key}: </span>
-                              <span style={{ color: 'white' }}>{String(value)}</span>
+                              <span style={{ color: 'white', wordBreak: 'break-all' }}>{String(value)}</span>
                             </div>
                           )
                         ))}
