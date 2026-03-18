@@ -55,10 +55,22 @@ export class EventService {
   }
 
   async create(createEventDto: any): Promise<EventLog> {
+    console.log('\n╔══════════════════════════════════════════════════════════════');
+    console.log('║ 📥 [EventService] NEW EVENT RECEIVED');
+    console.log('╠══════════════════════════════════════════════════════════════');
+    console.log('║ Type      :', createEventDto.type);
+    console.log('║ TokenID   :', createEventDto.tokenId);
+    console.log('║ Actor     :', createEventDto.actor);
+    console.log('║ ActorRole :', createEventDto.actorRole);
+    console.log('║ txHash (from Frontend):', createEventDto.txHash || '(none - Backend will handle)');
+    console.log('║ Payload   :', JSON.stringify(createEventDto.payload, null, 2));
+    console.log('╚══════════════════════════════════════════════════════════════\n');
+
     let vehicle = await this.vehicleRepository.findOne({ where: { tokenId: createEventDto.tokenId } });
 
     let txHash = createEventDto.txHash || null;
     const payloadHash = ethers.id(JSON.stringify(createEventDto.payload));
+    console.log(`[EventService] 🔑 payloadHash = ${payloadHash}`);
 
     if (createEventDto.type === 'MANUFACTURER_MINTED') {
       if (!vehicle) {
@@ -90,6 +102,11 @@ export class EventService {
           const modelHash = ethers.id(payload.makeModelTrim);
           const specHash = ethers.id(JSON.stringify(payload.spec));
           const manufacturedAt = Math.floor(new Date(payload.production?.manufacturedAt || Date.now()).getTime() / 1000);
+          console.log('[EventService] 🏭 MANUFACTURER_MINTED - Preparing Blockchain Tx...');
+          console.log('  vinHash       :', vinHash);
+          console.log('  modelHash     :', modelHash);
+          console.log('  specHash      :', specHash);
+          console.log('  manufacturedAt:', manufacturedAt);
 
           // 3. On-chain Uniqueness Check (Prevent "missing revert data" error)
           const isVinUsed = await this.blockchainService.vehicleNFTContract.isVinUsed(vinHash);
@@ -107,6 +124,10 @@ export class EventService {
           );
           const receipt = await tx.wait();
           txHash = receipt.hash;
+          console.log('[EventService] ✅ MINT Transaction Confirmed!');
+          console.log('  txHash     :', txHash);
+          console.log('  blockNumber:', receipt.blockNumber);
+          console.log('  gasUsed    :', receipt.gasUsed?.toString());
 
           // Get Token ID from event
           const transferEvent = receipt.logs.find((log: any) => {
@@ -165,6 +186,10 @@ export class EventService {
           ownerCount: 0,
         });
         await this.vehicleRepository.save(vehicle);
+        console.log(`[EventService] 💾 Vehicle saved to DB: tokenId=${createEventDto.tokenId}, VIN=${payload.vin}`);
+        console.log('  DB vinHash  :', ethers.id(payload.vin));
+        console.log('  DB modelHash:', ethers.id(payload.makeModelTrim));
+        console.log('  DB specHash :', ethers.id(JSON.stringify(payload.spec)));
       }
     } else {
       if (!vehicle) {
@@ -175,8 +200,10 @@ export class EventService {
       let vehicleUpdated = false;
       const payload = createEventDto.payload;
 
+      console.log(`[EventService] 🔄 Processing event type: ${createEventDto.type} for tokenId: ${createEventDto.tokenId}`);
       switch (createEventDto.type) {
         case 'OWNERSHIP_TRANSFERRED': {
+          console.log('[EventService] 🔀 OWNERSHIP_TRANSFERRED event');
           if (payload.to) {
             vehicle.currentOwnerAddress = payload.to;
             vehicle.ownerCount = (vehicle.ownerCount || 0) + 1;
@@ -236,6 +263,10 @@ export class EventService {
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+              console.log('[EventService] ✅ OWNERSHIP_TRANSFERRED Transaction Confirmed!');
+              console.log('  txHash     :', txHash);
+              console.log('  blockNumber:', receipt.blockNumber);
+              console.log('  gasUsed    :', receipt.gasUsed?.toString());
             } catch (err) {
               if (err.message !== 'STOP_SYNC') {
                 console.warn(`[EventService] Blockchain Transfer Sync failed: ${err.message || err}`);
@@ -259,6 +290,7 @@ export class EventService {
           break;
         }
         case 'DLT_REGISTRATION_UPDATED': {
+          console.log('[EventService] 📋 DLT_REGISTRATION_UPDATED event');
           vehicle.registrationStatus = 'REGISTERED' as any;
           vehicleUpdated = true;
 
@@ -298,6 +330,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ DLT_REGISTRATION Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
               console.warn(`[EventService] Blockchain Registration sync failed: ${err.message || err}`);
@@ -307,6 +343,7 @@ export class EventService {
           break;
         }
         case 'PLATE_EVENT_RECORDED': {
+          console.log('[EventService] 🚗 PLATE_EVENT_RECORDED event');
           const assignedPlateNo = payload.plateNo;
           if (!assignedPlateNo) {
             throw new Error('plateNo is required. Frontend must generate and validate the plate number before sending.');
@@ -359,6 +396,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ PLATE_EVENT Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
               console.warn(`[EventService] Blockchain Plate Event sync failed: ${err.message || err}`);
@@ -368,6 +409,7 @@ export class EventService {
           break;
         }
         case 'TAX_STATUS_UPDATED': {
+          console.log('[EventService] 💰 TAX_STATUS_UPDATED event');
           const tax = this.taxPaymentRepository.create({
             tokenId: vehicle.tokenId,
             taxYear: new Date().getFullYear(),
@@ -404,6 +446,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ TAX_STATUS Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
               console.warn(`[EventService] Blockchain Tax sync failed: ${err.message || err}`);
@@ -413,6 +459,7 @@ export class EventService {
           break;
         }
         case 'FLAG_UPDATED': {
+          console.log('[EventService] 🚩 FLAG_UPDATED event');
           if (payload.flag && payload.value !== undefined) {
             const flagsSet = new Set(vehicle.activeFlags || []);
             const flagKey = payload.flag.toUpperCase();
@@ -444,6 +491,10 @@ export class EventService {
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
+                console.log('[EventService] ✅ FLAG_UPDATED Transaction Confirmed!');
+                console.log('  txHash     :', txHash);
+                console.log('  blockNumber:', receipt.blockNumber);
+                console.log('  gasUsed    :', receipt.gasUsed?.toString());
               }
             } catch (err) {
               console.warn(`[EventService] Blockchain Flag Update sync failed: ${err.message || err}`);
@@ -453,6 +504,7 @@ export class EventService {
           break;
         }
         case 'LIEN_CREATED': {
+          console.log('[EventService] 🔒 LIEN_CREATED event');
           vehicle.transferLocked = true;
           vehicleUpdated = true;
 
@@ -473,6 +525,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ LIEN_CREATED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             console.warn(`[EventService] Blockchain Lien Creation sync failed: ${err.message || err}`);
           }
@@ -480,6 +536,7 @@ export class EventService {
           break;
         }
         case 'LIEN_RELEASED': {
+          console.log('[EventService] 🔓 LIEN_RELEASED event');
           vehicle.transferLocked = false;
           vehicleUpdated = true;
 
@@ -498,6 +555,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ LIEN_RELEASED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             console.warn(`[EventService] Blockchain Lien Release sync failed: ${err.message || err}`);
           }
@@ -505,6 +566,7 @@ export class EventService {
           break;
         }
         case 'REPOSSESSION_RECORDED': {
+          console.log('[EventService] ⚠️ REPOSSESSION_RECORDED event');
           vehicle.transferLocked = true;
           const repossessionFlagsSet = new Set(vehicle.activeFlags || []);
           repossessionFlagsSet.add('SEIZED' as any);
@@ -530,6 +592,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ REPOSSESSION Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             console.warn(`[EventService] Blockchain Repossession sync failed: ${err.message || err}`);
           }
@@ -540,6 +606,7 @@ export class EventService {
           // Specific handling could be adding to Financial log
           break;
         case 'CONSENT_UPDATED': {
+          console.log('[EventService] 📝 CONSENT_UPDATED event');
           if (payload.grantTo) {
             const grant = this.consentGrantRepository.create({
               tokenId: vehicle.tokenId,
@@ -574,6 +641,10 @@ export class EventService {
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+              console.log('[EventService] ✅ CONSENT_UPDATED Transaction Confirmed!');
+              console.log('  txHash     :', txHash);
+              console.log('  blockNumber:', receipt.blockNumber);
+              console.log('  gasUsed    :', receipt.gasUsed?.toString());
             } catch (err) {
               console.warn(`[EventService] Blockchain Consent Update sync failed: ${err.message || err}`);
             }
@@ -582,6 +653,7 @@ export class EventService {
           break;
         }
         case 'CONSENT_REVOKED': {
+          console.log('[EventService] ❌ CONSENT_REVOKED event');
           if (payload.revokeFrom) {
             const grants = await this.consentGrantRepository.find({
               where: { tokenId: vehicle.tokenId, granteeDid: payload.revokeFrom },
@@ -607,6 +679,10 @@ export class EventService {
                 );
                 const receipt = await tx.wait();
                 txHash = receipt.hash;
+                console.log('[EventService] ✅ CONSENT_REVOKED Transaction Confirmed!');
+                console.log('  txHash     :', txHash);
+                console.log('  blockNumber:', receipt.blockNumber);
+                console.log('  gasUsed    :', receipt.gasUsed?.toString());
               } catch (err) {
                 console.warn(`[EventService] Blockchain Consent Revocation sync failed: ${err.message || err}`);
               }
@@ -618,6 +694,7 @@ export class EventService {
 
         // --- Read Consent: routes to VehicleConsent.sol (read-only access) ---
         case 'READ_CONSENT_GRANTED': {
+          console.log('[EventService] 👁️ READ_CONSENT_GRANTED event');
           if (payload.grantTo) {
             const grant = this.consentGrantRepository.create({
               tokenId: vehicle.tokenId,
@@ -666,6 +743,7 @@ export class EventService {
         }
 
         case 'READ_CONSENT_REVOKED': {
+          console.log('[EventService] 🚫 READ_CONSENT_REVOKED event');
           if (payload.grantHash) {
             const grants = await this.consentGrantRepository.find({
               where: { tokenId: vehicle.tokenId, granteeDid: payload.revokeFrom },
@@ -702,6 +780,7 @@ export class EventService {
         }
 
         case 'INSURANCE_POLICY_UPDATED': {
+          console.log('[EventService] 🛡️ INSURANCE_POLICY_UPDATED event');
           const policyNumber = payload.policyNo || payload.policyNumber;
           if (policyNumber) {
             const policy = this.insurancePolicyRepository.create({
@@ -743,6 +822,10 @@ export class EventService {
               );
               const receipt = await tx.wait();
               txHash = receipt.hash;
+              console.log('[EventService] ✅ INSURANCE_POLICY Transaction Confirmed!');
+              console.log('  txHash     :', txHash);
+              console.log('  blockNumber:', receipt.blockNumber);
+              console.log('  gasUsed    :', receipt.gasUsed?.toString());
               console.log(`[EventService] ✅ Insurance Policy synced to blockchain: ${txHash}`);
             } catch (err) {
               if (err.message !== 'STOP_SYNC') {
@@ -755,6 +838,7 @@ export class EventService {
         }
 
         case 'CLAIM_FILED': {
+          console.log('[EventService] 📄 CLAIM_FILED event');
           const claim = this.insuranceClaimRepository.create({
             tokenId: vehicle.tokenId,
             claimNo: payload.claimId || `CLM-${Date.now()}`,
@@ -795,6 +879,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ CLAIM_FILED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
             console.log(`[EventService] ✅ Insurance Claim synced to blockchain: ${txHash}`);
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
@@ -806,6 +894,7 @@ export class EventService {
         }
 
         case 'INSPECTION_RESULT_RECORDED': {
+          console.log('[EventService] 🔍 INSPECTION_RESULT_RECORDED event');
           const inspMetrics = payload.metrics || {};
           const inspection = this.inspectionRepository.create({
             tokenId: vehicle.tokenId,
@@ -843,6 +932,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ INSPECTION Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
               console.warn(`[EventService] Blockchain Inspection sync failed: ${err.message || err}`);
@@ -853,6 +946,7 @@ export class EventService {
         }
 
         case 'MAINTENANCE_RECORDED': {
+          console.log('[EventService] 🔧 MAINTENANCE_RECORDED event');
           const maintJobs = payload.jobs || payload.parts || [];
           const maintenance = this.maintenanceLogRepository.create({
             tokenId: vehicle.tokenId,
@@ -913,6 +1007,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ MAINTENANCE Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
           } catch (err) {
             if (err.message !== 'STOP_SYNC') {
               console.warn(`[EventService] Blockchain Maintenance sync failed: ${err.message || err}`);
@@ -926,6 +1024,7 @@ export class EventService {
           // Could save a mini maintenance log or just an event. The event handles it for now.
           break;
         case 'CRITICAL_PART_REPLACED': {
+          console.log('[EventService] ⚙️ CRITICAL_PART_REPLACED event');
           if (payload.partType && payload.newPartNo) {
             // Update DB specification
             const spec = vehicle.specJson || {};
@@ -970,6 +1069,7 @@ export class EventService {
           break;
         }
         case 'WORKSHOP_ESTIMATE_SUBMITTED': {
+          console.log('[EventService] 💵 WORKSHOP_ESTIMATE_SUBMITTED event');
           if (payload.total) {
             // Blockchain Interaction
             if (!createEventDto.txHash) {
@@ -1016,6 +1116,7 @@ export class EventService {
 
         // --- Escrow: routes to VehicleLien.sol ---
         case 'ESCROW_CREATED': {
+          console.log('[EventService] 🏦 ESCROW_CREATED event');
           if (!createEventDto.txHash) {
           try {
             await Promise.race([
@@ -1040,6 +1141,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ ESCROW_CREATED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
             console.log(`[EventService] ✅ Escrow created: ${txHash}`);
           } catch (err) {
             console.warn(`[EventService] Blockchain Escrow creation failed: ${err.message || err}`);
@@ -1049,6 +1154,7 @@ export class EventService {
         }
 
         case 'ESCROW_FUNDED': {
+          console.log('[EventService] 💸 ESCROW_FUNDED event');
           if (payload.escrowId && !createEventDto.txHash) {
           try {
             await Promise.race([
@@ -1062,6 +1168,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ ESCROW_FUNDED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
             console.log(`[EventService] ✅ Escrow funded: ${txHash}`);
           } catch (err) {
             console.warn(`[EventService] Blockchain Escrow funding failed: ${err.message || err}`);
@@ -1071,6 +1181,7 @@ export class EventService {
         }
 
         case 'ESCROW_RELEASED': {
+          console.log('[EventService] 🎁 ESCROW_RELEASED event');
           if (payload.escrowId && payload.condition && !createEventDto.txHash) {
           try {
             await Promise.race([
@@ -1084,6 +1195,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ ESCROW_RELEASED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
             console.log(`[EventService] ✅ Escrow condition fulfilled: ${txHash}`);
           } catch (err) {
             console.warn(`[EventService] Blockchain Escrow release failed: ${err.message || err}`);
@@ -1093,6 +1208,7 @@ export class EventService {
         }
 
         case 'ESCROW_CANCELLED': {
+          console.log('[EventService] 🚫 ESCROW_CANCELLED event');
           if (payload.escrowId && !createEventDto.txHash) {
           try {
             await Promise.race([
@@ -1105,6 +1221,10 @@ export class EventService {
             );
             const receipt = await tx.wait();
             txHash = receipt.hash;
+            console.log('[EventService] ✅ ESCROW_CANCELLED Transaction Confirmed!');
+            console.log('  txHash     :', txHash);
+            console.log('  blockNumber:', receipt.blockNumber);
+            console.log('  gasUsed    :', receipt.gasUsed?.toString());
             console.log(`[EventService] ✅ Escrow cancelled: ${txHash}`);
           } catch (err) {
             console.warn(`[EventService] Blockchain Escrow cancellation failed: ${err.message || err}`);
@@ -1119,6 +1239,18 @@ export class EventService {
       }
     }
 
+    const finalTxHash = createEventDto.txHash || txHash;
+
+    console.log('\n╔══════════════════════════════════════════════════════════════');
+    console.log('║ 💾 [EventService] SAVING EVENT TO DATABASE');
+    console.log('╠══════════════════════════════════════════════════════════════');
+    console.log('║ Type         :', createEventDto.type);
+    console.log('║ TokenID      :', createEventDto.tokenId);
+    console.log('║ payloadHash  :', payloadHash);
+    console.log('║ txHash (final):', finalTxHash || '(none)');
+    console.log('║   └─ source  :', createEventDto.txHash ? 'Frontend' : (txHash ? 'Backend' : 'N/A'));
+    console.log('╚══════════════════════════════════════════════════════════════\n');
+
     const event = this.eventLogRepository.create({
       ...createEventDto,
       actorAddress: createEventDto.actor || '0x00',
@@ -1132,9 +1264,11 @@ export class EventService {
       payloadHash: payloadHash,
       evidence: createEventDto.evidence || null,
       evidenceHash: createEventDto.evidence && createEventDto.evidence.length > 0 ? createEventDto.evidence[0].hash : null,
-      txHash: createEventDto.txHash || txHash,
+      txHash: finalTxHash,
     }) as any;
 
-    return this.eventLogRepository.save(event);
+    const savedEvent = await this.eventLogRepository.save(event);
+    console.log(`[EventService] ✅ Event saved to DB with ID: ${savedEvent.id}`);
+    return savedEvent;
   }
 }
