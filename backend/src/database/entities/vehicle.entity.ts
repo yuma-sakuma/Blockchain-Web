@@ -39,23 +39,31 @@ export class Vehicle {
   /** Wallet address ของผู้ผลิต */
   @Column({ length: 100 })
   manufacturerAddress: string;
-
+  
   /** Unix timestamp วันผลิต */
   @Column({ type: 'bigint' })
   manufacturedAt: string;
-
+  
   // /** เลขไมล์ **/
   // @Column({ type: 'bigint' })
   // mileageKm: number;
-
+  
   // /** ผู้ถือกรรมสิทธิ์ **/
   // @Column({ type: 'varchar', length: 100, nullable: true })
   // currentOwnerAddress: string | null;
+  
+  /** Wallet address เจ้าของปัจจุบัน */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  currentOwnerAddress: string | null;
 
+  // /** ผู้ครอบครอง */
+  // @Column({ type: 'varchar', length: 100, nullable: true })
+  // currentHolderAddress: string | null;
+  
   /** ข้อมูลรุ่น */
   @Column({ type: 'json' })
   modelJson: { model: string; year: number };
-
+  
   /** hash(modelJson) – ตรงกับ on-chain */
   @Column({ length: 66 })
   modelHash: string;
@@ -91,14 +99,6 @@ export class Vehicle {
   /** ธงสถานะรถที่ active อยู่ */
   @Column({ type: 'simple-array', nullable: true })
   activeFlags: VehicleFlag[] | null;
-
-  /** Wallet address เจ้าของปัจจุบัน */
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  currentOwnerAddress: string | null;
-
-  // /** ผู้ครอบครอง */
-  // @Column({ type: 'varchar', length: 100, nullable: true })
-  // currentHolderAddress: string | null;
 
   /** จำนวนเจ้าของทั้งหมด */
   @Column({ type: 'int', default: 0 })
