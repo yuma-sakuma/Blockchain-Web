@@ -92,10 +92,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { role, address, logout, isAuthenticated } = useAuth();
   
   const allMenuItems = [
-    { icon: LayoutDashboard, label: 'Overview', path: '/', roles: [UserRole.MANUFACTURER, UserRole.DEALER, UserRole.CONSUMER, UserRole.DLT_OFFICER, UserRole.LENDER, UserRole.INSURER, UserRole.SERVICE_PROVIDER, UserRole.INSPECTOR] },
+    { icon: LayoutDashboard, label: 'Overview', path: '/', roles: [] }, // Empty roles means all roles
     { icon: Factory, label: 'Manufacturer', path: '/manufacturer', roles: [UserRole.MANUFACTURER] },
     { icon: Store, label: 'Dealer', path: '/dealer', roles: [UserRole.DEALER] },
-    { icon: User, label: 'My Garage', path: '/consumer', roles: [UserRole.CONSUMER] },
+    { icon: User, label: 'My Garage', path: '/consumer', roles: [UserRole.CONSUMER, UserRole.CONSUMER2] },
     { icon: FileBadge, label: 'DLT Registry', path: '/dlt', roles: [UserRole.DLT_OFFICER] },
     { icon: Wrench, label: 'Service Center', path: '/service', roles: [UserRole.SERVICE_PROVIDER] },
     { icon: ClipboardCheck, label: 'Inspection', path: '/inspection', roles: [UserRole.INSPECTOR] },
@@ -104,7 +104,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   const visibleMenu = allMenuItems.filter(item => 
-    isAuthenticated && role && item.roles.includes(role)
+    isAuthenticated && (item.roles.length === 0 || (role && item.roles.includes(role)))
   );
 
   const handleLogout = () => {

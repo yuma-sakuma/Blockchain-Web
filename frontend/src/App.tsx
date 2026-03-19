@@ -46,7 +46,7 @@ function App() {
             } />
             
             <Route path="/consumer" element={
-              <PrivateRoute allowedRoles={[UserRole.CONSUMER]}>
+              <PrivateRoute allowedRoles={[UserRole.CONSUMER, UserRole.CONSUMER2]}>
                 <ConsumerPage />
               </PrivateRoute>
             } />

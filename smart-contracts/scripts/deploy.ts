@@ -58,6 +58,7 @@ async function main() {
   const dealer = walletFromEnv("DEALER_PRIVATE_KEY");
   const dltOfficer = walletFromEnv("DLT_OFFICER_PRIVATE_KEY");
   const consumer = walletFromEnv("CONSUMER_PRIVATE_KEY");
+  const consumer2 = walletFromEnv("CONSUMER_2_PRIVATE_KEY");
   const lender = walletFromEnv("LENDER_PRIVATE_KEY");
   const insurer = walletFromEnv("INSURER_PRIVATE_KEY");
   const serviceProvider = walletFromEnv("SERVICE_PROVIDER_PRIVATE_KEY");
@@ -68,6 +69,7 @@ async function main() {
   console.log("Dealer       :", dealer.address);
   console.log("DLT Officer  :", dltOfficer.address);
   console.log("Consumer     :", consumer.address);
+  console.log("Consumer 2   :", consumer2.address);
   console.log("Lender       :", lender.address);
   console.log("Insurer      :", insurer.address);
   console.log("Service Prov.:", serviceProvider.address);
@@ -222,6 +224,7 @@ async function main() {
       VITE_INSURER_ADDRESS: insurer.address,
       VITE_SERVICE_PROVIDER_ADDRESS: serviceProvider.address,
       VITE_INSPECTOR_ADDRESS: inspector.address,
+      VITE_CONSUMER_2_ADDRESS: consumer2.address,
 
       // Auto-sync private keys to frontend
       VITE_MANUFACTURER_PRIVATE_KEY: process.env.MANUFACTURER_PRIVATE_KEY || "",
