@@ -398,6 +398,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
     setIsGlobalLoading(true);
+    // const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
@@ -484,6 +485,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             break;
           case 'ESCROW_CANCELLED':
             txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
+            break;
+          case 'WARRANTY_DEFINED':
+            txResult = await blockchainService.recordWarranty(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
         }
 

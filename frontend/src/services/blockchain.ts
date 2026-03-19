@@ -266,4 +266,20 @@ export const blockchainService = {
       return { txHash: receipt.hash };
     });
   },
+
+  async recordWarranty(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+    return this.withTxLock(async () => {
+      const contract = getContract("VEHICLE_LIFECYCLE", wallet);
+      // EventType 102 for WARRANTY_DEFINED
+      const tx = await contract.logEvent(
+        tokenId,
+        102,
+        Math.floor(Date.now() / 1000),
+        ethers.id(JSON.stringify(payload)),
+        ethers.id("Warranty Registration")
+      );
+      const receipt = await tx.wait();
+      return { txHash: receipt.hash };
+    });
+  },
 };
