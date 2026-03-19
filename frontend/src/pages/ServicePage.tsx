@@ -25,7 +25,7 @@ export const ServicePage = () => {
     const [estimateFile, setEstimateFile] = useState<any>(null);
     const [isUploading, setIsUploading] = useState<string | null>(null);
 
-    const garageId = address ? `WORKSHOP:${address}` : "WORKSHOP:KDT-Service-01";
+    const garageId = address || 'UNKNOWN';
     const targetVehicle = vehicles.find(v => v.vin === vin);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {

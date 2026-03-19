@@ -207,8 +207,8 @@ export class BlockchainService implements OnModuleInit {
    * This fixes §1.1 God Mode Wallet — each role uses its own wallet for transactions.
    */
   getSignerForRole(role: string): ethers.Signer {
-    // Normalize role from actor string (e.g. "INSURER:0x..." → "INSURER")
-    const normalizedRole = role.split(':')[0].toUpperCase()
+    // Normalize role name (no prefix stripping needed — prefixes removed)
+    const normalizedRole = role.toUpperCase()
       .replace('DLT', 'DLT_OFFICER')
       .replace('INSPECTION', 'INSPECTOR')
       .replace('SERVICE', 'SERVICE_PROVIDER')

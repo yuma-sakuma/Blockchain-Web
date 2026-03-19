@@ -119,7 +119,7 @@ export const ManufacturerPage = () => {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const signature = 'sig_' + Math.random().toString(36).substring(7).toUpperCase();
-    const manufacturerId = `MANUFACTURER:${address}`;
+    const manufacturerId = address || 'UNKNOWN';
 
     // 1. Mint Event (Await Real Token ID from Blockchain)
     try {
@@ -181,14 +181,14 @@ export const ManufacturerPage = () => {
     const dest = prompt("Enter Dealer Wallet Address:", defaultDealer);
     if (!dest) return;
 
-    const targetDealerId = `DEALER:${dest}`;
+    const targetDealerId = dest;
 
     addEvent({
       type: 'OWNERSHIP_TRANSFERRED',
-      actor: `MANUFACTURER:${address?.substring(0, 6)}...`,
+      actor: address || 'UNKNOWN',
       tokenId: tokenId,
       payload: {
-        from: `MANUFACTURER:${address}`,
+        from: address,
         to: targetDealerId,
         reason: 'inventory_transfer',
         docRef: 'INV-' + Math.floor(Math.random() * 10000)

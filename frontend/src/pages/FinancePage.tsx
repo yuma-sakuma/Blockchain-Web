@@ -8,7 +8,7 @@ export const FinancePage = () => {
     const { address } = useAuth();
     const [vin, setVin] = useState('');
     
-    const lender = address ? `LENDER:${address}` : 'FIN:KDT-Leasing';
+    const lender = address || 'UNKNOWN';
     
     const targetVehicle = vehicles.find(v => v.vin === vin);
 

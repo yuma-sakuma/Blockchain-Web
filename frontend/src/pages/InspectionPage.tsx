@@ -13,7 +13,7 @@ export const InspectionPage = () => {
     const [inspFile, setInspFile] = useState<any>(null);
     const [isUploading, setIsUploading] = useState(false);
 
-    const inspectorId = address ? `INSPECTION:${address}` : "INSPECTION:Tor-Ror-Or-099";
+    const inspectorId = address || 'UNKNOWN';
 
     const vehicle = vehicles.find(v => v.vin === searchVin);
 

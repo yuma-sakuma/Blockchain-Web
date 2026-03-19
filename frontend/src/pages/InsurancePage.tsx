@@ -22,7 +22,7 @@ export const InsurancePage = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-    const insurerId = address ? `INSURER:${address}` : "INSURER:ABC-Insurance-Thailand";
+    const insurerId = address || 'UNKNOWN';
     const targetVehicle = vehicles.find(v => v.vin === vin);
     const claimVehicle = vehicles.find(v => v.vin === claimVin);
 

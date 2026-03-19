@@ -11,7 +11,7 @@ export const DealerPage = () => {
     const [disclosures, setDisclosures] = useState('');
 
     // Dynamic Dealer ID from Auth
-    const dealerId = `DEALER:${address}`;
+    const dealerId = address || 'UNKNOWN';
     const displayId = address ? `${address.substring(0, 6)}...${address.substring(38)}` : 'Unknown';
 
     const normalizedAddress = address?.toLowerCase() || '';
@@ -40,7 +40,7 @@ export const DealerPage = () => {
         const customerName = prompt("Buyer Identity (Wallet Address or Name):", defaultConsumer);
         if (!customerName) return;
 
-        const buyerId = customerName.startsWith('0x') ? `CONSUMER:${customerName}` : `PERSON:${customerName}`;
+        const buyerId = customerName;
 
         await addEvent({
             type: 'SALE_CONTRACT_CREATED',
