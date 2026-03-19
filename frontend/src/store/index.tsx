@@ -110,7 +110,7 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'LIEN_RELEASED':
         return {
           ...v,
-          lien: { status: 'released', transferLocked: false, lender: undefined }
+          lien: { status: 'none', transferLocked: false, lender: undefined }
         };
       case 'MAINTENANCE_RECORDED':
         // Logic: Update mileage if monotonic
@@ -485,6 +485,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             break;
           case 'ESCROW_CANCELLED':
             txResult = await blockchainService.cancelEscrow(roleWallet, newEvent.payload);
+            break;
+          case 'WARRANTY_DEFINED':
+            txResult = await blockchainService.recordWarranty(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
         }
 
