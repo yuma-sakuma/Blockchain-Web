@@ -14,11 +14,18 @@ export const blockchainService = {
   // ── Mutex Lock to prevent nonce race conditions ──
   _txMutex: Promise.resolve() as Promise<any>,
   async withTxLock<T>(fn: () => Promise<T>): Promise<T> {
-    const lock = this._txMutex.then(async () => {
+    let resolve: () => void;
+    const nextLock = new Promise<void>((r) => { resolve = r; });
+    const prevLock = this._txMutex;
+    this._txMutex = nextLock;
+    await prevLock; // Wait for previous transaction to fully complete
+    try {
       return await fn();
-    });
-    this._txMutex = lock.catch(() => { });
-    return lock;
+    } finally {
+      // Small delay to let Ganache update its nonce state
+      await new Promise((r) => setTimeout(r, 200));
+      resolve!();
+    }
   },
 
   async mintVehicle(wallet: ethers.Wallet, payload: any): Promise<BlockchainResult> {
@@ -62,6 +69,9 @@ export const blockchainService = {
       // 1. Record the transfer event FIRST (while caller is still the NFT owner → passes auth)
       const tx = await lifecycleContract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id(JSON.stringify({ tokenId, reason: payload.reason, docRef: payload.docRef })));
       const receipt = await tx.wait();
+
+      // Small delay to let Ganache update nonce between sequential txs
+      await new Promise((r) => setTimeout(r, 300));
 
       // 2. THEN actually transfer the NFT on-chain
       const currentOwner = await nftContract.ownerOf(tokenId);
