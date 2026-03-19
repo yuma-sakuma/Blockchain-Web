@@ -59,16 +59,17 @@ export const blockchainService = {
       const reasonMap: Record<string, number> = { inventory_transfer: 0, first_sale: 1, resale: 2, trade_in: 3 };
       const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
 
-      // --- FIX: Actually transfer the NFT on-chain ---
+      // 1. Record the transfer event FIRST (while caller is still the NFT owner → passes auth)
+      const tx = await lifecycleContract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id(JSON.stringify({ tokenId, reason: payload.reason, docRef: payload.docRef })));
+      const receipt = await tx.wait();
+
+      // 2. THEN actually transfer the NFT on-chain
       const currentOwner = await nftContract.ownerOf(tokenId);
       if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
         const transferTx = await nftContract.transferFrom(currentOwner, toAddress, tokenId);
         await transferTx.wait();
       }
 
-      // Record the transfer event
-      const tx = await lifecycleContract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id(JSON.stringify({ tokenId, reason: payload.reason, docRef: payload.docRef })));
-      const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });
   },

@@ -245,17 +245,7 @@ export class EventService {
                   const reasonMap = { 'inventory_transfer': 0, 'first_sale': 1, 'resale': 2, 'trade_in': 3 };
                   const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
 
-                  // Transfer NFT on-chain
-                  const currentOwner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
-                  if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
-                    const transferTx = await this.blockchainService.vehicleNFTContract.transferFrom(
-                      currentOwner, toAddress, createEventDto.tokenId
-                    );
-                    await transferTx.wait();
-                    console.log(`[EventService] ✅ NFT ${createEventDto.tokenId} transferred from ${currentOwner} to ${toAddress}`);
-                  }
-
-                  // Record transfer in VehicleLifecycle
+                  // 1. Record transfer in VehicleLifecycle FIRST (while caller is still owner → passes auth)
                   const tx = await this.blockchainService.vehicleLifecycleContract.recordTransfer(
                     createEventDto.tokenId, toAddress,
                     reasonMap[payload.reason] || 2,
@@ -265,6 +255,17 @@ export class EventService {
                   );
                   const receipt = await tx.wait();
                   console.log('[EventService] ✅ OWNERSHIP_TRANSFERRED Transaction Confirmed!');
+
+                  // 2. THEN transfer NFT on-chain
+                  const currentOwner = await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                  if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
+                    const transferTx = await this.blockchainService.vehicleNFTContract.transferFrom(
+                      currentOwner, toAddress, createEventDto.tokenId
+                    );
+                    await transferTx.wait();
+                    console.log(`[EventService] ✅ NFT ${createEventDto.tokenId} transferred from ${currentOwner} to ${toAddress}`);
+                  }
+
                   return receipt.hash;
                 });
               } catch (err) {

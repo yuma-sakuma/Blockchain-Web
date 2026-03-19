@@ -199,9 +199,7 @@ export const ManufacturerPage = () => {
   const normalizedAddress = address?.toLowerCase() || '';
   const myStock = vehicles.filter(v => {
       const ownerLower = v.currentOwner.toLowerCase();
-      return ownerLower === `manufacturer:${normalizedAddress}` || 
-             ownerLower === normalizedAddress ||
-             (ownerLower.includes('manufacturer') && ownerLower.includes(normalizedAddress));
+      return ownerLower === normalizedAddress;
   });
 
   return (

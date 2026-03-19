@@ -17,9 +17,7 @@ export const DealerPage = () => {
     const normalizedAddress = address?.toLowerCase() || '';
     const myStock = vehicles.filter(v => {
         const ownerLower = v.currentOwner.toLowerCase();
-        return ownerLower === `dealer:${normalizedAddress}` || 
-               ownerLower === normalizedAddress ||
-               (ownerLower.includes('dealer') && ownerLower.includes(normalizedAddress));
+        return ownerLower === normalizedAddress;
     });
 
     const handleSellToCustomer = async (tokenId: string) => {
@@ -62,7 +60,7 @@ export const DealerPage = () => {
             payload: {
                 from: dealerId,
                 to: buyerId,
-                reason: 'first_owner_delivery',
+                reason: 'first_sale',
                 price: 0.85,
                 deliveryDate: new Date().toISOString()
             }
@@ -120,7 +118,7 @@ export const DealerPage = () => {
                 payload: {
                     from: vehicle.currentOwner,
                     to: dealerId,
-                    reason: 'trade_in_buyback',
+                    reason: 'trade_in',
                     docRef: 'TRADEIN-' + Date.now()
                 }
             });

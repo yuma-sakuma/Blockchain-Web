@@ -11,8 +11,8 @@ export const ConsumerPage = () => {
   const [showPrivacy, setShowPrivacy] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
   
-  // Dynamic User ID
-  const currentUser = address ? `CONSUMER:${address}` : 'UNKNOWN';
+  // Dynamic User ID — raw address for blockchain, prefixed for display only
+  const currentUser = address || 'UNKNOWN';
   const displayUser = address ? `${address.substring(0, 6)}...` : 'Guest';
 
   // Address format normalization for robust matching
@@ -21,9 +21,7 @@ export const ConsumerPage = () => {
   const myVehicles = vehicles.filter(v => {
       const ownerLower = v.currentOwner.toLowerCase();
       // Match if the owner exactly matches our address, is the CONSUMER: prefixed version, or is the PERSON: prefixed version.
-      return ownerLower === normalizedAddress || 
-             ownerLower === `consumer:${normalizedAddress}` || 
-             ownerLower === `person:${normalizedAddress}`;
+      return ownerLower === normalizedAddress;
   });
 
   const handleGrantConsent = async (tokenId: string, granteeOverride?: string) => {
@@ -74,14 +72,15 @@ export const ConsumerPage = () => {
       const price = prompt("Agreed Sale Price (ETH):", "0.5");
       if (!price) return;
 
-      const fullBuyerId = buyerId.startsWith('0x') ? `CONSUMER:${buyerId}` : buyerId;
+      // Use raw address for blockchain fields, keep display label separate
+      const rawBuyerAddress = buyerId.startsWith('0x') ? buyerId : buyerId;
 
       await addEvent({
           type: 'PAYMENT_PROOF_SUBMITTED',
           actor: currentUser,
           tokenId: tokenId,
           payload: {
-              payer: fullBuyerId,
+              payer: rawBuyerAddress,
               payee: currentUser,
               amount: Number(price),
               currency: 'ETH',
@@ -95,9 +94,9 @@ export const ConsumerPage = () => {
           actor: currentUser,
           tokenId: tokenId,
           payload: {
-              from: currentUser,
-              to: fullBuyerId,
-              reason: 'private_p2p_sale',
+              from: address,
+              to: rawBuyerAddress,
+              reason: 'resale',
               price: Number(price),
               date: new Date().toISOString()
           }
