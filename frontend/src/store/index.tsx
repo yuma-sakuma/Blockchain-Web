@@ -398,7 +398,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
     setIsGlobalLoading(true);
-    const originalTokenId = newEventData.tokenId;
+    // const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
