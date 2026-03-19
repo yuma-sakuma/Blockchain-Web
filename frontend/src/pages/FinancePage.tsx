@@ -100,22 +100,26 @@ export const FinancePage = () => {
                                 Installment Scheduler
                             </h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-                                {[1, 2, 3, 4, 5, 6, 7, 8].map(m => (
-                                    <button key={m} onClick={() => handleMilestone(m)} style={{ 
-                                        padding: '1.5rem 0.5rem', 
-                                        borderRadius: '16px', 
-                                        background: 'rgba(255,255,255,0.03)', 
-                                        border: '1px solid var(--border-subtle)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '0.5rem'
-                                    }}>
-                                        <span className="text-secondary" style={{ fontSize: '0.7rem' }}>MONTH</span>
-                                        <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{m}</span>
-                                        <span className="badge badge-info" style={{ fontSize: '0.6rem' }}>LOG PAYMENT</span>
-                                    </button>
-                                ))}
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map(m => {
+                                    const isPaid = events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'INSTALLMENT_MILESTONE_RECORDED' && e.payload.installmentNo === m);
+                                    return (
+                                        <button key={m} onClick={() => !isPaid && handleMilestone(m)} disabled={isPaid} style={{ 
+                                            padding: '1.5rem 0.5rem', 
+                                            borderRadius: '16px', 
+                                            background: isPaid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.03)', 
+                                            border: isPaid ? '1px solid var(--success)' : '1px solid var(--border-subtle)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            opacity: isPaid ? 0.8 : 1
+                                        }}>
+                                            <span className="text-secondary" style={{ fontSize: '0.7rem' }}>MONTH</span>
+                                            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: isPaid ? 'var(--success)' : 'inherit' }}>{m}</span>
+                                            <span className={`badge ${isPaid ? 'badge-success' : 'badge-info'}`} style={{ fontSize: '0.6rem' }}>{isPaid ? '✓ PAID' : 'LOG PAYMENT'}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -154,7 +158,7 @@ export const FinancePage = () => {
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <button className="premium-btn" onClick={handleCreateLien} disabled={targetVehicle.lien.status === 'active'}>
+                                    <button className="premium-btn" onClick={handleCreateLien} disabled={targetVehicle.lien.status === 'active' || targetVehicle.lien.status === 'released'}>
                                         <Lock size={16} /> Lock Asset
                                     </button>
                                     <button onClick={handleReleaseLien} disabled={targetVehicle.lien.status !== 'active'} style={{ border: '1px solid var(--success)', color: 'var(--success)' }}>

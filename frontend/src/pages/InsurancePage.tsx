@@ -364,7 +364,7 @@ export const InsurancePage = () => {
                             </div>
 
                             <button className="premium-btn" onClick={handleFileClaim} disabled={!claimVehicle || !description} style={{ background: 'var(--danger)' }}>
-                                Certify Claim & Flag NFT
+                                {claimFiles.length > 0 ? `Certify Claim & Flag NFT (${claimFiles.length} file${claimFiles.length > 1 ? 's' : ''} attached)` : 'Certify Claim & Flag NFT'}
                             </button>
                         </div>
                     </div>
@@ -411,6 +411,11 @@ export const InsurancePage = () => {
                                 />
                             </div>
                             {renderUploadedFiles(claimFiles, setClaimFiles)}
+                            {claimFiles.length > 0 && (
+                                <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--accent-primary)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    ℹ️ {claimFiles.length} file{claimFiles.length > 1 ? 's' : ''} will be attached to the claim when you click "Certify Claim" above.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -1,8 +1,10 @@
-import { AlertTriangle, Cpu, FileText, Gauge, Save, Search, Wrench } from 'lucide-react';
+import { AlertTriangle, Cpu, FileText, Gauge, Save, Search, Wrench, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
 import { uploadFile } from '../services/api';
+
+const API_BASE = 'http://localhost:3000';
 
 export const ServicePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -24,6 +26,7 @@ export const ServicePage = () => {
     const [partFile, setPartFile] = useState<any>(null);
     const [estimateFile, setEstimateFile] = useState<any>(null);
     const [isUploading, setIsUploading] = useState<string | null>(null);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     const garageId = address || 'UNKNOWN';
     const targetVehicle = vehicles.find(v => v.vin === vin);
@@ -94,6 +97,22 @@ export const ServicePage = () => {
         setJobs('');
         setMileage(0);
         setMaintFile(null);
+    };
+
+    // Helper: render uploaded file preview
+    const renderFilePreview = (file: any) => {
+        if (!file) return null;
+        return (
+            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                {file.mime?.startsWith('image/') ? (
+                    <img src={`${API_BASE}${file.path}`} alt="preview" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)', cursor: 'pointer' }} onClick={() => setLightboxUrl(`${API_BASE}${file.path}`)} />
+                ) : (
+                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                        <FileText size={24} color="var(--accent-primary)" />
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const handleRegisterPart = async () => {
@@ -204,6 +223,7 @@ export const ServicePage = () => {
                                     <Save size={18} /> Commit Service to Chain
                                 </button>
                             </div>
+                            {renderFilePreview(maintFile)}
                         </div>
                     </div>
 
@@ -229,6 +249,7 @@ export const ServicePage = () => {
                                     Certify Component Swap
                                 </button>
                             </div>
+                            {renderFilePreview(partFile)}
                         </div>
                     </div>
                 </div>
@@ -262,6 +283,7 @@ export const ServicePage = () => {
                                     Submit for Insurer Approval
                                 </button>
                             </div>
+                            {renderFilePreview(estimateFile)}
                         </div>
                     </div>
                 </div>
@@ -277,20 +299,52 @@ export const ServicePage = () => {
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {vehicleEvents.slice(-8).map((ev, i) => (
-                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                                    <div>
-                                        <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
-                                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                <div key={i} style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        {ev.txHash && (
+                                            <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                                {ev.txHash.slice(0, 10)}...{ev.txHash.slice(-8)}
+                                            </code>
+                                        )}
                                     </div>
-                                    <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
-                                        {ev.txHash!.slice(0, 10)}...{ev.txHash!.slice(-8)}
-                                    </code>
+                                    {/* Evidence Gallery */}
+                                    {ev.evidence && ev.evidence.length > 0 && (
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                            {ev.evidence.map((file: any, idx: number) => (
+                                                <div key={idx} onClick={() => {
+                                                    const url = file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`;
+                                                    if (file.mime?.startsWith('image/')) setLightboxUrl(url);
+                                                    else window.open(url, '_blank');
+                                                }} style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    {file.mime?.startsWith('image/') ? (
+                                                        <img src={file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <FileText size={24} color="var(--accent-primary)" />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     </div>
                 ) : null;
             })()}
+
+            {/* Lightbox Modal */}
+            {lightboxUrl && (
+                <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', padding: '2rem' }}>
+                    <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+                        <X size={24} />
+                    </button>
+                    <img src={lightboxUrl} alt="Evidence Preview" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '12px', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
         </div>
     );
 };

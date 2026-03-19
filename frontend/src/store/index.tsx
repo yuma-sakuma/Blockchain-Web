@@ -110,7 +110,7 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'LIEN_RELEASED':
         return {
           ...v,
-          lien: { status: 'released', transferLocked: false, lender: undefined }
+          lien: { status: 'none', transferLocked: false, lender: undefined }
         };
       case 'MAINTENANCE_RECORDED':
         // Logic: Update mileage if monotonic
@@ -398,7 +398,6 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
 
   const addEvent = async (newEventData: Omit<VehicleEvent, 'id' | 'timestamp'>) => {
     setIsGlobalLoading(true);
-    const originalTokenId = newEventData.tokenId;
     let newEvent: VehicleEvent = {
       ...newEventData,
       id: crypto.randomUUID(),
