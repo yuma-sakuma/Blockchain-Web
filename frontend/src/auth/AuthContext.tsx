@@ -22,9 +22,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock Database for Role Persistence (Simulating Backend/Smart Contract)
-const MOCK_ROLE_DB_KEY = 'mock_role_db';
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [address, setAddress] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
@@ -128,11 +125,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRole(userRole);
         sessionStorage.setItem('auth_address', userAddress);
         sessionStorage.setItem('auth_role', userRole);
-
-        // Save to Mock DB (Legacy support if needed, but localStorage is enough for now)
-        const mockDb = JSON.parse(localStorage.getItem(MOCK_ROLE_DB_KEY) || '{}');
-        mockDb[userAddress] = userRole;
-        localStorage.setItem(MOCK_ROLE_DB_KEY, JSON.stringify(mockDb));
 
       } catch (error) {
           console.error("Login verification failed:", error);
