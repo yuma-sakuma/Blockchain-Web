@@ -1,0 +1,327 @@
+[
+  {
+    "id": "03cf8110-700d-44fb-87f1-6c7421d97fd3",
+    "tokenId": "4004",
+    "claimNo": "CLM-2025-2004",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "APPROVED",
+    "severity": "MINOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_4.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_4.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_4.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "createdAt": "2026-03-22T14:01:35.851Z",
+    "updatedAt": "2026-03-22T14:01:35.851Z"
+  },
+  {
+    "id": "199549e8-b2bf-4997-8d75-6eb950d7f3fd",
+    "tokenId": "4005",
+    "claimNo": "CLM-2025-2005",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "APPROVED",
+    "severity": "MINOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_5.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_5.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_5.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
+    "createdAt": "2026-03-22T14:01:35.916Z",
+    "updatedAt": "2026-03-22T14:01:35.916Z"
+  },
+  {
+    "id": "479691d6-da98-4096-8bf8-2e717ed86f00",
+    "tokenId": "4006",
+    "claimNo": "CLM-2025-2006",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "APPROVED",
+    "severity": "MAJOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_6.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_6.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_6.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
+    "createdAt": "2026-03-22T14:01:35.982Z",
+    "updatedAt": "2026-03-22T14:01:35.982Z"
+  },
+  {
+    "id": "5c17afe8-f82d-469b-8073-00b54cc9aa25",
+    "tokenId": "4008",
+    "claimNo": "CLM-2025-2008",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188096",
+    "status": "FILED",
+    "severity": "MAJOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_8.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_8.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_8.pdf",
+    "fraudSignals": {
+      "score": 0.7,
+      "flags": [
+        "duplicate_claim"
+      ]
+    },
+    "txHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
+    "createdAt": "2026-03-22T14:01:36.115Z",
+    "updatedAt": "2026-03-22T14:01:36.115Z"
+  },
+  {
+    "id": "73e70b5f-7283-450b-985c-0eb7c90caac6",
+    "tokenId": "4007",
+    "claimNo": "CLM-2025-2007",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188096",
+    "status": "FILED",
+    "severity": "MAJOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_7.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_7.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_7.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "createdAt": "2026-03-22T14:01:36.048Z",
+    "updatedAt": "2026-03-22T14:01:36.048Z"
+  },
+  {
+    "id": "84e364a0-ad92-4989-bdc3-af92f56a1b2a",
+    "tokenId": "4003",
+    "claimNo": "CLM-2025-2003",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "CLOSED",
+    "severity": "MINOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_3.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_3.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_3.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "createdAt": "2026-03-22T14:01:35.763Z",
+    "updatedAt": "2026-03-22T14:01:35.763Z"
+  },
+  {
+    "id": "aa6a9306-98eb-4d8a-8852-22d61820be15",
+    "tokenId": "4010",
+    "claimNo": "CLM-2025-2010",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188096",
+    "status": "FILED",
+    "severity": "MAJOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_10.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_10.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_10.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "createdAt": "2026-03-22T14:01:36.231Z",
+    "updatedAt": "2026-03-22T14:01:36.231Z"
+  },
+  {
+    "id": "b8786743-aa6f-42e1-ad13-292630c3d41e",
+    "tokenId": "4002",
+    "claimNo": "CLM-2025-2002",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "CLOSED",
+    "severity": "MINOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_2.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_2.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_2.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0202020202020202020202020202020202020202020202020202020202020202",
+    "createdAt": "2026-03-22T14:01:35.665Z",
+    "updatedAt": "2026-03-22T14:01:35.665Z"
+  },
+  {
+    "id": "e8c7d262-3485-425e-b0fb-c3f937bb55b6",
+    "tokenId": "4001",
+    "claimNo": "CLM-2025-2001",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188095",
+    "status": "CLOSED",
+    "severity": "MINOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_1.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_1.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_1.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "createdAt": "2026-03-22T14:01:35.570Z",
+    "updatedAt": "2026-03-22T14:01:35.570Z"
+  },
+  {
+    "id": "f4f08267-5e15-42cf-ae26-e83466592312",
+    "tokenId": "4009",
+    "claimNo": "CLM-2025-2009",
+    "claimNoHash": "0x5050505050505050505050505050505050505050505050505050505050505050",
+    "filedAt": "1774188096",
+    "status": "FILED",
+    "severity": "MAJOR",
+    "evidenceFiles": [
+      {
+        "type": "photo",
+        "url": "https://storage.example.com/claims/photo_9.jpg",
+        "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+        "mime": "image/jpeg"
+      },
+      {
+        "type": "police_report",
+        "url": "https://storage.example.com/claims/report_9.pdf",
+        "hash": "0x5252525252525252525252525252525252525252525252525252525252525252",
+        "mime": "application/pdf"
+      }
+    ],
+    "evidenceHashes": [
+      "0x5151515151515151515151515151515151515151515151515151515151515151",
+      "0x5252525252525252525252525252525252525252525252525252525252525252"
+    ],
+    "estimateDocUrl": "https://storage.example.com/claims/estimate_9.pdf",
+    "fraudSignals": null,
+    "txHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
+    "createdAt": "2026-03-22T14:01:36.176Z",
+    "updatedAt": "2026-03-22T14:01:36.176Z"
+  }
+]

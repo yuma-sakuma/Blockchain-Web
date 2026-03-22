@@ -1,0 +1,207 @@
+[
+  {
+    "eventId": "008e19ef-2370-4d50-9a73-e7734244d074",
+    "tokenId": "4004",
+    "type": "VEHICLE_MINTED",
+    "actorAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774188095",
+    "payload": {
+      "model": "Mercedes EQE",
+      "year": 2025,
+      "color": "Obsidian Black"
+    },
+    "payloadHash": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
+    "evidence": [
+      {
+        "url": "https://storage.example.com/evidence/mint_4.pdf",
+        "hash": "0xc1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+        "mime": "application/pdf",
+        "size": 4096
+      }
+    ],
+    "evidenceHash": "0xc2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+    "txHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "createdAt": "2026-03-22T14:01:35.880Z"
+  },
+  {
+    "eventId": "06c0e779-be00-4041-909c-edce106b5066",
+    "tokenId": "0",
+    "type": "INSURANCE_POLICY_UPDATED",
+    "actorAddress": "0x141BACe857bCE178632248CB70990F9e311FCc1f",
+    "actorRole": "INSURER",
+    "occurredAt": "1774186353731",
+    "payload": {
+      "insurer": "0x141bace857bce178632248cb70990f9e311fcc1f",
+      "policyNumber": "a",
+      "validFrom": "2026-03-22T13:32:33.018Z",
+      "validUntil": "2027-03-22T13:32:33.018Z",
+      "coverageType": "1st_class"
+    },
+    "payloadHash": "0x3b3b39e24db4dca7fa847906fca25423bbb60cbd10b0db3a223317c42d8f1d81",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": "0xb36b3628a41a6baf5dd750a2b1740b308c3236fd84590dca4a91761a7de73826",
+    "createdAt": "2026-03-22T13:32:33.732Z"
+  },
+  {
+    "eventId": "153f75c8-a335-4266-9f8b-bd459c2a34ea",
+    "tokenId": "1",
+    "type": "CONSENT_UPDATED",
+    "actorAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "actorRole": "OWNER",
+    "occurredAt": "1774186437044",
+    "payload": {
+      "owner": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
+      "grantTo": "INSURER:Generic",
+      "permissions": {
+        "showPersonalData": false,
+        "showFullMaintenance": true,
+        "showClaims": true
+      },
+      "expiresAt": "2026-04-21T13:33:56.343Z"
+    },
+    "payloadHash": "0x1b7dcec00f2d08a5f77b867714516c3d96a29b06082c99669df386777949bdd3",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": "0x6830da3ea75103d24bfc2cc292a3bf63ef60e2f84bf5845d072d2dd36abaea0d",
+    "createdAt": "2026-03-22T13:33:57.048Z"
+  },
+  {
+    "eventId": "1906bc1a-9440-403a-8a5b-95c291ca9668",
+    "tokenId": "3008",
+    "type": "VEHICLE_MINTED",
+    "actorAddress": "0x5555555555555555555555555555555555555555",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774187468",
+    "payload": {
+      "message": "Vehicle 3.0 minted"
+    },
+    "payloadHash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": null,
+    "createdAt": "2026-03-22T13:51:08.834Z"
+  },
+  {
+    "eventId": "21bca627-09b6-49e5-8fe8-04cd6ab22028",
+    "tokenId": "1",
+    "type": "OWNERSHIP_TRANSFERRED",
+    "actorAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774186397437",
+    "payload": {
+      "from": "0xb5643c59cf1a6517f81d4572ab6b5c495e6433ef",
+      "to": "0x94b49032D931A279160f2B79e4d26d0Fb34c0F88",
+      "reason": "inventory_transfer",
+      "docRef": "INV-4427"
+    },
+    "payloadHash": "0xbaddf9116c562386371c7f4ec2bb5ee7b2adb1795ad1b7dcb7799b8f3d9d5d30",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": "0xda1526129ae44f989cc6f554800996dc9c85f196cce9a4dbcaa3572c3de504e3",
+    "createdAt": "2026-03-22T13:33:17.439Z"
+  },
+  {
+    "eventId": "21d1745e-0f42-48e0-b3cb-0c3dddf363cc",
+    "tokenId": "0",
+    "type": "OWNERSHIP_TRANSFERRED",
+    "actorAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774186227140",
+    "payload": {
+      "from": "0xb5643c59cf1a6517f81d4572ab6b5c495e6433ef",
+      "to": "0x94b49032D931A279160f2B79e4d26d0Fb34c0F88",
+      "reason": "inventory_transfer",
+      "docRef": "INV-2783"
+    },
+    "payloadHash": "0x477237750e740a005a06e5934e0d6ec382a53628957074d106f44bcd02878410",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": "0x3b49c9c4cd62fd46c9639d826b07a48cf531dc6446af2de2b9bb2c061f714d87",
+    "createdAt": "2026-03-22T13:30:27.142Z"
+  },
+  {
+    "eventId": "2421269a-8f8f-4ad5-b075-3bcfedbcc2b1",
+    "tokenId": "3002",
+    "type": "VEHICLE_MINTED",
+    "actorAddress": "0x5555555555555555555555555555555555555555",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774187468",
+    "payload": {
+      "message": "Vehicle 3.0 minted"
+    },
+    "payloadHash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": null,
+    "createdAt": "2026-03-22T13:51:08.626Z"
+  },
+  {
+    "eventId": "2ba59203-7831-46af-a78c-3cdd6e9c1b5e",
+    "tokenId": "0",
+    "type": "INSTALLMENT_MILESTONE_RECORDED",
+    "actorAddress": "0x66254Ba6be0Ec2831Ed30249aFa85B6741E0Acb9",
+    "actorRole": "FINANCE",
+    "occurredAt": "1774186333771",
+    "payload": {
+      "installmentNo": 2,
+      "amount": 15400,
+      "date": "2026-03-22T13:32:13.725Z",
+      "proofHash": "PAY-0-2-1774186333725"
+    },
+    "payloadHash": "0x9f06cec41d0d8fbd0cb5c00ecec72f8ff6cde64af0f5831a4fc1ca73eb2921ad",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": null,
+    "createdAt": "2026-03-22T13:32:13.775Z"
+  },
+  {
+    "eventId": "2ea3187c-93c0-4bde-a0d1-dcfee2f34277",
+    "tokenId": "4003",
+    "type": "VEHICLE_MINTED",
+    "actorAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "actorRole": "MANUFACTURER",
+    "occurredAt": "1774188095",
+    "payload": {
+      "model": "BYD Seal",
+      "year": 2025,
+      "color": "Portimao Blue"
+    },
+    "payloadHash": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
+    "evidence": [
+      {
+        "url": "https://storage.example.com/evidence/mint_3.pdf",
+        "hash": "0xc1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+        "mime": "application/pdf",
+        "size": 3072
+      }
+    ],
+    "evidenceHash": "0xc2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+    "txHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "createdAt": "2026-03-22T14:01:35.800Z"
+  },
+  {
+    "eventId": "32a88f6a-aed5-4d58-bc9f-4d9911b54643",
+    "tokenId": "1",
+    "type": "CONSENT_UPDATED",
+    "actorAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "actorRole": "OWNER",
+    "occurredAt": "1774186439374",
+    "payload": {
+      "owner": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
+      "grantTo": "INSURER:Generic",
+      "permissions": {
+        "showPersonalData": false,
+        "showFullMaintenance": true,
+        "showClaims": true
+      },
+      "expiresAt": "2026-04-21T13:33:58.664Z"
+    },
+    "payloadHash": "0x4bbe8127e69c692eff08616d87d8295959ad3fea7538add8998648b7453d2881",
+    "evidence": null,
+    "evidenceHash": null,
+    "txHash": "0xacb9b66091e9f77696e2a2e0d89e78c53cf5ac96db072e45d912ed3f22324e99",
+    "createdAt": "2026-03-22T13:33:59.376Z"
+  }
+]

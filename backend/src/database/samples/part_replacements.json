@@ -1,0 +1,102 @@
+[
+  {
+    "id": "32e4cfd6-d7fe-494b-9319-9ead216e0100",
+    "maintenanceLogId": "0588068b-b69e-46e7-ae67-d4322aef4fd1",
+    "partType": "Brake Pad Set",
+    "partNo": "P-70001",
+    "serialNo": "SN-1774188095549-1",
+    "qty": 4,
+    "unitPrice": "450000",
+    "createdAt": "2026-03-22T14:01:35.552Z"
+  },
+  {
+    "id": "48580bc5-d49a-4ba3-8d32-c52aaf7dbb76",
+    "maintenanceLogId": "f4ea2bf0-d477-412f-b44a-0ee377095bef",
+    "partType": "EV Battery Module",
+    "partNo": "P-70010",
+    "serialNo": "SN-1774188096222-10",
+    "qty": 1,
+    "unitPrice": "35000000",
+    "createdAt": "2026-03-22T14:01:36.224Z"
+  },
+  {
+    "id": "59ac6c72-e233-4142-aaf3-591e7268db38",
+    "maintenanceLogId": "70fd76f7-4a1a-446f-9cd7-2e351f7bb9bf",
+    "partType": "Brake Pad Set",
+    "partNo": "P-70007",
+    "serialNo": "SN-1774188096033-7",
+    "qty": 4,
+    "unitPrice": "450000",
+    "createdAt": "2026-03-22T14:01:36.035Z"
+  },
+  {
+    "id": "972a36b7-ede3-4c2a-bf7c-ebd9c67fcf4d",
+    "maintenanceLogId": "158183a5-6c16-44f4-9088-d9733876980b",
+    "partType": "Brake Pad Set",
+    "partNo": "P-70009",
+    "serialNo": "SN-1774188096163-9",
+    "qty": 4,
+    "unitPrice": "450000",
+    "createdAt": "2026-03-22T14:01:36.165Z"
+  },
+  {
+    "id": "9dbf1d2c-fd12-44d1-ab9a-7ec3b02b5acd",
+    "maintenanceLogId": "1a9f6d29-af79-4a45-84dc-b13689f97de0",
+    "partType": "EV Battery Module",
+    "partNo": "P-70002",
+    "serialNo": "SN-1774188095645-2",
+    "qty": 1,
+    "unitPrice": "35000000",
+    "createdAt": "2026-03-22T14:01:35.647Z"
+  },
+  {
+    "id": "a59284df-79bc-422d-abc1-74b678069742",
+    "maintenanceLogId": "6595e13e-2c82-4000-aa03-b534ad5fabf3",
+    "partType": "EV Battery Module",
+    "partNo": "P-70004",
+    "serialNo": "SN-1774188095833-4",
+    "qty": 1,
+    "unitPrice": "35000000",
+    "createdAt": "2026-03-22T14:01:35.837Z"
+  },
+  {
+    "id": "aa8de439-9a49-4ad9-97b5-89220a0368cc",
+    "maintenanceLogId": "b25e91bd-b788-48a9-b96c-cce35d014fdc",
+    "partType": "Brake Pad Set",
+    "partNo": "P-70003",
+    "serialNo": "SN-1774188095744-3",
+    "qty": 4,
+    "unitPrice": "450000",
+    "createdAt": "2026-03-22T14:01:35.747Z"
+  },
+  {
+    "id": "ba01c034-55b6-41f7-8628-b7e3b592d900",
+    "maintenanceLogId": "2c2eb783-d81b-4f77-88bb-1e8b0f5b4278",
+    "partType": "EV Battery Module",
+    "partNo": "P-70006",
+    "serialNo": "SN-1774188095965-6",
+    "qty": 1,
+    "unitPrice": "35000000",
+    "createdAt": "2026-03-22T14:01:35.967Z"
+  },
+  {
+    "id": "d1d83a64-4035-416a-9a95-5c09baa26c2b",
+    "maintenanceLogId": "b39d02ac-3580-4e22-bbad-c2e7007330d9",
+    "partType": "EV Battery Module",
+    "partNo": "P-70008",
+    "serialNo": "SN-1774188096101-8",
+    "qty": 1,
+    "unitPrice": "35000000",
+    "createdAt": "2026-03-22T14:01:36.104Z"
+  },
+  {
+    "id": "f511c5ea-46cf-4191-9538-3ebd2071c558",
+    "maintenanceLogId": "412640bf-d384-4773-b9ca-579f772b5fc8",
+    "partType": "Brake Pad Set",
+    "partNo": "P-70005",
+    "serialNo": "SN-1774188095903-5",
+    "qty": 4,
+    "unitPrice": "450000",
+    "createdAt": "2026-03-22T14:01:35.905Z"
+  }
+]

@@ -1,0 +1,307 @@
+[
+  {
+    "tokenId": "0",
+    "vinNumber": "WW",
+    "vinHash": "0x6f97b8f146980b648241685dce130d9353ecd028fd8ae91621675d5727247294",
+    "manufacturerAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
+    "manufacturedAt": "1774186215069",
+    "currentOwnerAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "modelJson": {
+      "model": "WW",
+      "year": 2026
+    },
+    "modelHash": "0x6f97b8f146980b648241685dce130d9353ecd028fd8ae91621675d5727247294",
+    "warrantyJson": {
+      "startPolicy": "at_first_registration",
+      "terms": {
+        "years": 0,
+        "mileageKm": 0,
+        "coverage": [
+          "powertrain",
+          "battery",
+          "chassis"
+        ]
+      }
+    },
+    "specJson": {
+      "color": "WW",
+      "mileageKm": 0,
+      "engine": "WW",
+      "batteryKwh": 0,
+      "options": [],
+      "plateNo": "9ฐญ-9246",
+      "lienPayments": {
+        "lastInstallment": 2,
+        "lastPaymentDate": "2026-03-22T13:32:13.750Z",
+        "totalPaid": 30800
+      }
+    },
+    "specHash": "0x9910f93046ae1ebd2d0ea3066ceee1212dcb901f8fd85777fb546833ce644755",
+    "manufacturerSignature": "sig_AHOC0R",
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 2,
+    "createdAt": "2026-03-22T13:30:16.232Z",
+    "updatedAt": "2026-03-22T13:32:22.000Z"
+  },
+  {
+    "tokenId": "1",
+    "vinNumber": "QQ",
+    "vinHash": "0xd52c7065346749557681c869ab0de65ba81ca9643375626835367321f0de7588",
+    "manufacturerAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
+    "manufacturedAt": "1774186386974",
+    "currentOwnerAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "modelJson": {
+      "model": "QQ",
+      "year": 2026
+    },
+    "modelHash": "0xd52c7065346749557681c869ab0de65ba81ca9643375626835367321f0de7588",
+    "warrantyJson": {
+      "startPolicy": "at_first_registration",
+      "terms": {
+        "years": 0,
+        "mileageKm": 0,
+        "coverage": [
+          "powertrain",
+          "battery",
+          "chassis"
+        ]
+      }
+    },
+    "specJson": {
+      "color": "QQ",
+      "mileageKm": 0,
+      "engine": "QQ",
+      "batteryKwh": 0,
+      "options": [],
+      "plateNo": "2ฬฬ-6731"
+    },
+    "specHash": "0xc681103da043336d6d2a96c7b24fb91ac5f07a922cb41d93e3e423b67cd876a5",
+    "manufacturerSignature": "sig_IYKYVP",
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 2,
+    "createdAt": "2026-03-22T13:33:07.983Z",
+    "updatedAt": "2026-03-22T13:33:51.000Z"
+  },
+  {
+    "tokenId": "1001",
+    "vinNumber": "VIN10000000000001",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000001",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000101",
+    "modelJson": {
+      "model": "Toyota Camry",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "Black",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.492Z",
+    "updatedAt": "2026-03-22T13:48:02.492Z"
+  },
+  {
+    "tokenId": "1002",
+    "vinNumber": "VIN10000000000002",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000002",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000102",
+    "modelJson": {
+      "model": "Tesla Model 3",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "White",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.502Z",
+    "updatedAt": "2026-03-22T13:48:02.502Z"
+  },
+  {
+    "tokenId": "1003",
+    "vinNumber": "VIN10000000000003",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000003",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000103",
+    "modelJson": {
+      "model": "Toyota Camry",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "Black",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.506Z",
+    "updatedAt": "2026-03-22T13:48:02.506Z"
+  },
+  {
+    "tokenId": "1004",
+    "vinNumber": "VIN10000000000004",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000004",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000104",
+    "modelJson": {
+      "model": "Tesla Model 3",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "White",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.511Z",
+    "updatedAt": "2026-03-22T13:48:02.511Z"
+  },
+  {
+    "tokenId": "1005",
+    "vinNumber": "VIN10000000000005",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000005",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000105",
+    "modelJson": {
+      "model": "Toyota Camry",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "Black",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.517Z",
+    "updatedAt": "2026-03-22T13:48:02.517Z"
+  },
+  {
+    "tokenId": "1006",
+    "vinNumber": "VIN10000000000006",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000006",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000106",
+    "modelJson": {
+      "model": "Tesla Model 3",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "White",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.519Z",
+    "updatedAt": "2026-03-22T13:48:02.519Z"
+  },
+  {
+    "tokenId": "1007",
+    "vinNumber": "VIN10000000000007",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000007",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000107",
+    "modelJson": {
+      "model": "Toyota Camry",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "Black",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.522Z",
+    "updatedAt": "2026-03-22T13:48:02.522Z"
+  },
+  {
+    "tokenId": "1008",
+    "vinNumber": "VIN10000000000008",
+    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturerAddress": "0x0000000000000000000000000000000000000008",
+    "manufacturedAt": "1774187282",
+    "currentOwnerAddress": "0x0000000000000000000000000000000000000108",
+    "modelJson": {
+      "model": "Tesla Model 3",
+      "year": 2024
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": null,
+    "specJson": {
+      "color": "White",
+      "battery": "82kWh"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": null,
+    "mintTxHash": null,
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-22T13:48:02.524Z",
+    "updatedAt": "2026-03-22T13:48:02.524Z"
+  }
+]
