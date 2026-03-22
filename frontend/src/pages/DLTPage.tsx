@@ -215,7 +215,7 @@ export const DLTPage = () => {
                                                     type: 'FLAG_UPDATED',
                                                     actor: actorId,
                                                     tokenId: searchResult.tokenId,
-                                                    payload: { flagType: 'stolen', value: false }
+                                                    payload: { flag: 'stolen', value: false }
                                                 });
                                                 alert('Vehicle flag cleared. Status returned to CLEAN.');
                                             }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--success)', color: 'var(--success)' }}>
@@ -229,7 +229,7 @@ export const DLTPage = () => {
                                                     type: 'FLAG_UPDATED',
                                                     actor: actorId,
                                                     tokenId: searchResult.tokenId,
-                                                    payload: { flagType: 'stolen', value: true, caseDocUrl: caseNo, ref: 'POL-' + Date.now() }
+                                                    payload: { flag: 'stolen', value: true, caseDocUrl: caseNo, ref: 'POL-' + Date.now() }
                                                 });
                                                 alert('Vehicle flagged as STOLEN. Transfer locked.');
                                             }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
@@ -249,7 +249,7 @@ export const DLTPage = () => {
                                                     type: 'FLAG_UPDATED',
                                                     actor: actorId,
                                                     tokenId: searchResult.tokenId,
-                                                    payload: { flagType: 'seized', value: false }
+                                                    payload: { flag: 'seized', value: false }
                                                 });
                                                 alert('Vehicle seizure cleared. Status returned to NONE.');
                                             }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--success)', color: 'var(--success)' }}>
@@ -263,7 +263,7 @@ export const DLTPage = () => {
                                                     type: 'FLAG_UPDATED',
                                                     actor: actorId,
                                                     tokenId: searchResult.tokenId,
-                                                    payload: { flagType: 'seized', value: true, caseDocUrl: courtOrder, ref: 'CRT-' + Date.now() }
+                                                    payload: { flag: 'seized', value: true, caseDocUrl: courtOrder, ref: 'CRT-' + Date.now() }
                                                 });
                                                 alert('Vehicle flagged as SEIZURE. Transfer locked.');
                                             }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
@@ -282,7 +282,7 @@ export const DLTPage = () => {
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,
                                                 tokenId: searchResult.tokenId,
-                                                payload: { flagType: 'totalLoss', value: !searchResult.flags.totalLoss, reason: 'Insurance/Inspection Report', ref: 'DMG-' + Date.now() }
+                                                payload: { flag: 'total_loss', value: !searchResult.flags.totalLoss, reason: 'Insurance/Inspection Report', ref: 'DMG-' + Date.now() }
                                             });
                                         }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
                                             {searchResult.flags.totalLoss ? 'REVERT' : 'DECLARE'}

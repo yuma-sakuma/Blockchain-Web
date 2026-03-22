@@ -78,11 +78,17 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
           }
         };
       case 'FLAG_UPDATED': {
-        const flagKey = payload.flagType || payload.flag;
+        const flagKey = payload.flag;
         if (!flagKey) return v;
+        // Map snake_case flag names to camelCase state keys
+        const flagStateKeyMap: Record<string, string> = {
+          stolen: 'stolen', seized: 'seized', major_accident: 'majorAccident',
+          flood: 'flood', total_loss: 'totalLoss', scrapped: 'scrapped'
+        };
+        const stateKey = flagStateKeyMap[flagKey] || flagKey;
         const isStolen = flagKey === 'stolen';
         const isSeized = flagKey === 'seized';
-        const newFlags = { ...v.flags, [flagKey]: payload.value };
+        const newFlags = { ...v.flags, [stateKey]: payload.value };
         // Update transferLocked when toggling stolen/seized
         let newTransferLocked = v.lien.transferLocked;
         if (isStolen || isSeized) {
