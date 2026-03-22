@@ -1,5 +1,5 @@
 import { Activity, AlertTriangle, Car, CheckCircle2, Clipboard, FileText, History, Info, Lock, Search, ShieldCheck, Zap } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useVehicleStore } from '../store';
 import { EventType } from '../types/vehicle';
 
@@ -260,7 +260,7 @@ export const OverviewPage = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="text-secondary">Theft Flags</span>
-                  {selectedVehicle.flags?.stolen ? <span color="var(--danger)">ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
+                  {selectedVehicle.flags?.stolen ? <span style={{ color: 'var(--danger)' }}>ACTIVE</span> : <span style={{ color: 'var(--success)' }}>None</span>}
                 </div>
               </div>
             </div>

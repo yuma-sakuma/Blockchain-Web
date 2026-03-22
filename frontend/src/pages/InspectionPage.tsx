@@ -1,8 +1,8 @@
 import { CheckCircle, ClipboardCheck, Search, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useVehicleStore } from '../store';
 import { uploadFile } from '../services/api';
+import { useVehicleStore } from '../store';
 
 export const InspectionPage = () => {
     const { vehicles, addEvent } = useVehicleStore();
@@ -63,7 +63,7 @@ export const InspectionPage = () => {
             <header>
                 <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Inspection Center (Tor-Ror-Or)</h1>
                 <p style={{ color: 'var(--text-secondary)' }}>Annual Vehicle Inspection for Registration Renewal.</p>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', padding: '0.5rem', background: 'var(--bg-card)', display: 'inline-block', borderRadius: '4px' }}>
+                <div className="badge badge-info" style={{ marginTop: '0.5rem', fontSize: '0.875rem', padding: '0.5rem', background: 'var(--bg-card)', display: 'inline-block', borderRadius: '4px' }}>
                     Identity: <span style={{ color: 'var(--accent-primary)' }}>{inspectorId}</span>
                 </div>
             </header>
