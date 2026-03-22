@@ -30,6 +30,7 @@ export const getGanacheProvider = () => {
 };
 
 export const ROLE_PRIVATE_KEYS: Record<string, string> = {
+  ADMIN: import.meta.env.VITE_ADMIN_PRIVATE_KEY || "",
   MANUFACTURER: import.meta.env.VITE_MANUFACTURER_PRIVATE_KEY || "",
   DEALER: import.meta.env.VITE_DEALER_PRIVATE_KEY || "",
   DLT_OFFICER: import.meta.env.VITE_DLT_OFFICER_PRIVATE_KEY || "",

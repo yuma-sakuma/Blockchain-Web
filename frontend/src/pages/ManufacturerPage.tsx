@@ -234,7 +234,7 @@ export const ManufacturerPage = () => {
           </div>
 
           <div>
-            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>VIN Identification</label>
+            <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>VIN - Vehicle Identification Number</label>
             <input
               value={formData.vin}
               onChange={e => setFormData({ ...formData, vin: e.target.value })}
@@ -260,7 +260,7 @@ export const ManufacturerPage = () => {
             <input
               value={formData.engineNo}
               onChange={e => setFormData({ ...formData, engineNo: e.target.value })}
-              placeholder="SN-XXXXX"
+              placeholder="Engine Number"
               required
               style={{ borderColor: engineError ? '#ef4444' : undefined }}
             />
@@ -274,7 +274,7 @@ export const ManufacturerPage = () => {
 
           <div>
             <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Battery Capacity (KWh)</label>
-            <input type="number" value={formData.batteryKwh} onChange={e => setFormData({ ...formData, batteryKwh: e.target.value })} placeholder="60" />
+            <input type="number" value={formData.batteryKwh} onChange={e => setFormData({ ...formData, batteryKwh: e.target.value })} placeholder="0" />
           </div>
 
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

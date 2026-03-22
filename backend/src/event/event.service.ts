@@ -174,18 +174,20 @@ export class EventService {
           throw new Error("Cannot save vehicle without a valid Token ID from Blockchain.");
         }
 
+        const checksumActor = ethers.isAddress(createEventDto.actor) ? ethers.getAddress(createEventDto.actor) : createEventDto.actor;
+
         vehicle = this.vehicleRepository.create({
           tokenId: createEventDto.tokenId,
           vinNumber: payload.vin,
           vinHash: ethers.id(payload.vin),
-          manufacturerAddress: createEventDto.actor,
+          manufacturerAddress: checksumActor,
           manufacturedAt: new Date(payload.production?.manufacturedAt || Date.now()).getTime().toString(),
           modelJson: { model: payload.makeModelTrim, year: new Date().getFullYear() },
           modelHash: ethers.id(payload.makeModelTrim),
           specJson: payload.spec || {},
           specHash: ethers.id(JSON.stringify(payload.spec)),
           manufacturerSignature: payload.manufacturerSignature || null,
-          currentOwnerAddress: createEventDto.actor,
+          currentOwnerAddress: checksumActor,
           ownerCount: 0,
         });
         await this.vehicleRepository.save(vehicle);
@@ -208,7 +210,9 @@ export class EventService {
         case 'OWNERSHIP_TRANSFERRED': {
           console.log('[EventService] 🔀 OWNERSHIP_TRANSFERRED event');
           if (payload.to) {
-            vehicle.currentOwnerAddress = payload.to;
+            // Ethers getAddress normalizes to correct checksum casing
+            const checksumAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : payload.to;
+            vehicle.currentOwnerAddress = checksumAddress;
             vehicle.ownerCount = (vehicle.ownerCount || 0) + 1;
             vehicleUpdated = true;
 

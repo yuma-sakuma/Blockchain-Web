@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRightLeft, History, ShieldAlert, Store, UserCheck } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, Clock, DollarSign, History, ShieldAlert, Store, UserCheck, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
@@ -10,6 +10,11 @@ export const DealerPage = () => {
     const [showDisclosure, setShowDisclosure] = useState<string | null>(null);
     const [disclosures, setDisclosures] = useState('');
 
+    // Sale Modal State
+    const [showSaleModal, setShowSaleModal] = useState<string | null>(null);
+    const [salePrice, setSalePrice] = useState('');
+    const [buyerAddress, setBuyerAddress] = useState('');
+
     // Dynamic Dealer ID from Auth
     const dealerId = address || 'UNKNOWN';
     const displayId = address ? `${address.substring(0, 6)}...${address.substring(38)}` : 'Unknown';
@@ -20,7 +25,7 @@ export const DealerPage = () => {
         return ownerLower === normalizedAddress;
     });
 
-    const handleSellToCustomer = async (tokenId: string) => {
+    const handleOpenSaleModal = (tokenId: string) => {
         const vehicle = vehicles.find(v => v.tokenId === tokenId);
         if (!vehicle) return;
 
@@ -34,37 +39,45 @@ export const DealerPage = () => {
             }
         }
 
-        const defaultConsumer = import.meta.env.VITE_CONSUMER_ADDRESS || "";
-        const customerName = prompt("Buyer Identity (Wallet Address or Name):", defaultConsumer);
-        if (!customerName) return;
+        setShowSaleModal(tokenId);
+        setSalePrice('');
+        setBuyerAddress(import.meta.env.VITE_CONSUMER_ADDRESS || '');
+    };
 
-        const buyerId = customerName;
+    const handleSubmitSale = async () => {
+        if (!showSaleModal || !salePrice || !buyerAddress) return;
 
-        await addEvent({
-            type: 'SALE_CONTRACT_CREATED',
-            actor: dealerId,
-            tokenId: tokenId,
-            payload: {
-                buyer: buyerId,
-                saleType: "new_car",
-                price: 0.85,
-                currency: 'ETH',
-                contractHash: "HASH_CONTRACT_" + Date.now()
-            }
-        });
+        const price = parseFloat(salePrice);
+        if (isNaN(price) || price <= 0) {
+            alert('กรุณากรอกราคาที่ถูกต้อง');
+            return;
+        }
 
-        await addEvent({
-            type: 'OWNERSHIP_TRANSFERRED',
-            actor: dealerId,
-            tokenId: tokenId,
-            payload: {
-                from: dealerId,
-                to: buyerId,
-                reason: 'first_sale',
-                price: 0.85,
-                deliveryDate: new Date().toISOString()
-            }
-        });
+        if (!buyerAddress.startsWith('0x') || buyerAddress.length !== 42) {
+            alert('กรุณากรอก Wallet Address ที่ถูกต้อง (0x...)');
+            return;
+        }
+
+        try {
+            await addEvent({
+                type: 'PURCHASE_OFFER_CREATED',
+                actor: dealerId,
+                tokenId: showSaleModal,
+                payload: {
+                    seller: dealerId,
+                    sellerRole: 'DEALER',
+                    buyer: buyerAddress,
+                    price: price,
+                    currency: 'ETH',
+                    offeredAt: new Date().toISOString()
+                }
+            });
+            setShowSaleModal(null);
+            setSalePrice('');
+            setBuyerAddress('');
+        } catch (err) {
+            console.error('Failed to create purchase offer:', err);
+        }
     };
 
     const handleApplyDisclosure = async () => {
@@ -135,6 +148,83 @@ export const DealerPage = () => {
                 </div>
             </header>
 
+            {/* Sale Modal Overlay */}
+            {showSaleModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="card" style={{ width: '520px', border: '1px solid var(--accent-primary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-primary)', margin: 0 }}>
+                                <DollarSign size={24} />
+                                Create Sale Offer
+                            </h2>
+                            <button onClick={() => setShowSaleModal(null)} style={{ padding: '0.5rem', borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                                <X size={20} color="var(--text-secondary)" />
+                            </button>
+                        </div>
+
+                        {(() => {
+                            const vehicle = vehicles.find(v => v.tokenId === showSaleModal);
+                            return vehicle ? (
+                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{vehicle.makeModelTrim}</div>
+                                    <div className="text-secondary" style={{ fontSize: '0.85rem' }}>VIN: {vehicle.vin}</div>
+                                    <div className="text-secondary" style={{ fontSize: '0.85rem' }}>Token: {vehicle.tokenId}</div>
+                                </div>
+                            ) : null;
+                        })()}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div>
+                                <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                    Buyer Wallet Address
+                                </label>
+                                <input
+                                    value={buyerAddress}
+                                    onChange={e => setBuyerAddress(e.target.value)}
+                                    placeholder="0x..."
+                                    style={{ marginBottom: 0, fontFamily: 'monospace' }}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                    Sale Price (ETH)
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={salePrice}
+                                        onChange={e => setSalePrice(e.target.value)}
+                                        placeholder="0.00"
+                                        style={{ marginBottom: 0, paddingRight: '60px' }}
+                                    />
+                                    <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                                        ETH
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                            <button
+                                className="premium-btn"
+                                onClick={handleSubmitSale}
+                                disabled={!salePrice || !buyerAddress}
+                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress) ? 0.5 : 1 }}
+                            >
+                                <UserCheck size={16} /> Send Offer to Buyer
+                            </button>
+                            <button className="text-secondary" onClick={() => setShowSaleModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+
+                        <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '1rem', textAlign: 'center', opacity: 0.7 }}>
+                            ⚠️ Vehicle will NOT transfer until the buyer accepts and pays the stated ETH amount.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Disclosure Modal Overlay */}
             {showDisclosure && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -194,15 +284,33 @@ export const DealerPage = () => {
                     ) : (
                         myStock.map(v => {
                             const hasAccident = v.flags.majorAccident || v.flags.flood;
+                            const hasPendingOffer = !!v.pendingPurchase;
                             return (
                                 <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden' }}>
                                     <div style={{ padding: '1.5rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                             <span className="badge badge-info">{v.tokenId}</span>
-                                            {hasAccident && <span className="badge badge-danger">FLAGGED</span>}
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                {hasAccident && <span className="badge badge-danger">FLAGGED</span>}
+                                                {hasPendingOffer && (
+                                                    <span className="badge" style={{ background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                                                        <Clock size={12} style={{ marginRight: '4px' }} />
+                                                        PENDING CONSENT
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{v.makeModelTrim}</h3>
                                         <p className="text-secondary" style={{ fontSize: '0.85rem' }}>VIN: {v.vin}</p>
+
+                                        {hasPendingOffer && (
+                                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(251, 191, 36, 0.08)', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                                                <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Offer Sent</div>
+                                                <div style={{ fontSize: '0.9rem' }}>
+                                                    <strong>{v.pendingPurchase!.price} ETH</strong> → <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{v.pendingPurchase!.buyer.substring(0, 8)}...{v.pendingPurchase!.buyer.substring(38)}</span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
@@ -219,10 +327,11 @@ export const DealerPage = () => {
                                     <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: '1rem' }}>
                                         <button
                                             className="premium-btn"
-                                            onClick={() => handleSellToCustomer(v.tokenId)}
-                                            style={{ flex: 1.5 }}
+                                            onClick={() => handleOpenSaleModal(v.tokenId)}
+                                            style={{ flex: 1.5, opacity: hasPendingOffer ? 0.5 : 1 }}
+                                            disabled={hasPendingOffer}
                                         >
-                                            <UserCheck size={16} /> Process Sale
+                                            <UserCheck size={16} /> {hasPendingOffer ? 'Awaiting Consent' : 'Process Sale'}
                                         </button>
                                         <button
                                             onClick={() => setShowDisclosure(v.tokenId)}
@@ -240,4 +349,3 @@ export const DealerPage = () => {
         </div>
     );
 };
-

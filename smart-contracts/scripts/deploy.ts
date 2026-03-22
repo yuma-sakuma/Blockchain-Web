@@ -216,6 +216,7 @@ async function main() {
     }
 
     const roleAddresses: Record<string, string> = {
+      VITE_ADMIN_ADDRESS: deployer.address,
       VITE_MANUFACTURER_ADDRESS: manufacturer.address,
       VITE_DEALER_ADDRESS: dealer.address,
       VITE_DLT_OFFICER_ADDRESS: dltOfficer.address,
@@ -227,6 +228,7 @@ async function main() {
       VITE_CONSUMER_2_ADDRESS: consumer2.address,
 
       // Auto-sync private keys to frontend
+      VITE_ADMIN_PRIVATE_KEY: process.env.ADMIN_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY || "",
       VITE_MANUFACTURER_PRIVATE_KEY: process.env.MANUFACTURER_PRIVATE_KEY || "",
       VITE_DEALER_PRIVATE_KEY: process.env.DEALER_PRIVATE_KEY || "",
       VITE_DLT_OFFICER_PRIVATE_KEY: process.env.DLT_OFFICER_PRIVATE_KEY || "",

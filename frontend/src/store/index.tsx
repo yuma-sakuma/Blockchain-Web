@@ -220,11 +220,59 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
             ...payload.changes // Expect payload to have "changes" object
           }
         };
+      case 'PURCHASE_OFFER_CREATED':
+        return {
+          ...v,
+          pendingPurchase: {
+            seller: payload.seller,
+            sellerRole: payload.sellerRole,
+            buyer: payload.buyer,
+            price: payload.price,
+            currency: payload.currency || 'ETH',
+            offeredAt: payload.offeredAt || new Date().toISOString()
+          }
+        };
+      case 'PURCHASE_CONSENT_GIVEN':
+        if (payload.declined) {
+          return { ...v, pendingPurchase: undefined };
+        }
+        return {
+          ...v,
+          pendingPurchase: undefined,
+          currentOwner: payload.buyer,
+          ownerCount: v.ownerCount + 1
+        };
       // To be implemented: Other events
       default:
         return v;
     }
   });
+};
+
+// Helper: reconstruct pendingPurchase from events (since backend doesn't store it)
+const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEvent[]): VehicleNFT[] => {
+  // Sort events by timestamp to process in order
+  const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  // Build a map: tokenId → pendingPurchase | undefined
+  const pendingMap = new Map<string, VehicleNFT['pendingPurchase']>();
+  for (const e of sorted) {
+    if (e.type === 'PURCHASE_OFFER_CREATED') {
+      pendingMap.set(e.tokenId, {
+        seller: e.payload.seller,
+        sellerRole: e.payload.sellerRole,
+        buyer: e.payload.buyer,
+        price: e.payload.price,
+        currency: e.payload.currency || 'ETH',
+        offeredAt: e.payload.offeredAt || e.timestamp
+      });
+    } else if (e.type === 'PURCHASE_CONSENT_GIVEN' || e.type === 'OWNERSHIP_TRANSFERRED') {
+      pendingMap.set(e.tokenId, undefined); // Clear pending
+    }
+  }
+  return vehicles.map(v => ({
+    ...v,
+    pendingPurchase: pendingMap.has(v.tokenId) ? pendingMap.get(v.tokenId) : v.pendingPurchase
+  }));
 };
 
 export const VehicleProvider = ({ children }: { children: ReactNode }) => {
@@ -313,7 +361,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           'FLAG_UPDATED',
           'LIEN_CREATED',
           'LIEN_RELEASED',
-          'REPOSSESSION_RECORDED'
+          'REPOSSESSION_RECORDED',
+          'PURCHASE_OFFER_CREATED',
+          'PURCHASE_CONSENT_GIVEN'
         ];
 
         mappedEvents.forEach(e => {
@@ -321,6 +371,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             state = applyEventToState(state, e);
           }
         });
+
+        // Reconstruct pendingPurchase from events (backend doesn't store this)
+        state = reconstructPendingPurchases(state, mappedEvents);
 
         setVehicles(state);
       } catch (err: any) {
@@ -390,7 +443,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           status: 'active' as any
         } : undefined
       }));
-      setVehicles(mappedVehicles);
+      // Reconstruct pendingPurchase from events (backend doesn't store this)
+      const finalVehicles = reconstructPendingPurchases(mappedVehicles, mappedEvents);
+      setVehicles(finalVehicles);
     } catch (err) {
       console.error('[fetchAllData] Failed to re-fetch:', err);
     }
@@ -489,12 +544,30 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           case 'WARRANTY_DEFINED':
             txResult = await blockchainService.recordWarranty(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
+          case 'PURCHASE_CONSENT_GIVEN':
+            // ADMIN = lifecycle recording (has DEFAULT_ADMIN_ROLE)
+            // Seller wallet = NFT transferFrom (is the NFT owner)
+            if (!newEvent.payload.declined) {
+              const relayWallet = blockchainService.getRoleWallet('ADMIN');
+              const sellerRole = newEvent.payload.sellerRole || 'DEALER';
+              const sellerWallet = blockchainService.getRoleWallet(sellerRole);
+              if (relayWallet) {
+                txResult = await blockchainService.recordTransfer(relayWallet, newEvent.tokenId, {
+                  from: newEvent.payload.seller,
+                  to: newEvent.payload.buyer,
+                  reason: newEvent.payload.reason || 'resale',
+                  price: newEvent.payload.price,
+                  paymentTxHash: newEvent.payload.paymentTxHash,
+                  deliveryDate: new Date().toISOString()
+                }, sellerWallet || undefined);
+              }
+            }
+            break;
         }
 
         if (txResult && txResult.txHash) {
           newEvent.txHash = txResult.txHash;
           console.log('[DirectTX] ✅ Success! txHash:', txResult.txHash);
-          // showToast(`Direct Blockchain TX successful\n\nTxHash: ${txResult.txHash}`); // Optional: Can get noisy
         }
       }
 
@@ -508,6 +581,33 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
       if (response && response.txHash) {
         showToast(`Transaction Confirmed\n\nTxHash: ${response.txHash}`);
         setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
+      }
+
+      // If PURCHASE_CONSENT_GIVEN (not declined), also send OWNERSHIP_TRANSFERRED to backend
+      if (newEvent.type === 'PURCHASE_CONSENT_GIVEN' && !newEvent.payload.declined) {
+        const sellerRole = newEvent.payload.sellerRole || 'DEALER';
+        const transferEvent: VehicleEvent = {
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          actor: newEvent.payload.seller,
+          actorRole: sellerRole,
+          type: 'OWNERSHIP_TRANSFERRED',
+          tokenId: newEvent.tokenId,
+          txHash: newEvent.txHash,
+          payload: {
+            from: newEvent.payload.seller,
+            to: newEvent.payload.buyer,
+            reason: newEvent.payload.reason || 'resale',
+            price: newEvent.payload.price,
+            paymentTxHash: newEvent.payload.paymentTxHash,
+            deliveryDate: new Date().toISOString()
+          }
+        };
+        setEvents(prev => [...prev, transferEvent]);
+        setVehicles(prev => applyEventToState(prev, transferEvent));
+        // Use ADMIN wallet for backend auth (system relay)
+        const relayWallet = blockchainService.getRoleWallet('ADMIN');
+        await createAuthenticatedEvent(transferEvent, relayWallet);
       }
 
       // Re-fetch all data from backend to ensure consistency

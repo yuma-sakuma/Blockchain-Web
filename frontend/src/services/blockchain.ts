@@ -59,21 +59,22 @@ export const blockchainService = {
     });
   },
 
-  async recordTransfer(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+  async recordTransfer(wallet: ethers.Wallet, tokenId: string, payload: any, nftOwnerWallet?: ethers.Wallet): Promise<BlockchainResult> {
     return this.withTxLock(async () => {
-      const nftContract = getContract("VEHICLE_NFT", wallet);
       const lifecycleContract = getContract("VEHICLE_LIFECYCLE", wallet);
       const reasonMap: Record<string, number> = { inventory_transfer: 0, first_sale: 1, resale: 2, trade_in: 3 };
       const toAddress = ethers.isAddress(payload.to) ? ethers.getAddress(payload.to) : ethers.ZeroAddress;
 
-      // 1. Record the transfer event FIRST (while caller is still the NFT owner → passes auth)
+      // 1. Record the transfer event on VehicleLifecycle (uses wallet = ADMIN with DEFAULT_ADMIN_ROLE)
       const tx = await lifecycleContract.recordTransfer(tokenId, toAddress, reasonMap[payload.reason] || 2, ethers.id(payload.docRef || "none"), ethers.id(payload.to || "none"), ethers.id(JSON.stringify({ tokenId, reason: payload.reason, docRef: payload.docRef })));
       const receipt = await tx.wait();
 
       // Small delay to let Ganache update nonce between sequential txs
       await new Promise((r) => setTimeout(r, 300));
 
-      // 2. THEN actually transfer the NFT on-chain
+      // 2. THEN actually transfer the NFT on-chain (uses nftOwnerWallet = seller's wallet, who is the NFT owner)
+      const transferWallet = nftOwnerWallet || wallet;
+      const nftContract = getContract("VEHICLE_NFT", transferWallet);
       const currentOwner = await nftContract.ownerOf(tokenId);
       if (toAddress !== ethers.ZeroAddress && currentOwner.toLowerCase() !== toAddress.toLowerCase()) {
         const transferTx = await nftContract.transferFrom(currentOwner, toAddress, tokenId);
@@ -280,6 +281,17 @@ export const blockchainService = {
       );
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
+    });
+  },
+
+  // --- Native ETH Payment Transfer ---
+  async sendPayment(fromWallet: ethers.Wallet, toAddress: string, amountEth: string): Promise<BlockchainResult> {
+    return this.withTxLock(async () => {
+      const to = ethers.getAddress(toAddress);
+      const value = ethers.parseEther(amountEth);
+      const tx = await fromWallet.sendTransaction({ to, value });
+      const receipt = await tx.wait();
+      return { txHash: receipt!.hash };
     });
   },
 };

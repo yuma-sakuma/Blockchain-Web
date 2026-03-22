@@ -1,7 +1,9 @@
-import { ArrowRightLeft, CreditCard, FileText, History, Lock, ShieldCheck, User, X } from 'lucide-react';
+import { ArrowRightLeft, CheckCircle, CreditCard, DollarSign, FileText, History, Lock, ShieldCheck, ShoppingCart, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
+import { blockchainService } from '../services/blockchain';
+import { getWalletForRole } from '../config/contracts';
 import { useVehicleStore } from '../store';
 
 export const ConsumerPage = () => {
@@ -10,6 +12,12 @@ export const ConsumerPage = () => {
   const [showGreenBook, setShowGreenBook] = useState<string | null>(null);
   const [showPrivacy, setShowPrivacy] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
+  const [processingPurchase, setProcessingPurchase] = useState<string | null>(null);
+
+  // Sale modal state
+  const [saleModal, setSaleModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
+  const [saleBuyerAddress, setSaleBuyerAddress] = useState('');
+  const [salePrice, setSalePrice] = useState('');
   
   // Dynamic User ID — raw address for blockchain, prefixed for display only
   const currentUser = address || 'UNKNOWN';
@@ -20,9 +28,128 @@ export const ConsumerPage = () => {
   
   const myVehicles = vehicles.filter(v => {
       const ownerLower = v.currentOwner.toLowerCase();
-      // Match if the owner exactly matches our address, is the CONSUMER: prefixed version, or is the PERSON: prefixed version.
       return ownerLower === normalizedAddress;
   });
+
+  // Find pending purchase offers for this consumer
+  const pendingOffers = vehicles.filter(v => 
+      v.pendingPurchase && 
+      v.pendingPurchase.buyer.toLowerCase() === normalizedAddress
+  );
+
+  // --- Sale Modal Handlers (Consumer-to-Consumer) ---
+  const handleOpenSaleModal = (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle) return;
+    if (vehicle.lien.transferLocked) {
+      alert("SECURITY BLOCK: This asset is LOCKED by an active finance lien.");
+      return;
+    }
+    if (vehicle.pendingPurchase) {
+      alert("This vehicle already has a pending offer.");
+      return;
+    }
+    setSaleModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
+    setSaleBuyerAddress('');
+    setSalePrice('');
+  };
+
+  const handleSubmitSale = async () => {
+    if (!saleModal || !saleBuyerAddress || !salePrice) return;
+    const priceNum = parseFloat(salePrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('กรุณาใส่ราคาที่ถูกต้อง');
+      return;
+    }
+
+    await addEvent({
+      type: 'PURCHASE_OFFER_CREATED',
+      actor: currentUser,
+      tokenId: saleModal.tokenId,
+      payload: {
+        seller: currentUser,
+        sellerRole: 'CONSUMER',
+        buyer: saleBuyerAddress,
+        price: priceNum,
+        currency: 'ETH',
+        offeredAt: new Date().toISOString()
+      }
+    });
+
+    setSaleModal(null);
+    alert(`✅ สร้างข้อเสนอขายเรียบร้อย!\n\nรอ ${saleBuyerAddress.substring(0, 8)}... ยืนยัน`);
+  };
+
+  const handleAcceptAndPay = async (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle?.pendingPurchase) return;
+
+    const { seller, price, currency } = vehicle.pendingPurchase;
+
+    if (!confirm(`ยืนยันการซื้อรถ ${vehicle.makeModelTrim}\n\nราคา: ${price} ${currency}\nผู้ขาย: ${seller.substring(0, 10)}...\n\nETH จะถูกหักจาก wallet ของคุณทันที`)) {
+      return;
+    }
+
+    setProcessingPurchase(tokenId);
+
+    try {
+      // 1. Send ETH payment from consumer wallet to seller wallet
+      const role = sessionStorage.getItem('auth_role') || 'CONSUMER';
+      const consumerWallet = getWalletForRole(role);
+      if (!consumerWallet) {
+        alert('ไม่พบ wallet สำหรับ role นี้');
+        return;
+      }
+
+      const paymentResult = await blockchainService.sendPayment(
+        consumerWallet,
+        seller,
+        price.toString()
+      );
+
+      // Determine seller role from pendingPurchase (populated by PURCHASE_OFFER_CREATED payload)
+      const sellerRole = (vehicle.pendingPurchase as any).sellerRole || 'DEALER';
+
+      // 2. Record consent/payment event — this also triggers ownership transfer via seller wallet in store
+      await addEvent({
+        type: 'PURCHASE_CONSENT_GIVEN',
+        actor: currentUser,
+        tokenId: tokenId,
+        payload: {
+          buyer: currentUser,
+          seller: seller,
+          sellerRole: sellerRole,
+          reason: sellerRole === 'CONSUMER' ? 'resale' : 'first_sale',
+          price: price,
+          currency: currency,
+          paymentTxHash: paymentResult.txHash,
+          consentedAt: new Date().toISOString()
+        }
+      });
+
+      alert(`✅ ซื้อรถสำเร็จ!\n\nPayment TX: ${paymentResult.txHash.substring(0, 20)}...`);
+    } catch (err: any) {
+      console.error('Purchase failed:', err);
+      alert(`❌ การซื้อล้มเหลว: ${err.message}`);
+    } finally {
+      setProcessingPurchase(null);
+    }
+  };
+
+  const handleDeclineOffer = async (tokenId: string) => {
+    if (!confirm('ปฏิเสธข้อเสนอนี้?')) return;
+    // Simply record a consent revocation to clear the pending offer
+    await addEvent({
+      type: 'PURCHASE_CONSENT_GIVEN', // Reuse to clear pendingPurchase, with declined flag
+      actor: currentUser,
+      tokenId: tokenId,
+      payload: {
+        buyer: currentUser,
+        declined: true,
+        declinedAt: new Date().toISOString()
+      }
+    });
+  };
 
   const handleGrantConsent = async (tokenId: string, granteeOverride?: string) => {
     const grantee = granteeOverride || prompt("Target Entity ID (e.g. DEALER:0x... or INSURER:0x...):");
@@ -59,50 +186,6 @@ export const ConsumerPage = () => {
       });
   };
 
-  const handleTransferVehicle = async (tokenId: string) => {
-      const buyerId = prompt("Recipient Wallet Address:", "0x...");
-      if (!buyerId) return;
-
-      const vehicle = vehicles.find(v => v.tokenId === tokenId);
-      if (vehicle?.lien.transferLocked) {
-          alert("SECURITY BLOCK: This asset is LOCKED by an active finance lien.");
-          return;
-      }
-
-      const price = prompt("Agreed Sale Price (ETH):", "0.5");
-      if (!price) return;
-
-      // Use raw address for blockchain fields, keep display label separate
-      const rawBuyerAddress = buyerId.startsWith('0x') ? buyerId : buyerId;
-
-      await addEvent({
-          type: 'PAYMENT_PROOF_SUBMITTED',
-          actor: currentUser,
-          tokenId: tokenId,
-          payload: {
-              payer: rawBuyerAddress,
-              payee: currentUser,
-              amount: Number(price),
-              currency: 'ETH',
-              method: 'crypto_wallet_transfer',
-              proofHash: 'TXN_' + Math.floor(Math.random() * 1000000)
-          }
-      });
-
-      await addEvent({
-          type: 'OWNERSHIP_TRANSFERRED',
-          actor: currentUser,
-          tokenId: tokenId,
-          payload: {
-              from: address,
-              to: rawBuyerAddress,
-              reason: 'resale',
-              price: Number(price),
-              date: new Date().toISOString()
-          }
-      });
-  };
-
   const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy || showHistory));
 
   // Derive active consents
@@ -130,6 +213,88 @@ export const ConsumerPage = () => {
             <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{displayUser}</span>
         </div>
       </header>
+
+      {/* ═══════════ Pending Purchase Offers Section ═══════════ */}
+      {pendingOffers.length > 0 && (
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <ShoppingCart size={24} color="#fbbf24" />
+            Pending Purchase Offers
+            <span className="badge" style={{ background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.3)', fontSize: '0.8rem' }}>
+              {pendingOffers.length}
+            </span>
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            {pendingOffers.map(v => (
+              <div key={v.tokenId} className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                <div style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
+                      <p className="text-secondary" style={{ fontSize: '0.85rem', margin: '0.25rem 0 0' }}>VIN: {v.vin}</p>
+                    </div>
+                    <span className="badge badge-info">{v.tokenId}</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                      <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Color</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.spec.color}</div>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                      <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Mileage</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                    </div>
+                  </div>
+
+                  {/* Price & Seller Info */}
+                  <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(245, 158, 11, 0.05))', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Price</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fbbf24' }}>
+                          <DollarSign size={18} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                          {v.pendingPurchase!.price} ETH
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Seller</div>
+                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                          {v.pendingPurchase!.seller.substring(0, 8)}...{v.pendingPurchase!.seller.substring(38)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.25)', display: 'flex', gap: '1rem' }}>
+                  <button
+                    className="premium-btn"
+                    onClick={() => handleAcceptAndPay(v.tokenId)}
+                    disabled={processingPurchase === v.tokenId}
+                    style={{ flex: 2, opacity: processingPurchase === v.tokenId ? 0.6 : 1 }}
+                  >
+                    {processingPurchase === v.tokenId ? (
+                      <>⏳ Processing Payment...</>
+                    ) : (
+                      <><CheckCircle size={16} /> Accept & Pay {v.pendingPurchase!.price} ETH</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDeclineOffer(v.tokenId)}
+                    disabled={processingPurchase === v.tokenId}
+                    style={{ flex: 1, background: 'transparent', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer' }}
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Digital Green Book Modal */}
       {showGreenBook && selectedVehicle && createPortal(
@@ -302,8 +467,12 @@ export const ConsumerPage = () => {
                             <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <History size={18} color="var(--accent-secondary)" /> HISTORY
                             </button>
-                            <button onClick={() => handleTransferVehicle(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                                <ArrowRightLeft size={18} color="var(--accent-primary)" /> TRANSFER
+                            <button 
+                              onClick={() => handleOpenSaleModal(v.tokenId)}
+                              disabled={!!v.pendingPurchase}
+                              style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: v.pendingPurchase ? 'rgba(251, 191, 36, 0.1)' : 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: v.pendingPurchase ? 'not-allowed' : 'pointer', opacity: v.pendingPurchase ? 0.6 : 1 }}
+                            >
+                                <ArrowRightLeft size={18} color={v.pendingPurchase ? '#fbbf24' : 'var(--accent-primary)'} /> {v.pendingPurchase ? 'PENDING' : 'SELL'}
                             </button>
                         </div>
                     </div>
@@ -311,6 +480,59 @@ export const ConsumerPage = () => {
             )}
          </div>
       </div>
+
+      {/* ═══════════ Sale Modal (Consumer-to-Consumer) ═══════════ */}
+      {saleModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', background: '#0a0a0b', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <DollarSign size={28} color="var(--accent-primary)" />
+                <h2 style={{ margin: 0 }}>Sell Vehicle</h2>
+              </div>
+              <button onClick={() => setSaleModal(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{saleModal.model}</div>
+              <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {saleModal.vin}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Buyer Wallet Address</label>
+                <input
+                  type="text"
+                  value={saleBuyerAddress}
+                  onChange={(e) => setSaleBuyerAddress(e.target.value)}
+                  placeholder="0x..."
+                  style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'white', fontFamily: 'monospace', fontSize: '0.9rem' }}
+                />
+              </div>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Sale Price (ETH)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(e.target.value)}
+                  placeholder="0.5"
+                  style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'white', fontSize: '1rem' }}
+                />
+              </div>
+              <button
+                className="premium-btn"
+                onClick={handleSubmitSale}
+                disabled={!saleBuyerAddress || !salePrice}
+                style={{ marginTop: '0.5rem', opacity: (!saleBuyerAddress || !salePrice) ? 0.5 : 1 }}
+              >
+                <ShoppingCart size={16} /> Create Sale Offer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

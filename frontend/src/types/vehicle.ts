@@ -71,6 +71,15 @@ export interface InsuranceClaim {
   estimateAmount?: number;
 }
 
+export interface PendingPurchase {
+  seller: string;
+  sellerRole?: string;
+  buyer: string;
+  price: number;
+  currency: string;
+  offeredAt: string;
+}
+
 export interface VehicleNFT {
   tokenId: string;
   vin: string;
@@ -93,6 +102,9 @@ export interface VehicleNFT {
   // Insurance
   insurance?: InsurancePolicy;
   activeClaim?: InsuranceClaim;
+
+  // Purchase Offer
+  pendingPurchase?: PendingPurchase;
 }
 
 export type EventType =
@@ -131,7 +143,9 @@ export type EventType =
   | 'ESCROW_FUNDED'
   | 'ESCROW_RELEASED'
   | 'ESCROW_CANCELLED'
-  | 'SPECIFICATION_UPDATED';
+  | 'SPECIFICATION_UPDATED'
+  | 'PURCHASE_OFFER_CREATED'
+  | 'PURCHASE_CONSENT_GIVEN';
 
 export interface VehicleEvent {
   id: string;
