@@ -1,307 +1,344 @@
 [
   {
-    "tokenId": "0",
-    "vinNumber": "WW",
-    "vinHash": "0x6f97b8f146980b648241685dce130d9353ecd028fd8ae91621675d5727247294",
-    "manufacturerAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
-    "manufacturedAt": "1774186215069",
-    "currentOwnerAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "tokenId": "4001",
+    "vinNumber": "VIN2025000001",
+    "vinHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0101010101010101010101010101010101010101",
     "modelJson": {
-      "model": "WW",
-      "year": 2026
+      "model": "Tesla Model Y",
+      "year": 2025
     },
-    "modelHash": "0x6f97b8f146980b648241685dce130d9353ecd028fd8ae91621675d5727247294",
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "warrantyJson": {
-      "startPolicy": "at_first_registration",
+      "startPolicy": "2025-01-01",
       "terms": {
-        "years": 0,
-        "mileageKm": 0,
-        "coverage": [
-          "powertrain",
-          "battery",
-          "chassis"
-        ]
+        "durationYears": 5,
+        "maxKm": 100000
       }
     },
     "specJson": {
-      "color": "WW",
-      "mileageKm": 0,
-      "engine": "WW",
-      "batteryKwh": 0,
-      "options": [],
-      "plateNo": "9ฐญ-9246",
-      "lienPayments": {
-        "lastInstallment": 2,
-        "lastPaymentDate": "2026-03-22T13:32:13.750Z",
-        "totalPaid": 30800
+      "color": "Pearl White",
+      "battery": "76kWh",
+      "range": "410km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_1",
+    "mintTxHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-25T11:41:22.280Z",
+    "updatedAt": "2026-03-25T11:41:22.280Z"
+  },
+  {
+    "tokenId": "4002",
+    "vinNumber": "VIN2025000002",
+    "vinHash": "0x0202020202020202020202020202020202020202020202020202020202020202",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0202020202020202020202020202020202020202",
+    "modelJson": {
+      "model": "BMW i4",
+      "year": 2025
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
       }
     },
-    "specHash": "0x9910f93046ae1ebd2d0ea3066ceee1212dcb901f8fd85777fb546833ce644755",
-    "manufacturerSignature": "sig_AHOC0R",
-    "mintTxHash": null,
+    "specJson": {
+      "color": "Space Grey",
+      "battery": "77kWh",
+      "range": "420km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_2",
+    "mintTxHash": "0x0202020202020202020202020202020202020202020202020202020202020202",
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-25T11:41:22.371Z",
+    "updatedAt": "2026-03-25T11:41:22.371Z"
+  },
+  {
+    "tokenId": "4003",
+    "vinNumber": "VIN2025000003",
+    "vinHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0303030303030303030303030303030303030303",
+    "modelJson": {
+      "model": "BYD Seal",
+      "year": 2025
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
+    "specJson": {
+      "color": "Portimao Blue",
+      "battery": "78kWh",
+      "range": "430km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_3",
+    "mintTxHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": [
+      "MAJOR_ACCIDENT"
+    ],
+    "ownerCount": 1,
+    "createdAt": "2026-03-25T11:41:22.456Z",
+    "updatedAt": "2026-03-25T11:41:22.456Z"
+  },
+  {
+    "tokenId": "4004",
+    "vinNumber": "VIN2025000004",
+    "vinHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0404040404040404040404040404040404040404",
+    "modelJson": {
+      "model": "Mercedes EQE",
+      "year": 2025
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
+    "specJson": {
+      "color": "Obsidian Black",
+      "battery": "79kWh",
+      "range": "440km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_4",
+    "mintTxHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "registrationStatus": "REGISTERED",
+    "transferLocked": false,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-25T11:41:22.527Z",
+    "updatedAt": "2026-03-25T11:41:22.527Z"
+  },
+  {
+    "tokenId": "4005",
+    "vinNumber": "VIN2025000005",
+    "vinHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0505050505050505050505050505050505050505",
+    "modelJson": {
+      "model": "Porsche Taycan",
+      "year": 2025
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
+    "specJson": {
+      "color": "Racing Green",
+      "battery": "80kWh",
+      "range": "450km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_5",
+    "mintTxHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
+    "registrationStatus": "REGISTERED",
+    "transferLocked": true,
+    "activeFlags": null,
+    "ownerCount": 1,
+    "createdAt": "2026-03-25T11:41:22.640Z",
+    "updatedAt": "2026-03-25T11:41:22.640Z"
+  },
+  {
+    "tokenId": "4006",
+    "vinNumber": "VIN2025000006",
+    "vinHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0606060606060606060606060606060606060606",
+    "modelJson": {
+      "model": "Audi Q8 e-tron",
+      "year": 2025
+    },
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
+    "specJson": {
+      "color": "Nardo Grey",
+      "battery": "81kWh",
+      "range": "460km"
+    },
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_6",
+    "mintTxHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
     "registrationStatus": "REGISTERED",
     "transferLocked": false,
     "activeFlags": null,
     "ownerCount": 2,
-    "createdAt": "2026-03-22T13:30:16.232Z",
-    "updatedAt": "2026-03-22T13:32:22.000Z"
+    "createdAt": "2026-03-25T11:41:22.711Z",
+    "updatedAt": "2026-03-25T11:41:22.711Z"
   },
   {
-    "tokenId": "1",
-    "vinNumber": "QQ",
-    "vinHash": "0xd52c7065346749557681c869ab0de65ba81ca9643375626835367321f0de7588",
-    "manufacturerAddress": "0xB5643C59cF1a6517f81D4572AB6b5c495E6433eF",
-    "manufacturedAt": "1774186386974",
-    "currentOwnerAddress": "0xd44d94d6Aba11d88651Bfc26aa3018F59aEBa56d",
+    "tokenId": "4007",
+    "vinNumber": "VIN2025000007",
+    "vinHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0707070707070707070707070707070707070707",
     "modelJson": {
-      "model": "QQ",
-      "year": 2026
+      "model": "Hyundai Ioniq 5",
+      "year": 2025
     },
-    "modelHash": "0xd52c7065346749557681c869ab0de65ba81ca9643375626835367321f0de7588",
+    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "warrantyJson": {
-      "startPolicy": "at_first_registration",
+      "startPolicy": "2025-01-01",
       "terms": {
-        "years": 0,
-        "mileageKm": 0,
-        "coverage": [
-          "powertrain",
-          "battery",
-          "chassis"
-        ]
+        "durationYears": 5,
+        "maxKm": 100000
       }
     },
     "specJson": {
-      "color": "QQ",
-      "mileageKm": 0,
-      "engine": "QQ",
-      "batteryKwh": 0,
-      "options": [],
-      "plateNo": "2ฬฬ-6731"
+      "color": "Glacier White",
+      "battery": "82kWh",
+      "range": "470km"
     },
-    "specHash": "0xc681103da043336d6d2a96c7b24fb91ac5f07a922cb41d93e3e423b67cd876a5",
-    "manufacturerSignature": "sig_IYKYVP",
-    "mintTxHash": null,
+    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "manufacturerSignature": "0xSIG_MANUFACTURER_7",
+    "mintTxHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
     "registrationStatus": "REGISTERED",
     "transferLocked": false,
     "activeFlags": null,
     "ownerCount": 2,
-    "createdAt": "2026-03-22T13:33:07.983Z",
-    "updatedAt": "2026-03-22T13:33:51.000Z"
+    "createdAt": "2026-03-25T11:41:22.775Z",
+    "updatedAt": "2026-03-25T11:41:22.775Z"
   },
   {
-    "tokenId": "1001",
-    "vinNumber": "VIN10000000000001",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000001",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000101",
+    "tokenId": "4008",
+    "vinNumber": "VIN2025000008",
+    "vinHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0808080808080808080808080808080808080808",
     "modelJson": {
-      "model": "Toyota Camry",
-      "year": 2024
+      "model": "Kia EV6",
+      "year": 2025
     },
     "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
     "specJson": {
-      "color": "Black",
-      "battery": "82kWh"
+      "color": "Midnight Blue",
+      "battery": "83kWh",
+      "range": "480km"
     },
     "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
+    "manufacturerSignature": "0xSIG_MANUFACTURER_8",
+    "mintTxHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
     "registrationStatus": "REGISTERED",
     "transferLocked": false,
     "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.492Z",
-    "updatedAt": "2026-03-22T13:48:02.492Z"
+    "ownerCount": 2,
+    "createdAt": "2026-03-25T11:41:22.838Z",
+    "updatedAt": "2026-03-25T11:41:22.838Z"
   },
   {
-    "tokenId": "1002",
-    "vinNumber": "VIN10000000000002",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000002",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000102",
+    "tokenId": "4009",
+    "vinNumber": "VIN2025000009",
+    "vinHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0909090909090909090909090909090909090909",
     "modelJson": {
-      "model": "Tesla Model 3",
-      "year": 2024
+      "model": "Volvo EX30",
+      "year": 2025
     },
     "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
     "specJson": {
-      "color": "White",
-      "battery": "82kWh"
+      "color": "Ruby Red",
+      "battery": "84kWh",
+      "range": "490km"
     },
     "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
+    "manufacturerSignature": "0xSIG_MANUFACTURER_9",
+    "mintTxHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
     "registrationStatus": "REGISTERED",
     "transferLocked": false,
     "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.502Z",
-    "updatedAt": "2026-03-22T13:48:02.502Z"
+    "ownerCount": 2,
+    "createdAt": "2026-03-25T11:41:22.900Z",
+    "updatedAt": "2026-03-25T11:41:22.900Z"
   },
   {
-    "tokenId": "1003",
-    "vinNumber": "VIN10000000000003",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000003",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000103",
+    "tokenId": "4010",
+    "vinNumber": "VIN2025000010",
+    "vinHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "manufacturerAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manufacturedAt": "1774438882",
+    "currentOwnerAddress": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
     "modelJson": {
-      "model": "Toyota Camry",
-      "year": 2024
+      "model": "Nissan Ariya",
+      "year": 2025
     },
     "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
+    "warrantyJson": {
+      "startPolicy": "2025-01-01",
+      "terms": {
+        "durationYears": 5,
+        "maxKm": 100000
+      }
+    },
     "specJson": {
-      "color": "Black",
-      "battery": "82kWh"
+      "color": "Champagne Gold",
+      "battery": "85kWh",
+      "range": "500km"
     },
     "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
+    "manufacturerSignature": "0xSIG_MANUFACTURER_10",
+    "mintTxHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
     "registrationStatus": "REGISTERED",
     "transferLocked": false,
     "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.506Z",
-    "updatedAt": "2026-03-22T13:48:02.506Z"
-  },
-  {
-    "tokenId": "1004",
-    "vinNumber": "VIN10000000000004",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000004",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000104",
-    "modelJson": {
-      "model": "Tesla Model 3",
-      "year": 2024
-    },
-    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
-    "specJson": {
-      "color": "White",
-      "battery": "82kWh"
-    },
-    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
-    "registrationStatus": "REGISTERED",
-    "transferLocked": false,
-    "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.511Z",
-    "updatedAt": "2026-03-22T13:48:02.511Z"
-  },
-  {
-    "tokenId": "1005",
-    "vinNumber": "VIN10000000000005",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000005",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000105",
-    "modelJson": {
-      "model": "Toyota Camry",
-      "year": 2024
-    },
-    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
-    "specJson": {
-      "color": "Black",
-      "battery": "82kWh"
-    },
-    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
-    "registrationStatus": "REGISTERED",
-    "transferLocked": false,
-    "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.517Z",
-    "updatedAt": "2026-03-22T13:48:02.517Z"
-  },
-  {
-    "tokenId": "1006",
-    "vinNumber": "VIN10000000000006",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000006",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000106",
-    "modelJson": {
-      "model": "Tesla Model 3",
-      "year": 2024
-    },
-    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
-    "specJson": {
-      "color": "White",
-      "battery": "82kWh"
-    },
-    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
-    "registrationStatus": "REGISTERED",
-    "transferLocked": false,
-    "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.519Z",
-    "updatedAt": "2026-03-22T13:48:02.519Z"
-  },
-  {
-    "tokenId": "1007",
-    "vinNumber": "VIN10000000000007",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000007",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000107",
-    "modelJson": {
-      "model": "Toyota Camry",
-      "year": 2024
-    },
-    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
-    "specJson": {
-      "color": "Black",
-      "battery": "82kWh"
-    },
-    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
-    "registrationStatus": "REGISTERED",
-    "transferLocked": false,
-    "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.522Z",
-    "updatedAt": "2026-03-22T13:48:02.522Z"
-  },
-  {
-    "tokenId": "1008",
-    "vinNumber": "VIN10000000000008",
-    "vinHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manufacturerAddress": "0x0000000000000000000000000000000000000008",
-    "manufacturedAt": "1774187282",
-    "currentOwnerAddress": "0x0000000000000000000000000000000000000108",
-    "modelJson": {
-      "model": "Tesla Model 3",
-      "year": 2024
-    },
-    "modelHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "warrantyJson": null,
-    "specJson": {
-      "color": "White",
-      "battery": "82kWh"
-    },
-    "specHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "manufacturerSignature": null,
-    "mintTxHash": null,
-    "registrationStatus": "REGISTERED",
-    "transferLocked": false,
-    "activeFlags": null,
-    "ownerCount": 1,
-    "createdAt": "2026-03-22T13:48:02.524Z",
-    "updatedAt": "2026-03-22T13:48:02.524Z"
+    "ownerCount": 2,
+    "createdAt": "2026-03-25T11:41:22.962Z",
+    "updatedAt": "2026-03-25T11:41:22.962Z"
   }
 ]

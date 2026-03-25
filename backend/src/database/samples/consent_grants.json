@@ -1,73 +1,87 @@
 [
   {
-    "id": "013f69df-2e25-464d-9241-a1c8a0d760e1",
-    "tokenId": "1",
-    "ownerAddress": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
-    "granteeDid": "INSURER:Generic",
-    "granteeVerified": false,
-    "granteeEmail": null,
-    "scopes": [
-      "PII"
-    ],
-    "scopeMask": "1",
-    "expiresAt": "1776778438664",
-    "singleUse": false,
-    "nonce": "1774186439368",
-    "grantHash": "0xac5b474bcbb8fa8600f6696e9fd62bc1a4c4c2d91f076e7e00b1bcef8dd2d3aa",
-    "revoked": false,
-    "auditLog": null,
-    "txHash": null,
-    "createdAt": "2026-03-22T13:33:59.371Z"
-  },
-  {
-    "id": "07b95959-898e-4756-abdb-9c282443592e",
-    "tokenId": "1",
-    "ownerAddress": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
-    "granteeDid": "INSURER:Generic",
-    "granteeVerified": false,
-    "granteeEmail": null,
-    "scopes": [
-      "PII"
-    ],
-    "scopeMask": "1",
-    "expiresAt": "1776778436343",
-    "singleUse": false,
-    "nonce": "1774186437035",
-    "grantHash": "0x06a13f279330e9205be90679b19b41212b5d533acfe31c4d4fe4cc01ee00602b",
-    "revoked": false,
-    "auditLog": null,
-    "txHash": null,
-    "createdAt": "2026-03-22T13:33:57.037Z"
-  },
-  {
-    "id": "5243da66-020e-47ea-bbde-b70366f42389",
-    "tokenId": "4010",
-    "ownerAddress": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
-    "granteeDid": "did:example:grantee-10",
+    "id": "347baabb-ff07-431d-9884-dd1c29259bce",
+    "tokenId": "4007",
+    "ownerAddress": "0x0707070707070707070707070707070707070707",
+    "granteeDid": "did:example:grantee-7",
     "granteeVerified": true,
-    "granteeEmail": "grantee10@example.com",
+    "granteeEmail": "grantee7@example.com",
     "scopes": [
       "VEHICLE_IDENTITY",
       "MAINTENANCE_FULL"
     ],
     "scopeMask": "3",
-    "expiresAt": "1805724096",
+    "expiresAt": "1805974882",
     "singleUse": false,
-    "nonce": "10",
+    "nonce": "7",
     "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
     "revoked": false,
     "auditLog": [
       {
-        "accessedBy": "did:example:auditor-10",
-        "accessedAt": "1774188096",
+        "accessedBy": "did:example:auditor-7",
+        "accessedAt": "1774438882",
         "scope": "VEHICLE_IDENTITY"
       }
     ],
-    "txHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
-    "createdAt": "2026-03-22T14:01:36.246Z"
+    "txHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "createdAt": "2026-03-25T11:41:22.822Z"
   },
   {
-    "id": "525d6273-149d-45cd-821d-8858a9e2a3e6",
+    "id": "4950d6b2-9d6d-45aa-8a92-41bcfbc1b11f",
+    "tokenId": "4001",
+    "ownerAddress": "0x0101010101010101010101010101010101010101",
+    "granteeDid": "did:example:grantee-1",
+    "granteeVerified": true,
+    "granteeEmail": "grantee1@example.com",
+    "scopes": [
+      "VEHICLE_IDENTITY",
+      "MAINTENANCE_FULL"
+    ],
+    "scopeMask": "3",
+    "expiresAt": "1805974882",
+    "singleUse": false,
+    "nonce": "1",
+    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
+    "revoked": false,
+    "auditLog": [
+      {
+        "accessedBy": "did:example:auditor-1",
+        "accessedAt": "1774438882",
+        "scope": "VEHICLE_IDENTITY"
+      }
+    ],
+    "txHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "createdAt": "2026-03-25T11:41:22.352Z"
+  },
+  {
+    "id": "63b67a06-2ec2-4334-89ce-320f79f54322",
+    "tokenId": "4008",
+    "ownerAddress": "0x0808080808080808080808080808080808080808",
+    "granteeDid": "did:example:grantee-8",
+    "granteeVerified": true,
+    "granteeEmail": "grantee8@example.com",
+    "scopes": [
+      "VEHICLE_IDENTITY",
+      "MAINTENANCE_FULL"
+    ],
+    "scopeMask": "3",
+    "expiresAt": "1805974882",
+    "singleUse": false,
+    "nonce": "8",
+    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
+    "revoked": false,
+    "auditLog": [
+      {
+        "accessedBy": "did:example:auditor-8",
+        "accessedAt": "1774438882",
+        "scope": "VEHICLE_IDENTITY"
+      }
+    ],
+    "txHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
+    "createdAt": "2026-03-25T11:41:22.883Z"
+  },
+  {
+    "id": "6d2fba2b-f933-472d-85ea-38dadeab1f32",
     "tokenId": "4002",
     "ownerAddress": "0x0202020202020202020202020202020202020202",
     "granteeDid": "did:example:grantee-2",
@@ -78,7 +92,7 @@
       "MAINTENANCE_FULL"
     ],
     "scopeMask": "3",
-    "expiresAt": "1805724095",
+    "expiresAt": "1805974882",
     "singleUse": false,
     "nonce": "2",
     "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
@@ -86,82 +100,15 @@
     "auditLog": [
       {
         "accessedBy": "did:example:auditor-2",
-        "accessedAt": "1774188095",
+        "accessedAt": "1774438882",
         "scope": "VEHICLE_IDENTITY"
       }
     ],
     "txHash": "0x0202020202020202020202020202020202020202020202020202020202020202",
-    "createdAt": "2026-03-22T14:01:35.690Z"
+    "createdAt": "2026-03-25T11:41:22.436Z"
   },
   {
-    "id": "52e741d5-c197-4528-90df-93676a73df90",
-    "tokenId": "4003",
-    "ownerAddress": "0x0303030303030303030303030303030303030303",
-    "granteeDid": "did:example:grantee-3",
-    "granteeVerified": true,
-    "granteeEmail": "grantee3@example.com",
-    "scopes": [
-      "VEHICLE_IDENTITY",
-      "MAINTENANCE_FULL"
-    ],
-    "scopeMask": "3",
-    "expiresAt": "1805724095",
-    "singleUse": false,
-    "nonce": "3",
-    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
-    "revoked": false,
-    "auditLog": [
-      {
-        "accessedBy": "did:example:auditor-3",
-        "accessedAt": "1774188095",
-        "scope": "VEHICLE_IDENTITY"
-      }
-    ],
-    "txHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
-    "createdAt": "2026-03-22T14:01:35.788Z"
-  },
-  {
-    "id": "6c1aaad7-dc99-4022-8c7e-c695415f4004",
-    "tokenId": "0",
-    "ownerAddress": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
-    "granteeDid": "SERVICE:Generic",
-    "granteeVerified": false,
-    "granteeEmail": null,
-    "scopes": [
-      "PII"
-    ],
-    "scopeMask": "1",
-    "expiresAt": "1776778284294",
-    "singleUse": false,
-    "nonce": "1774186284890",
-    "grantHash": "0x0eed1db344a4b36be503a259b378e1f1635becc8947edbed86cb98c297080b56",
-    "revoked": false,
-    "auditLog": null,
-    "txHash": null,
-    "createdAt": "2026-03-22T13:31:24.900Z"
-  },
-  {
-    "id": "71156742-8f8d-43b8-a7d6-9eea506ee8eb",
-    "tokenId": "1",
-    "ownerAddress": "0xd44d94d6aba11d88651bfc26aa3018f59aeba56d",
-    "granteeDid": "LENDER:Generic",
-    "granteeVerified": false,
-    "granteeEmail": null,
-    "scopes": [
-      "PII"
-    ],
-    "scopeMask": "1",
-    "expiresAt": "1776778437563",
-    "singleUse": false,
-    "nonce": "1774186438070",
-    "grantHash": "0x44d43530c401b5eefb3810a18fd283c77b2d180b2cd1f3b31782e3ca1a84c8a7",
-    "revoked": false,
-    "auditLog": null,
-    "txHash": null,
-    "createdAt": "2026-03-22T13:33:58.072Z"
-  },
-  {
-    "id": "835d3340-1b0d-4d64-afc5-4d802d2eee7d",
+    "id": "6fce3aa8-72ad-4c7b-a56a-2975ee6546b6",
     "tokenId": "4005",
     "ownerAddress": "0x0505050505050505050505050505050505050505",
     "granteeDid": "did:example:grantee-5",
@@ -172,7 +119,7 @@
       "MAINTENANCE_FULL"
     ],
     "scopeMask": "3",
-    "expiresAt": "1805724095",
+    "expiresAt": "1805974882",
     "singleUse": false,
     "nonce": "5",
     "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
@@ -180,42 +127,42 @@
     "auditLog": [
       {
         "accessedBy": "did:example:auditor-5",
-        "accessedAt": "1774188095",
+        "accessedAt": "1774438882",
         "scope": "VEHICLE_IDENTITY"
       }
     ],
     "txHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
-    "createdAt": "2026-03-22T14:01:35.931Z"
+    "createdAt": "2026-03-25T11:41:22.694Z"
   },
   {
-    "id": "99800f27-3ad4-41d4-8b44-9c7a89cc7405",
-    "tokenId": "4006",
-    "ownerAddress": "0x0606060606060606060606060606060606060606",
-    "granteeDid": "did:example:grantee-6",
+    "id": "77d1d9eb-df23-40ac-a0eb-958722933480",
+    "tokenId": "4010",
+    "ownerAddress": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "granteeDid": "did:example:grantee-10",
     "granteeVerified": true,
-    "granteeEmail": "grantee6@example.com",
+    "granteeEmail": "grantee10@example.com",
     "scopes": [
       "VEHICLE_IDENTITY",
       "MAINTENANCE_FULL"
     ],
     "scopeMask": "3",
-    "expiresAt": "1805724095",
+    "expiresAt": "1805974882",
     "singleUse": false,
-    "nonce": "6",
+    "nonce": "10",
     "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
     "revoked": false,
     "auditLog": [
       {
-        "accessedBy": "did:example:auditor-6",
-        "accessedAt": "1774188095",
+        "accessedBy": "did:example:auditor-10",
+        "accessedAt": "1774438882",
         "scope": "VEHICLE_IDENTITY"
       }
     ],
-    "txHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
-    "createdAt": "2026-03-22T14:01:35.999Z"
+    "txHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "createdAt": "2026-03-25T11:41:23.008Z"
   },
   {
-    "id": "9d88d64a-e345-432a-9e11-2b18c406a7e5",
+    "id": "7d41bdd4-2164-4138-871a-1b8bd0b52139",
     "tokenId": "4009",
     "ownerAddress": "0x0909090909090909090909090909090909090909",
     "granteeDid": "did:example:grantee-9",
@@ -226,7 +173,7 @@
       "MAINTENANCE_FULL"
     ],
     "scopeMask": "3",
-    "expiresAt": "1805724096",
+    "expiresAt": "1805974882",
     "singleUse": false,
     "nonce": "9",
     "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
@@ -234,11 +181,92 @@
     "auditLog": [
       {
         "accessedBy": "did:example:auditor-9",
-        "accessedAt": "1774188096",
+        "accessedAt": "1774438882",
         "scope": "VEHICLE_IDENTITY"
       }
     ],
     "txHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
-    "createdAt": "2026-03-22T14:01:36.189Z"
+    "createdAt": "2026-03-25T11:41:22.947Z"
+  },
+  {
+    "id": "b43cacfd-78f0-45b3-b56c-8f3f3bfa86b6",
+    "tokenId": "4004",
+    "ownerAddress": "0x0404040404040404040404040404040404040404",
+    "granteeDid": "did:example:grantee-4",
+    "granteeVerified": true,
+    "granteeEmail": "grantee4@example.com",
+    "scopes": [
+      "VEHICLE_IDENTITY",
+      "MAINTENANCE_FULL"
+    ],
+    "scopeMask": "3",
+    "expiresAt": "1805974882",
+    "singleUse": false,
+    "nonce": "4",
+    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
+    "revoked": false,
+    "auditLog": [
+      {
+        "accessedBy": "did:example:auditor-4",
+        "accessedAt": "1774438882",
+        "scope": "VEHICLE_IDENTITY"
+      }
+    ],
+    "txHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "createdAt": "2026-03-25T11:41:22.603Z"
+  },
+  {
+    "id": "b4bbf0b7-e05d-4118-84f6-252af9f5d916",
+    "tokenId": "4003",
+    "ownerAddress": "0x0303030303030303030303030303030303030303",
+    "granteeDid": "did:example:grantee-3",
+    "granteeVerified": true,
+    "granteeEmail": "grantee3@example.com",
+    "scopes": [
+      "VEHICLE_IDENTITY",
+      "MAINTENANCE_FULL"
+    ],
+    "scopeMask": "3",
+    "expiresAt": "1805974882",
+    "singleUse": false,
+    "nonce": "3",
+    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
+    "revoked": false,
+    "auditLog": [
+      {
+        "accessedBy": "did:example:auditor-3",
+        "accessedAt": "1774438882",
+        "scope": "VEHICLE_IDENTITY"
+      }
+    ],
+    "txHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "createdAt": "2026-03-25T11:41:22.509Z"
+  },
+  {
+    "id": "bb03b1fe-a40b-4893-ad0c-f541649001e5",
+    "tokenId": "4006",
+    "ownerAddress": "0x0606060606060606060606060606060606060606",
+    "granteeDid": "did:example:grantee-6",
+    "granteeVerified": true,
+    "granteeEmail": "grantee6@example.com",
+    "scopes": [
+      "VEHICLE_IDENTITY",
+      "MAINTENANCE_FULL"
+    ],
+    "scopeMask": "3",
+    "expiresAt": "1805974882",
+    "singleUse": false,
+    "nonce": "6",
+    "grantHash": "0x9090909090909090909090909090909090909090909090909090909090909090",
+    "revoked": false,
+    "auditLog": [
+      {
+        "accessedBy": "did:example:auditor-6",
+        "accessedAt": "1774438882",
+        "scope": "VEHICLE_IDENTITY"
+      }
+    ],
+    "txHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
+    "createdAt": "2026-03-25T11:41:22.758Z"
   }
 ]

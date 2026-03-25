@@ -1021,6 +1021,58 @@ export class EventService {
           break;
         }
 
+        case 'CLAIM_UPDATED': {
+          console.log('[EventService] 📝 CLAIM_UPDATED event');
+          
+          // Blockchain Interaction
+          if (!createEventDto.txHash) {
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
+
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Claim Update.`);
+                throw new Error('STOP_SYNC');
+              }
+
+              txHash = await this.blockchainService.withTxLock(async () => {
+                const statusMap: Record<string, number> = { filed: 0, investigating: 1, approved: 2, repairing: 3, closed: 4, rejected: 5, repaired: 4 };
+                const statusValue = statusMap[payload.status?.toLowerCase()] || 0;
+                const tx = await this.blockchainService.vehicleLifecycleContract.updateClaimStatus(
+                  createEventDto.tokenId,
+                  ethers.id(payload.claimId || "none"),
+                  statusValue
+                );
+                const receipt = await tx.wait();
+                console.log('[EventService] ✅ CLAIM_UPDATED Transaction Confirmed!');
+                return receipt.hash;
+              });
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Claim Update sync failed: ${err.message || err}`);
+                throw err;
+              }
+            }
+          } // end if (!createEventDto.txHash)
+
+          if (payload.claimId && payload.status) {
+            const claims = await this.insuranceClaimRepository.find({ where: { tokenId: vehicle.tokenId, claimNo: payload.claimId } });
+            if (claims.length > 0) {
+              const claimToUpdate = claims[0];
+              claimToUpdate.status = payload.status.toUpperCase() as any;
+              await this.insuranceClaimRepository.save(claimToUpdate);
+              console.log(`  Claim ${claimToUpdate.claimNo} updated to status: ${payload.status}`);
+            } else {
+              console.warn(`  Claim ${payload.claimId} not found for token ${vehicle.tokenId}`);
+            }
+          }
+          break;
+        }
+
         case 'INSURER_APPROVED_ESTIMATE': {
           // §3.3 Fix: อัปเดต claim status เป็น APPROVED
           console.log('[EventService] ✅ INSURER_APPROVED_ESTIMATE event');

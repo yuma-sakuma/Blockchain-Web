@@ -1,174 +1,6 @@
 [
   {
-    "id": "1905ece6-fe91-4a61-8721-822155464f81",
-    "tokenId": "4001",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 5000,
-    "score": 63,
-    "offerPrice": "42000000",
-    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_1.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_1.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": true,
-    "txHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
-    "createdAt": "2026-03-22T14:01:35.600Z"
-  },
-  {
-    "id": "58376d34-1895-4e3c-a2d1-dc6e72101f9a",
-    "tokenId": "4010",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 50000,
-    "score": 90,
-    "offerPrice": "60000000",
-    "notes": "Vehicle in good condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_10.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_10.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": false,
-    "txHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
-    "createdAt": "2026-03-22T14:01:36.249Z"
-  },
-  {
-    "id": "637cd468-10ee-46a4-9e65-e096e870fcc2",
-    "tokenId": "4005",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 25000,
-    "score": 75,
-    "offerPrice": "50000000",
-    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_5.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_5.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": false,
-    "txHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
-    "createdAt": "2026-03-22T14:01:35.935Z"
-  },
-  {
-    "id": "6ca279db-3921-4088-85d5-dc3ee1a49288",
-    "tokenId": "4006",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 30000,
-    "score": 78,
-    "offerPrice": "52000000",
-    "notes": "Vehicle in good condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_6.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_6.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": false,
-    "txHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
-    "createdAt": "2026-03-22T14:01:36.004Z"
-  },
-  {
-    "id": "769c0f6c-bcbb-4dfc-9813-8777515e5b88",
-    "tokenId": "4009",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 45000,
-    "score": 87,
-    "offerPrice": "58000000",
-    "notes": "Vehicle in good condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_9.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_9.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": false,
-    "txHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
-    "createdAt": "2026-03-22T14:01:36.192Z"
-  },
-  {
-    "id": "96ac808b-f3be-4f9a-80a4-6f0ea69c6f74",
-    "tokenId": "4004",
-    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
-    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 20000,
-    "score": 72,
-    "offerPrice": "48000000",
-    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
-    "signalsUsed": [
-      "maintenance_history",
-      "accident_record",
-      "mileage_trend"
-    ],
-    "photos": [
-      {
-        "url": "https://storage.example.com/tradein/front_4.jpg",
-        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
-      },
-      {
-        "url": "https://storage.example.com/tradein/rear_4.jpg",
-        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
-      }
-    ],
-    "accepted": false,
-    "txHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
-    "createdAt": "2026-03-22T14:01:35.873Z"
-  },
-  {
-    "id": "ac67958f-a3c4-4f8d-baa0-9d45d6b8bf56",
+    "id": "1dd37bde-7d25-4c44-9b4a-a3ca1c990734",
     "tokenId": "4002",
     "evaluatorAddress": "0x6666666666666666666666666666666666666666",
     "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
@@ -193,16 +25,72 @@
     ],
     "accepted": true,
     "txHash": "0x0202020202020202020202020202020202020202020202020202020202020202",
-    "createdAt": "2026-03-22T14:01:35.696Z"
+    "createdAt": "2026-03-25T11:41:22.441Z"
   },
   {
-    "id": "bac866d5-f9c5-4a4e-852a-6cf61cdf16d5",
-    "tokenId": "4008",
+    "id": "2ab6fbd1-0c0d-43aa-a415-6e14d5f1cfcf",
+    "tokenId": "4001",
     "evaluatorAddress": "0x6666666666666666666666666666666666666666",
     "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 40000,
-    "score": 84,
-    "offerPrice": "56000000",
+    "mileageAtEval": 5000,
+    "score": 63,
+    "offerPrice": "42000000",
+    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_1.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_1.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": true,
+    "txHash": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "createdAt": "2026-03-25T11:41:22.357Z"
+  },
+  {
+    "id": "346b7be0-aa5e-409f-963a-1dc414ac91e5",
+    "tokenId": "4005",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 25000,
+    "score": 75,
+    "offerPrice": "50000000",
+    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_5.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_5.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": false,
+    "txHash": "0x0505050505050505050505050505050505050505050505050505050505050505",
+    "createdAt": "2026-03-25T11:41:22.699Z"
+  },
+  {
+    "id": "4e048688-7ee2-4ffb-9063-47c55a9d21e4",
+    "tokenId": "4006",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 30000,
+    "score": 78,
+    "offerPrice": "52000000",
     "notes": "Vehicle in good condition. Minor scratches on bumper.",
     "signalsUsed": [
       "maintenance_history",
@@ -211,26 +99,26 @@
     ],
     "photos": [
       {
-        "url": "https://storage.example.com/tradein/front_8.jpg",
+        "url": "https://storage.example.com/tradein/front_6.jpg",
         "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
       },
       {
-        "url": "https://storage.example.com/tradein/rear_8.jpg",
+        "url": "https://storage.example.com/tradein/rear_6.jpg",
         "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
       }
     ],
     "accepted": false,
-    "txHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
-    "createdAt": "2026-03-22T14:01:36.135Z"
+    "txHash": "0x0606060606060606060606060606060606060606060606060606060606060606",
+    "createdAt": "2026-03-25T11:41:22.762Z"
   },
   {
-    "id": "c4653ff9-afe1-4555-8ee9-6350b59205d9",
-    "tokenId": "4007",
+    "id": "65f38e05-a301-4aa4-a1ec-b80232fad4e5",
+    "tokenId": "4010",
     "evaluatorAddress": "0x6666666666666666666666666666666666666666",
     "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
-    "mileageAtEval": 35000,
-    "score": 81,
-    "offerPrice": "54000000",
+    "mileageAtEval": 50000,
+    "score": 90,
+    "offerPrice": "60000000",
     "notes": "Vehicle in good condition. Minor scratches on bumper.",
     "signalsUsed": [
       "maintenance_history",
@@ -239,20 +127,76 @@
     ],
     "photos": [
       {
-        "url": "https://storage.example.com/tradein/front_7.jpg",
+        "url": "https://storage.example.com/tradein/front_10.jpg",
         "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
       },
       {
-        "url": "https://storage.example.com/tradein/rear_7.jpg",
+        "url": "https://storage.example.com/tradein/rear_10.jpg",
         "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
       }
     ],
     "accepted": false,
-    "txHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-    "createdAt": "2026-03-22T14:01:36.075Z"
+    "txHash": "0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+    "createdAt": "2026-03-25T11:41:23.012Z"
   },
   {
-    "id": "e8646687-907d-4681-9247-2298684be650",
+    "id": "8fb954a9-e56b-4236-afe8-f69983f2eaeb",
+    "tokenId": "4009",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 45000,
+    "score": 87,
+    "offerPrice": "58000000",
+    "notes": "Vehicle in good condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_9.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_9.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": false,
+    "txHash": "0x0909090909090909090909090909090909090909090909090909090909090909",
+    "createdAt": "2026-03-25T11:41:22.951Z"
+  },
+  {
+    "id": "c34709c4-ceda-4c74-879b-08283d7e2963",
+    "tokenId": "4004",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 20000,
+    "score": 72,
+    "offerPrice": "48000000",
+    "notes": "Vehicle in excellent condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_4.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_4.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": false,
+    "txHash": "0x0404040404040404040404040404040404040404040404040404040404040404",
+    "createdAt": "2026-03-25T11:41:22.607Z"
+  },
+  {
+    "id": "d2d89583-e1d7-4321-891e-af302ff05616",
     "tokenId": "4003",
     "evaluatorAddress": "0x6666666666666666666666666666666666666666",
     "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
@@ -277,6 +221,62 @@
     ],
     "accepted": true,
     "txHash": "0x0303030303030303030303030303030303030303030303030303030303030303",
-    "createdAt": "2026-03-22T14:01:35.794Z"
+    "createdAt": "2026-03-25T11:41:22.514Z"
+  },
+  {
+    "id": "e9f80604-da69-4fd0-a2d4-59c93281b016",
+    "tokenId": "4008",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 40000,
+    "score": 84,
+    "offerPrice": "56000000",
+    "notes": "Vehicle in good condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_8.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_8.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": false,
+    "txHash": "0x0808080808080808080808080808080808080808080808080808080808080808",
+    "createdAt": "2026-03-25T11:41:22.889Z"
+  },
+  {
+    "id": "fec67e6a-adbf-4bc2-873f-2dda63d2f96b",
+    "tokenId": "4007",
+    "evaluatorAddress": "0x6666666666666666666666666666666666666666",
+    "evaluationHash": "0xa0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "mileageAtEval": 35000,
+    "score": 81,
+    "offerPrice": "54000000",
+    "notes": "Vehicle in good condition. Minor scratches on bumper.",
+    "signalsUsed": [
+      "maintenance_history",
+      "accident_record",
+      "mileage_trend"
+    ],
+    "photos": [
+      {
+        "url": "https://storage.example.com/tradein/front_7.jpg",
+        "hash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      {
+        "url": "https://storage.example.com/tradein/rear_7.jpg",
+        "hash": "0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      }
+    ],
+    "accepted": false,
+    "txHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "createdAt": "2026-03-25T11:41:22.826Z"
   }
 ]
