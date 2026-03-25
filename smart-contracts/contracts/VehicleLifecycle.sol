@@ -299,7 +299,12 @@ contract VehicleLifecycle is AccessControl {
         bytes32       claimNoHash,
         bytes32[]     calldata evidenceHashes,
         ClaimSeverity severity
-    ) external onlyRole(INSURER_ROLE) vehicleExists(tokenId) {
+    ) external vehicleExists(tokenId) {
+        require(
+            msg.sender == vehicleNFT.ownerOf(tokenId) ||
+            hasRole(INSURER_ROLE, msg.sender),
+            "Not authorized to file claim"
+        );
         emit ClaimFiled(
             tokenId,
             claimNoHash,

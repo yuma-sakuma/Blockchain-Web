@@ -159,7 +159,7 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
             status: 'filed'
           }
         };
-      case 'CLAIM_STATUS_CHANGED':
+      case 'CLAIM_UPDATED':
         return v.activeClaim ? {
           ...v,
           activeClaim: { ...v.activeClaim, status: payload.status }
@@ -372,6 +372,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           'PURCHASE_CONSENT_GIVEN'
         ];
 
+        // Sort ascending by timestamp to apply state chronologically
+        mappedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
         mappedEvents.forEach(e => {
           if (!backendHandledEvents.includes(e.type)) {
             state = applyEventToState(state, e);
@@ -449,8 +452,31 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           status: 'active' as any
         } : undefined
       }));
+      // Re-apply events to construct full dynamic state if needed
+      let state = mappedVehicles;
+      const backendHandledEvents = [
+        'MANUFACTURER_MINTED',
+        'OWNERSHIP_TRANSFERRED',
+        'DLT_REGISTRATION_UPDATED',
+        'FLAG_UPDATED',
+        'LIEN_CREATED',
+        'LIEN_RELEASED',
+        'REPOSSESSION_RECORDED',
+        'PURCHASE_OFFER_CREATED',
+        'PURCHASE_CONSENT_GIVEN'
+      ];
+
+      // Sort ascending by timestamp to apply state chronologically
+      mappedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+      mappedEvents.forEach(e => {
+        if (!backendHandledEvents.includes(e.type)) {
+          state = applyEventToState(state, e);
+        }
+      });
+
       // Reconstruct pendingPurchase from events (backend doesn't store this)
-      const finalVehicles = reconstructPendingPurchases(mappedVehicles, mappedEvents);
+      const finalVehicles = reconstructPendingPurchases(state, mappedEvents);
       setVehicles(finalVehicles);
     } catch (err) {
       console.error('[fetchAllData] Failed to re-fetch:', err);
@@ -525,6 +551,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             break;
           case 'CLAIM_FILED':
             txResult = await blockchainService.fileClaim(roleWallet, newEvent.tokenId, newEvent.payload, newEvent.evidence || []);
+            break;
+          case 'CLAIM_UPDATED':
+            txResult = await blockchainService.updateClaimStatus(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
           case 'INSPECTION_RESULT_RECORDED':
             txResult = await blockchainService.recordInspection(roleWallet, newEvent.tokenId, newEvent.payload);

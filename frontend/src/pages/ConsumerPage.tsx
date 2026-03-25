@@ -1,10 +1,13 @@
-import { ArrowRightLeft, CheckCircle, CreditCard, DollarSign, FileText, History, Lock, ShieldCheck, ShoppingCart, User, X } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CheckCircle, CreditCard, DollarSign, FileText, History, Image, Lock, Shield, ShieldCheck, ShoppingCart, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import { blockchainService } from '../services/blockchain';
 import { getWalletForRole } from '../config/contracts';
 import { useVehicleStore } from '../store';
+import { uploadFile } from '../services/api';
+
+const API_BASE = 'http://localhost:3000';
 
 export const ConsumerPage = () => {
   const { vehicles, events, addEvent } = useVehicleStore();
@@ -18,6 +21,13 @@ export const ConsumerPage = () => {
   const [saleModal, setSaleModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
   const [saleBuyerAddress, setSaleBuyerAddress] = useState('');
   const [salePrice, setSalePrice] = useState('');
+
+  // Claim modal state
+  const [claimModal, setClaimModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
+  const [claimDescription, setClaimDescription] = useState('');
+  const [claimSeverity, setClaimSeverity] = useState('minor');
+  const [claimFiles, setClaimFiles] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Dynamic User ID — raw address for blockchain, prefixed for display only
   const currentUser = address || 'UNKNOWN';
@@ -37,6 +47,15 @@ export const ConsumerPage = () => {
       v.pendingPurchase.buyer.toLowerCase() === normalizedAddress
   );
 
+  // Insurance: vehicles with expiring policies (within 30 days)
+  const now = new Date();
+  const expiringVehicles = myVehicles.filter(v => {
+      if (!v.insurance || !v.insurance.validUntil) return false;
+      const expiry = new Date(v.insurance.validUntil);
+      const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
+      return daysLeft <= 30 && daysLeft > 0;
+  });
+
   // --- Sale Modal Handlers (Consumer-to-Consumer) ---
   const handleOpenSaleModal = (tokenId: string) => {
     const vehicle = vehicles.find(v => v.tokenId === tokenId);
@@ -54,8 +73,71 @@ export const ConsumerPage = () => {
     setSalePrice('');
   };
 
+  // --- Claim Modal Handlers ---
+  const handleOpenClaimModal = (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle) return;
+    if (!vehicle.insurance) {
+      alert('This vehicle has no active insurance policy. Please contact your insurer first.');
+      return;
+    }
+    if (vehicle.activeClaim && !['repaired', 'rejected'].includes(vehicle.activeClaim.status)) {
+      alert(`This vehicle already has an active claim: ${vehicle.activeClaim.claimId} (${vehicle.activeClaim.status})`);
+      return;
+    }
+    setClaimModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
+    setClaimDescription('');
+    setClaimSeverity('minor');
+    setClaimFiles([]);
+  };
+
+  const handleClaimFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const result = await uploadFile(file);
+        setClaimFiles(prev => [...prev, result]);
+      }
+    } catch (err) {
+      console.error('Upload failed', err);
+      alert('File upload failed');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSubmitClaim = async () => {
+    if (!claimModal || !claimDescription) return;
+    await addEvent({
+      type: 'CLAIM_FILED',
+      actor: currentUser,
+      tokenId: claimModal.tokenId,
+      payload: {
+        claimId: 'CLM-' + Date.now(),
+        date: new Date().toISOString(),
+        description: claimDescription,
+        severity: claimSeverity,
+        evidenceHashes: claimFiles.map(f => f.hash)
+      },
+      evidence: claimFiles.length > 0
+        ? claimFiles.map(f => ({ hash: f.hash, url: f.path, mime: f.mime, size: f.size }))
+        : undefined
+    });
+    setClaimModal(null);
+    alert('✅ Claim filed successfully! Your insurer will review your claim.');
+  };
+
   const handleSubmitSale = async () => {
     if (!saleModal || !saleBuyerAddress || !salePrice) return;
+
+    if (saleBuyerAddress.toLowerCase() === normalizedAddress) {
+      alert('ไม่สามารถขาย/โอนรถให้ตัวเองได้');
+      return;
+    }
+
     const priceNum = parseFloat(salePrice);
     if (isNaN(priceNum) || priceNum <= 0) {
       alert('กรุณาใส่ราคาที่ถูกต้อง');
@@ -213,6 +295,28 @@ export const ConsumerPage = () => {
             <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{displayUser}</span>
         </div>
       </header>
+
+      {/* ═══════════ Insurance Expiry Notification ═══════════ */}
+      {expiringVehicles.length > 0 && (
+        <div style={{
+          padding: '1rem 1.5rem', borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05))',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          display: 'flex', alignItems: 'center', gap: '1rem'
+        }}>
+          <AlertCircle size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
+          <div>
+            <div style={{ fontWeight: 600, color: '#f59e0b', fontSize: '0.9rem' }}>⚠️ Insurance Expiring Soon</div>
+            <div className="text-secondary" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+              {expiringVehicles.map(v => {
+                const daysLeft = Math.ceil((new Date(v.insurance!.validUntil).getTime() - now.getTime()) / 86400000);
+                return `${v.makeModelTrim} (${daysLeft} days left)`;
+              }).join(' • ')}
+              {' — Please contact your insurer to renew.'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════ Pending Purchase Offers Section ═══════════ */}
       {pendingOffers.length > 0 && (
@@ -455,9 +559,68 @@ export const ConsumerPage = () => {
                                     <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.warranty?.terms?.mileageKm || 0).toLocaleString()} KM</div>
                                 </div>
                             </div>
+
+                            {/* ── Insurance Info ── */}
+                            <div style={{ marginTop: '1.25rem', padding: '0.875rem', borderRadius: '10px', background: v.insurance ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${v.insurance ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Shield size={16} color={v.insurance ? '#10b981' : '#ef4444'} />
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                    {v.insurance ? 'Insured' : 'Uninsured'}
+                                  </span>
+                                </div>
+                                {v.insurance && (() => {
+                                  const daysLeft = Math.ceil((new Date(v.insurance.validUntil).getTime() - now.getTime()) / 86400000);
+                                  return (
+                                    <span className={`badge ${daysLeft <= 30 ? 'badge-warning' : daysLeft <= 0 ? 'badge-danger' : 'badge-success'}`}>
+                                      {daysLeft <= 0 ? 'EXPIRED' : daysLeft <= 30 ? `${daysLeft}d left` : v.insurance.coverageType}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                              {v.insurance && (
+                                <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                  Policy: {v.insurance.policyNumber} • Until: {new Date(v.insurance.validUntil).toLocaleDateString()}
+                                </div>
+                              )}
+
+                              {/* Active Claim Status Tracker */}
+                              {v.activeClaim && (
+                                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Claim: {v.activeClaim.claimId}</span>
+                                    <span className="badge" style={{
+                                      fontSize: '0.6rem',
+                                      background: v.activeClaim.status === 'filed' ? 'rgba(245,158,11,0.15)' : v.activeClaim.status === 'investigating' ? 'rgba(59,130,246,0.15)' : v.activeClaim.status === 'approved' ? 'rgba(16,185,129,0.15)' : v.activeClaim.status === 'repaired' ? 'rgba(139,92,246,0.15)' : 'rgba(239,68,68,0.15)',
+                                      color: v.activeClaim.status === 'filed' ? '#f59e0b' : v.activeClaim.status === 'investigating' ? '#3b82f6' : v.activeClaim.status === 'approved' ? '#10b981' : v.activeClaim.status === 'repaired' ? '#8b5cf6' : '#ef4444',
+                                      border: 'none'
+                                    }}>
+                                      {v.activeClaim.status.toUpperCase()}
+                                    </span>
+                                  </div>
+                                  {/* Progress Bar */}
+                                  <div style={{ display: 'flex', gap: '3px' }}>
+                                    {['filed', 'investigating', 'approved', 'repaired'].map((step, idx) => {
+                                      const statusOrder = ['filed', 'investigating', 'approved', 'repaired'];
+                                      const currentIdx = statusOrder.indexOf(v.activeClaim!.status);
+                                      const isActive = idx <= currentIdx;
+                                      return (
+                                        <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                          <div style={{ width: '100%', height: '4px', borderRadius: '2px', background: isActive ? (idx === 0 ? '#f59e0b' : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#8b5cf6') : 'rgba(255,255,255,0.1)' }} />
+                                          <span style={{ fontSize: '0.55rem', color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', textTransform: 'capitalize' }}>{step}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  {v.activeClaim.estimateAmount && (
+                                    <div className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '0.5rem' }}>Estimate: {v.activeClaim.estimateAmount.toLocaleString()} THB</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
                             <button onClick={() => { setShowGreenBook(v.tokenId); setShowPrivacy(null); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <FileText size={18} color="var(--success)" /> BOOK
                             </button>
@@ -466,6 +629,13 @@ export const ConsumerPage = () => {
                             </button>
                             <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                                 <History size={18} color="var(--accent-secondary)" /> HISTORY
+                            </button>
+                            <button
+                              onClick={() => handleOpenClaimModal(v.tokenId)}
+                              disabled={!!v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status) || !v.insurance}
+                              style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: (v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.05)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 'not-allowed' : 'pointer', opacity: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 0.5 : 1 }}
+                            >
+                                <AlertCircle size={18} color={(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? '#f59e0b' : '#ef4444'} /> {(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'CLAIMED' : 'CLAIM'}
                             </button>
                             <button 
                               onClick={() => handleOpenSaleModal(v.tokenId)}
@@ -527,6 +697,102 @@ export const ConsumerPage = () => {
                 style={{ marginTop: '0.5rem', opacity: (!saleBuyerAddress || !salePrice) ? 0.5 : 1 }}
               >
                 <ShoppingCart size={16} /> Create Sale Offer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ═══════════ Claim Filing Modal ═══════════ */}
+      {claimModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <AlertCircle size={28} color="var(--danger)" />
+                <h2 style={{ margin: 0 }}>File Insurance Claim</h2>
+              </div>
+              <button onClick={() => setClaimModal(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.06)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{claimModal.model}</div>
+              <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {claimModal.vin}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Incident Description</label>
+                <textarea
+                  value={claimDescription}
+                  onChange={(e) => setClaimDescription(e.target.value)}
+                  placeholder="Describe what happened: when, where, how the damage occurred..."
+                  style={{ minHeight: '100px' }}
+                />
+              </div>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Severity</label>
+                <select value={claimSeverity} onChange={(e) => setClaimSeverity(e.target.value)}>
+                  <option value="minor">Minor: Scratches / Panel Damage</option>
+                  <option value="high">Major: Structural / Frame Impact</option>
+                  <option value="total_loss">Total Loss</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Evidence Photos</label>
+                <div
+                  onClick={() => document.getElementById('consumer-claim-upload')?.click()}
+                  style={{
+                    border: '1px dashed var(--border-subtle)', borderRadius: '8px', padding: '1rem',
+                    textAlign: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.02)'
+                  }}
+                >
+                  {isUploading ? (
+                    <span>Uploading...</span>
+                  ) : (
+                    <span className="text-secondary" style={{ fontSize: '0.85rem' }}>
+                      <Image size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+                      Click to upload photos of damage
+                    </span>
+                  )}
+                  <input id="consumer-claim-upload" type="file" hidden multiple accept="image/*" onChange={handleClaimFileChange} />
+                </div>
+                {claimFiles.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                    {claimFiles.map((f, idx) => (
+                      <div key={idx} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                        {f.mime?.startsWith('image/') ? (
+                          <img src={`${API_BASE}${f.path}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><FileText size={24} color="var(--accent-primary)" /></div>
+                        )}
+                        <button
+                          onClick={() => setClaimFiles(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(239,68,68,0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                        >
+                          <Trash2 size={8} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {claimSeverity !== 'minor' && (
+                <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--danger)', display: 'flex', gap: '0.5rem' }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+                  <span>A {claimSeverity === 'total_loss' ? 'Total Loss' : 'Major'} claim will permanently flag this vehicle in the registry.</span>
+                </div>
+              )}
+
+              <button
+                className="premium-btn"
+                onClick={handleSubmitClaim}
+                disabled={!claimDescription}
+                style={{ background: 'var(--danger)', marginTop: '0.5rem' }}
+              >
+                {claimFiles.length > 0 ? `Submit Claim (${claimFiles.length} photo${claimFiles.length > 1 ? 's' : ''})` : 'Submit Claim'}
               </button>
             </div>
           </div>
