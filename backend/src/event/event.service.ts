@@ -927,6 +927,7 @@ export class EventService {
           break;
         }
 
+
         case 'CLAIM_FILED': {
           console.log('[EventService] 📄 CLAIM_FILED event');
           const claim = this.insuranceClaimRepository.create({

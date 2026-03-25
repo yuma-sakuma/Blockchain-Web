@@ -273,11 +273,28 @@ export const DLTPage = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span className="text-secondary">Major Accident</span>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        {searchResult.flags.majorAccident ? <span className="badge badge-danger">MAJOR DAMAGE</span> : <span className="badge badge-success">CLEAN</span>}
+                                        <button onClick={async () => {
+                                            if (!confirm(searchResult.flags.majorAccident ? "Confirm vehicle has passed structural inspection? This will clear the Major Accident flag." : "Confirm Major Accident?")) return;
+                                            await addEvent({
+                                                type: 'FLAG_UPDATED',
+                                                actor: actorId,
+                                                tokenId: searchResult.tokenId,
+                                                payload: { flag: 'major_accident', value: !searchResult.flags.majorAccident, reason: 'Inspection Report', ref: 'INSP-' + Date.now() }
+                                            });
+                                        }} style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)' }}>
+                                            {searchResult.flags.majorAccident ? 'REVERT' : 'DECLARE'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span className="text-secondary">Salvage Only</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {searchResult.flags.totalLoss ? <span className="badge badge-danger">TOTAL LOSS</span> : <span className="badge badge-success">NO</span>}
                                         <button onClick={async () => {
-                                            if (!confirm("Confirm Total Loss? This action significantly devalues the asset.")) return;
+                                            if (!confirm(searchResult.flags.totalLoss ? "Confirm vehicle has passed structural inspection? This will clear the Total Loss flag." : "Confirm Total Loss? This action significantly devalues the asset.")) return;
                                             await addEvent({
                                                 type: 'FLAG_UPDATED',
                                                 actor: actorId,

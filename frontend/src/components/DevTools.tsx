@@ -34,7 +34,7 @@ export const DevTools = () => {
             {roles.map(r => (
               <button 
                 key={r} 
-                onClick={() => { impersonate(r); setIsOpen(false); window.location.reload(); }}
+                onClick={() => { impersonate(r); setIsOpen(false);  }}
                 style={{ 
                   textAlign: 'left', 
                   fontSize: '0.8rem', 
