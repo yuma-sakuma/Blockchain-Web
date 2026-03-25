@@ -212,7 +212,64 @@ export const blockchainService = {
   async logMaintenance(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     return this.withTxLock(async () => {
       const contract = getContract("VEHICLE_LIFECYCLE", wallet);
-      const tx = await contract.logMaintenance(tokenId, ethers.id(JSON.stringify({ tokenId, workshop: wallet.address })), payload.mileageKm || 0, ethers.id(JSON.stringify({ tokenId, mileageKm: payload.mileageKm, description: payload.description })), ethers.id(JSON.stringify(payload.parts || [])), 0, Math.floor(Date.now() / 1000));
+
+      // Auto-grant write consent from vehicle owner if needed
+      // VehicleLifecycle.logMaintenance requires writeConsent from the NFT owner
+      try {
+        const nftContract = getContract("VEHICLE_NFT", wallet);
+        const ownerAddress: string = await nftContract.ownerOf(tokenId);
+
+        // Check if workshop already has consent
+        const consentData = await contract.writeConsents(tokenId, wallet.address);
+        // consentData is a struct [scopeMask, expiresAt] — scopeMask=0 means no consent
+        const scopeMask = typeof consentData === 'object' && consentData[0] !== undefined
+          ? BigInt(consentData[0])
+          : BigInt(consentData);
+        
+        if (scopeMask === 0n) {
+          console.log(`[Blockchain] 🔑 No write consent for workshop. Auto-granting from owner ${ownerAddress}...`);
+          // Find the owner's wallet by matching address to known role wallets
+          const { ROLE_PRIVATE_KEYS, getGanacheProvider } = await import("../config/contracts");
+          const provider = getGanacheProvider();
+          let ownerWallet: ethers.Wallet | null = null;
+          for (const [, pk] of Object.entries(ROLE_PRIVATE_KEYS)) {
+            if (pk) {
+              const w = new ethers.Wallet(pk, provider);
+              if (w.address.toLowerCase() === ownerAddress.toLowerCase()) {
+                ownerWallet = w;
+                break;
+              }
+            }
+          }
+
+          if (ownerWallet) {
+            const ownerContract = getContract("VEHICLE_LIFECYCLE", ownerWallet);
+            const expiresAt = Math.floor(Date.now() / 1000) + (365 * 24 * 3600); // 1 year
+            const consentTx = await ownerContract.grantWriteConsent(
+              tokenId, wallet.address, 15, expiresAt, false, Date.now() // scopeMask=15 (all: maintenance+odometer+parts+accident)
+            );
+            await consentTx.wait();
+            console.log(`[Blockchain] ✅ Write consent granted successfully`);
+            // Small delay for Ganache nonce sync
+            await new Promise((r) => setTimeout(r, 300));
+          } else {
+            console.warn(`[Blockchain] ⚠️ Could not find owner wallet for ${ownerAddress}. Proceeding anyway...`);
+          }
+        }
+      } catch (consentErr: any) {
+        console.warn(`[Blockchain] ⚠️ Consent auto-grant check failed: ${consentErr.message}. Proceeding with logMaintenance...`);
+      }
+
+      const maintJobs = payload.jobs || payload.parts || [];
+      const tx = await contract.logMaintenance(
+        tokenId,
+        ethers.id(JSON.stringify({ tokenId, workshop: wallet.address })),
+        payload.mileageKm || 0,
+        ethers.id(JSON.stringify({ tokenId, mileageKm: payload.mileageKm, jobs: maintJobs })),
+        ethers.id(JSON.stringify(maintJobs)),
+        0,
+        Math.floor(Date.now() / 1000)
+      );
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });

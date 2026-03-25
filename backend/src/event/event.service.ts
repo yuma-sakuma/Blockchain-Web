@@ -880,10 +880,14 @@ export class EventService {
               policyNo: policyNumber,
               policyNoHash: ethers.id(policyNumber),
               action: 'NEW' as any,
-              validFrom: Date.now().toString(),
+              validFrom: new Date(payload.validFrom || Date.now()).getTime().toString(),
               validTo: new Date(payload.validUntil || payload.endDate || Date.now()).getTime().toString(),
               coverageDetails: { type: payload.coverageType || payload.type, class: '1', coverageItems: [] },
               coverageHash: ethers.id(JSON.stringify({ type: payload.coverageType || payload.type, policyNo: policyNumber })),
+              // §4.3 Fix: Map evidence URL + premium/deductible from payload
+              policyDocUrl: createEventDto.evidence?.[0]?.url || null,
+              premiumAmount: payload.premiumAmount ? (payload.premiumAmount * 100).toString() : null,
+              deductible: payload.deductible ? (payload.deductible * 100).toString() : null,
             });
             await this.insurancePolicyRepository.save(policy);
 
@@ -936,8 +940,16 @@ export class EventService {
             filedAt: new Date(payload.date || Date.now()).getTime().toString(),
             status: 'FILED' as any,
             severity: (payload.severity?.toUpperCase() || 'MINOR') as any,
-            evidenceFiles: [],
-            evidenceHashes: []
+            // §4.1 Fix: Map evidence files & hashes from Frontend instead of hardcoding []
+            evidenceFiles: (createEventDto.evidence || []).map((e: any) => ({
+              type: e.mime?.startsWith('image/') ? 'photo' : 'other',
+              url: e.url,
+              hash: e.hash,
+              mime: e.mime,
+            })),
+            evidenceHashes: (createEventDto.evidence || []).map((e: any) => e.hash),
+            // Map the estimate document URL if any non-image evidence was uploaded
+            estimateDocUrl: (createEventDto.evidence || []).find((e: any) => !e.mime?.startsWith('image/'))?.url || null,
           });
           // Blockchain Interaction
           if (!createEventDto.txHash) {
@@ -1042,13 +1054,16 @@ export class EventService {
           const inspection = this.inspectionRepository.create({
             tokenId: vehicle.tokenId,
             stationAddress: createEventDto.actor,
-            stationName: 'Authorized Station',
+            // §4.4 Fix: Use stationId from payload instead of hardcoding
+            stationName: payload.stationId || 'Authorized Station',
             vinVerified: true,
             result: payload.passed ? 'PASS' as any : 'FAIL' as any,
             metrics: payload.metrics || {},
             metricsHash: ethers.id(JSON.stringify(payload.metrics || {})),
-            certHash: ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, passed: payload.passed, inspectedAt: Date.now() })),
+            certHash: payload.certHash || ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, passed: payload.passed, inspectedAt: Date.now() })),
             issuedAt: Date.now().toString(),
+            // §4.4 Fix: Map inspection certificate URL from uploaded evidence
+            certUrl: createEventDto.evidence?.[0]?.url || null,
           });
           // Blockchain Interaction
           if (!createEventDto.txHash) {
@@ -1089,17 +1104,32 @@ export class EventService {
 
         case 'MAINTENANCE_RECORDED': {
           console.log('[EventService] 🔧 MAINTENANCE_RECORDED event');
+          // §4.2 Fix: Use payload.jobs (FE field name) instead of payload.parts
           const maintJobs = payload.jobs || payload.parts || [];
           const maintenance = this.maintenanceLogRepository.create({
             tokenId: vehicle.tokenId,
             workshopAddress: createEventDto.actor,
             writeConsentRefHash: ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, workshop: createEventDto.actor })),
-            occurredAt: Date.now().toString(),
+            occurredAt: payload.date ? new Date(payload.date).getTime().toString() : Date.now().toString(),
             mileageKm: payload.mileageKm || 0,
-            jobs: payload.parts || [],
-            symptoms: payload.description,
-            maintenanceHash: ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, mileageKm: payload.mileageKm, description: payload.description })),
-            partsHash: ethers.id(JSON.stringify(payload.parts || []))
+            // BUG-DATA-01 Fix: FE sends 'jobs' not 'parts'
+            jobs: maintJobs,
+            // BUG-DATA-02 Fix: Map jobs description as symptoms (FE doesn't send 'description')
+            symptoms: maintJobs.length > 0 ? maintJobs.join(', ') : (payload.description || null),
+            maintenanceHash: ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, mileageKm: payload.mileageKm, jobs: maintJobs })),
+            // BUG-DATA-01 Fix: Hash actual jobs data, not empty parts
+            partsHash: ethers.id(JSON.stringify(maintJobs)),
+            // BUG-DATA-03 Fix: Map evidence URL/hash to invoiceUrl, photos, and laborCost
+            invoiceUrl: createEventDto.evidence?.[0]?.url || null,
+            invoiceHash: createEventDto.evidence?.[0]?.hash || null,
+            photos: createEventDto.evidence
+              ? createEventDto.evidence.map((e: any) => ({
+                  type: 'after' as const,
+                  url: e.url,
+                  hash: e.hash,
+                }))
+              : null,
+            laborCost: payload.cost?.total ? (payload.cost.total * 100).toString() : null,
           });
           // §3.3 Fix: Backend Mileage Validation — ห้ามไมล์ถอยหลัง
           if (payload.mileageKm) {
@@ -1151,8 +1181,8 @@ export class EventService {
                   createEventDto.tokenId,
                   ethers.id(JSON.stringify({ tokenId: vehicle!.tokenId, workshop: createEventDto.actor })),
                   payload.mileageKm || 0,
-                  ethers.id(JSON.stringify({ tokenId: vehicle!.tokenId, mileageKm: payload.mileageKm, description: payload.description })),
-                  ethers.id(JSON.stringify(payload.parts || [])),
+                  ethers.id(JSON.stringify({ tokenId: vehicle!.tokenId, mileageKm: payload.mileageKm, jobs: maintJobs })),
+                  ethers.id(JSON.stringify(maintJobs)),
                   0,
                   Math.floor(Date.now() / 1000)
                 );

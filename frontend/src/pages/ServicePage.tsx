@@ -10,7 +10,7 @@ export const ServicePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
     const { address } = useAuth();
     const [vin, setVin] = useState('');
-    const [mileage, setMileage] = useState<number>(0);
+    const [mileage, setMileage] = useState<number | string>("");
     const [jobs, setJobs] = useState('');
 
     // Part Registry state
@@ -19,7 +19,7 @@ export const ServicePage = () => {
 
     // Estimate state
     const [estimateJobs, setEstimateJobs] = useState('');
-    const [estimateTotal, setEstimateTotal] = useState<number>(0);
+    const [estimateTotal, setEstimateTotal] = useState<number | string>("");
 
     // Upload states
     const [maintFile, setMaintFile] = useState<any>(null);
@@ -52,7 +52,7 @@ export const ServicePage = () => {
     const handleRecordService = async () => {
         if (!targetVehicle) return;
 
-        if (mileage < targetVehicle.warranty.terms.mileageKm) {
+        if (Number(mileage) < targetVehicle.warranty.terms.mileageKm) {
             alert(`Odometer Rollback Warning! New value ${mileage} < current ${targetVehicle.warranty.terms.mileageKm}. Action Blocked.`);
             return;
         }
@@ -64,7 +64,7 @@ export const ServicePage = () => {
             payload: {
                 workshop: garageId,
                 date: new Date().toISOString(),
-                mileageKm: mileage,
+                mileageKm: Number(mileage),
                 jobs: jobs.split(',').map(j => j.trim()),
                 cost: { total: 1500 },
                 evidenceHash: maintFile?.hash || undefined
@@ -82,7 +82,7 @@ export const ServicePage = () => {
             actor: garageId,
             tokenId: targetVehicle.tokenId,
             payload: {
-                mileageKm: mileage,
+                mileageKm: Number(mileage),
                 date: new Date().toISOString(),
                 evidenceHash: maintFile?.hash
             },
@@ -95,7 +95,7 @@ export const ServicePage = () => {
         });
 
         setJobs('');
-        setMileage(0);
+        setMileage("");
         setMaintFile(null);
     };
 
@@ -161,7 +161,7 @@ export const ServicePage = () => {
             }] : undefined
         });
         setEstimateJobs('');
-        setEstimateTotal(0);
+        setEstimateTotal("");
         setEstimateFile(null);
     };
 
@@ -211,7 +211,7 @@ export const ServicePage = () => {
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Odometer Certified (KM)</label>
                                 <div style={{ position: 'relative' }}>
                                     <Gauge size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                                    <input type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} style={{ paddingLeft: '3rem' }} />
+                                    <input type="number" value={mileage} onChange={e => setMileage(e.target.value)} style={{ paddingLeft: '3rem' }} />
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -272,7 +272,7 @@ export const ServicePage = () => {
                             </div>
                             <div>
                                 <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Total Appraisal Value (THB)</label>
-                                <input type="number" value={estimateTotal} onChange={e => setEstimateTotal(Number(e.target.value))} placeholder="0.00" />
+                                <input type="number" value={estimateTotal} onChange={e => setEstimateTotal(e.target.value)} placeholder="0.00" />
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button className="btn" onClick={() => document.getElementById('estimate-upload')?.click()} style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
