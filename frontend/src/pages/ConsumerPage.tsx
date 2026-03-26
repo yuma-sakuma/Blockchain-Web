@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRightLeft, CheckCircle, CreditCard, DollarSign, FileText, History, Image, Lock, Shield, ShieldCheck, ShoppingCart, Trash2, User, X } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign, FileText, History, Image, Landmark, Lock, Shield, ShieldCheck, ShoppingCart, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -17,6 +17,10 @@ export const ConsumerPage = () => {
   const [showHistory, setShowHistory] = useState<string | null>(null);
   const [processingPurchase, setProcessingPurchase] = useState<string | null>(null);
 
+  // Lien/Finance modal state
+  const [lienModal, setLienModal] = useState<string | null>(null); // tokenId
+  const [financeLender, setFinanceLender] = useState(import.meta.env.VITE_LENDER_ADDRESS || '');
+  const [lienTerm, setLienTerm] = useState<48 | 60>(48);
   // Sale modal state
   const [saleModal, setSaleModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
   const [saleBuyerAddress, setSaleBuyerAddress] = useState('');
@@ -28,32 +32,37 @@ export const ConsumerPage = () => {
   const [claimSeverity, setClaimSeverity] = useState('minor');
   const [claimFiles, setClaimFiles] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  
+
+  // C2C Counter-Offer state
+  const [c2cCounterModal, setC2cCounterModal] = useState<string | null>(null);
+  const [c2cCounterAmount, setC2cCounterAmount] = useState('');
+
   // Dynamic User ID — raw address for blockchain, prefixed for display only
   const currentUser = address || 'UNKNOWN';
   const displayUser = address ? `${address.substring(0, 6)}...` : 'Guest';
 
   // Address format normalization for robust matching
   const normalizedAddress = address?.toLowerCase() || '';
-  
+
   const myVehicles = vehicles.filter(v => {
-      const ownerLower = v.currentOwner.toLowerCase();
-      return ownerLower === normalizedAddress;
+    const ownerLower = v.currentOwner.toLowerCase();
+    const borrowerLower = v.loanAccount?.borrower.toLowerCase() || '';
+    return ownerLower === normalizedAddress || borrowerLower === normalizedAddress;
   });
 
   // Find pending purchase offers for this consumer
-  const pendingOffers = vehicles.filter(v => 
-      v.pendingPurchase && 
-      v.pendingPurchase.buyer.toLowerCase() === normalizedAddress
+  const pendingOffers = vehicles.filter(v =>
+    v.pendingPurchase &&
+    v.pendingPurchase.buyer.toLowerCase() === normalizedAddress
   );
 
   // Insurance: vehicles with expiring policies (within 30 days)
   const now = new Date();
   const expiringVehicles = myVehicles.filter(v => {
-      if (!v.insurance || !v.insurance.validUntil) return false;
-      const expiry = new Date(v.insurance.validUntil);
-      const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
-      return daysLeft <= 30 && daysLeft > 0;
+    if (!v.insurance || !v.insurance.validUntil) return false;
+    const expiry = new Date(v.insurance.validUntil);
+    const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
+    return daysLeft <= 30 && daysLeft > 0;
   });
 
   // --- Sale Modal Handlers (Consumer-to-Consumer) ---
@@ -220,9 +229,8 @@ export const ConsumerPage = () => {
 
   const handleDeclineOffer = async (tokenId: string) => {
     if (!confirm('ปฏิเสธข้อเสนอนี้?')) return;
-    // Simply record a consent revocation to clear the pending offer
     await addEvent({
-      type: 'PURCHASE_CONSENT_GIVEN', // Reuse to clear pendingPurchase, with declined flag
+      type: 'PURCHASE_CONSENT_GIVEN',
       actor: currentUser,
       tokenId: tokenId,
       payload: {
@@ -231,6 +239,97 @@ export const ConsumerPage = () => {
         declinedAt: new Date().toISOString()
       }
     });
+  };
+
+  const handleOpenLienModal = (tokenId: string) => {
+    setLienModal(tokenId);
+    setLienTerm(48);
+  };
+
+  const handleLienSubmit = async () => {
+    if (!lienModal || !financeLender) return;
+    const vehicle = vehicles.find(v => v.tokenId === lienModal);
+    if (!vehicle?.pendingPurchase?.financePrincipal) {
+      alert('Error: No Finance Principal found in the original offer.');
+      return;
+    }
+    const principal = vehicle.pendingPurchase.financePrincipal;
+
+    setProcessingPurchase(lienModal);
+    try {
+      await addEvent({
+        type: 'LOAN_APPLICATION_CREATED',
+        actor: currentUser,
+        tokenId: lienModal,
+        payload: {
+          borrower: currentUser,
+          lender: financeLender,
+          principal: principal,
+          interestRateBps: 350,
+          termMonths: lienTerm,
+          appliedAt: new Date().toISOString()
+        }
+      });
+      alert(`✅ Loan application submitted!\nLender: ${financeLender.substring(0, 10)}...\nPrincipal: ${principal.toLocaleString()} THB\nRate: 3.5%\nTerm: ${lienTerm} months`);
+      setLienModal(null);
+    } catch (err: any) {
+      alert(`❌ ล้มเหลว: ${err.message}`);
+    } finally {
+      setProcessingPurchase(null);
+    }
+  };
+
+  const handleAcceptLien = async (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle?.pendingPurchase?.lienOffer) return;
+    const { seller, price, lienOffer } = vehicle.pendingPurchase;
+    if (!confirm(`ยืนยันการซื้อรถ ${vehicle.makeModelTrim} ด้วยสินเชื่อ\n\nจำนวนเงิน: ${price.toLocaleString()} THB\nดอกเบี้ย: ${(lienOffer.interestRateBps / 100).toFixed(2)}%\nระยะเวลา: ${lienOffer.termMonths} เดือน`)) {
+      return;
+    }
+    setProcessingPurchase(tokenId);
+    try {
+      await addEvent({
+        type: 'LIEN_OFFER_ACCEPTED',
+        actor: currentUser,
+        tokenId: tokenId,
+        payload: {
+          buyer: currentUser,
+          seller: seller,
+          principal: lienOffer.principal,
+          interestRateBps: lienOffer.interestRateBps,
+          termMonths: lienOffer.termMonths,
+          acceptedAt: new Date().toISOString()
+        }
+      });
+      alert(`✅ สินเชื่อได้รับการอนุมัติ! รถโอนเรียบร้อย\nLoan Account: ACTIVE`);
+    } catch (err: any) {
+      console.error('Lien acceptance failed:', err);
+      alert(`❌ ล้มเหลว: ${err.message}`);
+    } finally {
+      setProcessingPurchase(null);
+    }
+  };
+
+  const handleC2cCounterOffer = async () => {
+    if (!c2cCounterModal || !c2cCounterAmount) return;
+    const amount = parseFloat(c2cCounterAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('กรุณากรอกจำนวนเงินที่ถูกต้อง');
+      return;
+    }
+    await addEvent({
+      type: 'LIEN_COUNTER_OFFER',
+      actor: currentUser,
+      tokenId: c2cCounterModal,
+      payload: {
+        seller: currentUser,
+        counterOfferAmount: amount,
+        offeredAt: new Date().toISOString()
+      }
+    });
+    setC2cCounterModal(null);
+    setC2cCounterAmount('');
+    alert(`✅ Counter-offer sent: ${amount.toLocaleString()} THB`);
   };
 
   const handleGrantConsent = async (tokenId: string, granteeOverride?: string) => {
@@ -255,27 +354,27 @@ export const ConsumerPage = () => {
   };
 
   const handleRevokeConsent = async (tokenId: string, grantee: string) => {
-      if (!confirm(`Revoke access for ${grantee}?`)) return;
-      await addEvent({
-          type: 'CONSENT_REVOKED',
-          actor: currentUser,
-          tokenId: tokenId,
-          payload: {
-              owner: currentUser,
-              revokeFrom: grantee,
-              revokedAt: new Date().toISOString()
-          }
-      });
+    if (!confirm(`Revoke access for ${grantee}?`)) return;
+    await addEvent({
+      type: 'CONSENT_REVOKED',
+      actor: currentUser,
+      tokenId: tokenId,
+      payload: {
+        owner: currentUser,
+        revokeFrom: grantee,
+        revokedAt: new Date().toISOString()
+      }
+    });
   };
 
   const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy || showHistory));
 
   // Derive active consents
-  const activeConsents = selectedVehicle ? events.filter(e => 
-      e.type === 'CONSENT_UPDATED' && 
-      e.tokenId === selectedVehicle.tokenId && 
-      e.payload.owner.includes(address || 'x') &&
-      new Date(e.payload.expiresAt) > new Date()
+  const activeConsents = selectedVehicle ? events.filter(e =>
+    e.type === 'CONSENT_UPDATED' &&
+    e.tokenId === selectedVehicle.tokenId &&
+    e.payload.owner.includes(address || 'x') &&
+    new Date(e.payload.expiresAt) > new Date()
   ) : [];
 
   // Filter out revoked ones (rudimentary check)
@@ -287,12 +386,12 @@ export const ConsumerPage = () => {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-           <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Asset Wallet</h1>
-           <p className="text-secondary">Manage your verified vehicle NFTs and privacy protocols.</p>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Asset Wallet</h1>
+          <p className="text-secondary">Manage your verified vehicle NFTs and privacy protocols.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1.25rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-            <User size={20} color="var(--accent-primary)" />
-            <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{displayUser}</span>
+          <User size={20} color="var(--accent-primary)" />
+          <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{displayUser}</span>
         </div>
       </header>
 
@@ -353,13 +452,13 @@ export const ConsumerPage = () => {
                   </div>
 
                   {/* Price & Seller Info */}
-                  <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(245, 158, 11, 0.05))', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                  <div style={{ marginTop: '1.25rem', padding: '1rem', background: v.pendingPurchase?.isLien ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.04))' : 'linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(245, 158, 11, 0.05))', borderRadius: '12px', border: v.pendingPurchase?.isLien ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid rgba(251, 191, 36, 0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Price</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fbbf24' }}>
+                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{v.pendingPurchase?.isLien ? 'Loan Principal' : 'Price'}</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: v.pendingPurchase?.isLien ? '#a78bfa' : '#fbbf24' }}>
                           <DollarSign size={18} style={{ display: 'inline', verticalAlign: 'middle' }} />
-                          {v.pendingPurchase!.price} ETH
+                          {v.pendingPurchase?.isLien ? v.pendingPurchase!.price.toLocaleString() + ' THB' : v.pendingPurchase!.price + ' ETH'}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -369,23 +468,88 @@ export const ConsumerPage = () => {
                         </div>
                       </div>
                     </div>
+                    {v.pendingPurchase?.lienOffer && (
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                        <div>
+                          <div className="text-secondary" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Interest</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#a78bfa' }}>{(v.pendingPurchase.lienOffer.interestRateBps / 100).toFixed(2)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-secondary" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Term</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#a78bfa' }}>{v.pendingPurchase.lienOffer.termMonths} months</div>
+                        </div>
+                        {v.pendingPurchase.counterOfferAmount && (
+                          <div>
+                            <div className="text-secondary" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Counter-Offered</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f59e0b' }}>{v.pendingPurchase.counterOfferAmount.toLocaleString()} THB</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.25)', display: 'flex', gap: '1rem' }}>
-                  <button
-                    className="premium-btn"
-                    onClick={() => handleAcceptAndPay(v.tokenId)}
-                    disabled={processingPurchase === v.tokenId}
-                    style={{ flex: 2, opacity: processingPurchase === v.tokenId ? 0.6 : 1 }}
-                  >
-                    {processingPurchase === v.tokenId ? (
-                      <>⏳ Processing Payment...</>
+                <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.25)', display: 'flex', gap: '0.75rem' }}>
+                  {v.pendingPurchase?.isLien ? (
+                    // Lien offer mode
+                    v.pendingPurchase.lienOffer?.isCountered ? (
+                      <button
+                        className="premium-btn"
+                        onClick={() => handleAcceptLien(v.tokenId)}
+                        disabled={processingPurchase === v.tokenId}
+                        style={{ flex: 2, opacity: processingPurchase === v.tokenId ? 0.6 : 1 }}
+                      >
+                        {processingPurchase === v.tokenId ? (
+                          <>⏳ Processing...</>
+                        ) : (
+                          <><CheckCircle size={16} /> Accept & Pay {v.pendingPurchase!.price.toLocaleString()} THB</>
+                        )}
+                      </button>
                     ) : (
-                      <><CheckCircle size={16} /> Accept & Pay {v.pendingPurchase!.price} ETH</>
-                    )}
-                  </button>
+                      <button className="premium-btn" disabled style={{ flex: 2, opacity: 0.5 }}>
+                        <Clock size={16} /> Awaiting Dealer Consent
+                      </button>
+                    )
+                  ) : (
+                    // Normal ETH payment mode
+                    <button
+                      className="premium-btn"
+                      onClick={() => handleAcceptAndPay(v.tokenId)}
+                      disabled={processingPurchase === v.tokenId}
+                      style={{ flex: 2, opacity: processingPurchase === v.tokenId ? 0.6 : 1 }}
+                    >
+                      {processingPurchase === v.tokenId ? (
+                        <>⏳ Processing Payment...</>
+                      ) : (
+                        <><CheckCircle size={16} /> Accept & Pay {v.pendingPurchase!.price} ETH</>
+                      )}
+                    </button>
+                  )}
+                  {v.pendingLoan && (
+                    <button className="premium-btn" disabled style={{ flex: 2, opacity: 0.5, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+                      <Clock size={16} /> Pending Finance Approval
+                    </button>
+                  )}
+                  {/* LIEN Button — purple, between Accept and Decline */}
+                  {!v.pendingPurchase?.isLien && !v.pendingLoan && v.pendingPurchase?.financePrincipal && (
+                    <button
+                      onClick={() => handleOpenLienModal(v.tokenId)}
+                      disabled={processingPurchase === v.tokenId}
+                      style={{
+                        flex: 1.5,
+                        background: 'rgba(139, 92, 246, 0.15)',
+                        color: '#a78bfa',
+                        border: '1px solid rgba(139, 92, 246, 0.4)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      Apply For Finance
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeclineOffer(v.tokenId)}
                     disabled={processingPurchase === v.tokenId}
@@ -402,253 +566,260 @@ export const ConsumerPage = () => {
 
       {/* Digital Green Book Modal */}
       {showGreenBook && selectedVehicle && createPortal(
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '2px solid var(--success)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <ShieldCheck size={32} color="var(--success)" />
-                        <h2 style={{ margin: 0 }}>OFFICIAL DIGITAL REGISTRY</h2>
-                      </div>
-                      <button onClick={() => setShowGreenBook(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem' }}>
-                      <div>
-                          <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Vehicle Identity</label>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.makeModelTrim}</div>
-                          <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {selectedVehicle.vin}</div>
-                          <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Token: {selectedVehicle.tokenId}</div>
-                      </div>
-                      <div>
-                          <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registration Details</label>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.registration?.plateNo || 'PENDING'}</div>
-                          <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Book No: {selectedVehicle.registration?.bookNo || 'N/A'}</div>
-                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                              <span className={`badge ${selectedVehicle.registration?.taxStatus === 'paid' ? 'badge-success' : 'badge-danger'}`}>{selectedVehicle.registration?.taxStatus === 'paid' ? 'TAX VALID' : 'TAX DUE'}</span>
-                              <span className={`badge ${selectedVehicle.insurance ? 'badge-info' : 'badge-danger'}`}>{selectedVehicle.insurance ? 'INSURED' : 'UNINSURED'}</span>
-                          </div>
-                      </div>
-                      <div style={{ gridColumn: '1 / -1' }}>
-                          <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '1rem', display: 'block' }}>Verified Ownership History</label>
-                          {events.filter(e => e.tokenId === selectedVehicle.tokenId && e.type === 'OWNERSHIP_TRANSFERRED').map((e, idx) => (
-                              <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                                  {new Date(e.timestamp).toLocaleDateString()} — Transfer to <span style={{ color: 'var(--accent-primary)' }}>{e.payload.to}</span>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '2px solid var(--success)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <ShieldCheck size={32} color="var(--success)" />
+                <h2 style={{ margin: 0 }}>OFFICIAL DIGITAL REGISTRY</h2>
               </div>
-          </div>,
-          document.body
+              <button onClick={() => setShowGreenBook(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem' }}>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Vehicle Identity</label>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.makeModelTrim}</div>
+                <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {selectedVehicle.vin}</div>
+                <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Token: {selectedVehicle.tokenId}</div>
+              </div>
+              <div>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registration Details</label>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{selectedVehicle.registration?.plateNo || 'PENDING'}</div>
+                <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Book No: {selectedVehicle.registration?.bookNo || 'N/A'}</div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <span className={`badge ${selectedVehicle.registration?.taxStatus === 'paid' ? 'badge-success' : 'badge-danger'}`}>{selectedVehicle.registration?.taxStatus === 'paid' ? 'TAX VALID' : 'TAX DUE'}</span>
+                  <span className={`badge ${selectedVehicle.insurance ? 'badge-info' : 'badge-danger'}`}>{selectedVehicle.insurance ? 'INSURED' : 'UNINSURED'}</span>
+                </div>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '1rem', display: 'block' }}>Verified Ownership History</label>
+                {events.filter(e => e.tokenId === selectedVehicle.tokenId && e.type === 'OWNERSHIP_TRANSFERRED').map((e, idx) => (
+                  <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                    {new Date(e.timestamp).toLocaleDateString()} — Transfer to <span style={{ color: 'var(--accent-primary)' }}>{e.payload.to}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Privacy Management Modal */}
       {showPrivacy && selectedVehicle && createPortal(
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-primary)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <ShieldCheck size={28} color="var(--accent-primary)" />
-                        <h2 style={{ margin: 0 }}>Data Privacy Control</h2>
-                      </div>
-                      <button onClick={() => setShowPrivacy(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
-                  </div>
-                  
-                  <div style={{ marginBottom: '2rem' }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
-                      <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
-                  </div>
-
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Access Grants</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-                      {validConsents.length === 0 ? (
-                           <div className="text-secondary" style={{ fontStyle: 'italic' }}>No active 3rd party access grants.</div>
-                      ) : (
-                          validConsents.map((c, idx) => (
-                              <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div>
-                                      <div style={{ fontWeight: 600 }}>{c.payload.grantTo}</div>
-                                      <div className="text-secondary" style={{ fontSize: '0.8rem' }}>Expires: {new Date(c.payload.expiresAt).toLocaleDateString()}</div>
-                                  </div>
-                                  <button onClick={() => handleRevokeConsent(selectedVehicle.tokenId, c.payload.grantTo)} style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>REVOKE</button>
-                              </div>
-                          ))
-                      )}
-                  </div>
-
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Grant New Access</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                      <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'INSURER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Insurance</button>
-                      <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'LENDER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Finance</button>
-                      <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'SERVICE:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Service</button>
-                      <button onClick={() => handleGrantConsent(selectedVehicle.tokenId)} className="btn" style={{ fontSize: '0.9rem' }}>+ Custom Entity...</button>
-                  </div>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <ShieldCheck size={28} color="var(--accent-primary)" />
+                <h2 style={{ margin: 0 }}>Data Privacy Control</h2>
               </div>
-          </div>,
-          document.body
+              <button onClick={() => setShowPrivacy(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+            </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
+              <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
+            </div>
+
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Access Grants</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+              {validConsents.length === 0 ? (
+                <div className="text-secondary" style={{ fontStyle: 'italic' }}>No active 3rd party access grants.</div>
+              ) : (
+                validConsents.map((c, idx) => (
+                  <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{c.payload.grantTo}</div>
+                      <div className="text-secondary" style={{ fontSize: '0.8rem' }}>Expires: {new Date(c.payload.expiresAt).toLocaleDateString()}</div>
+                    </div>
+                    <button onClick={() => handleRevokeConsent(selectedVehicle.tokenId, c.payload.grantTo)} style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>REVOKE</button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Grant New Access</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'INSURER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Insurance</button>
+              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'LENDER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Finance</button>
+              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'SERVICE:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Service</button>
+              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId)} className="btn" style={{ fontSize: '0.9rem' }}>+ Custom Entity...</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* History Timeline Modal */}
       {showHistory && selectedVehicle && createPortal(
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-secondary)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <History size={28} color="var(--accent-secondary)" />
-                        <h2 style={{ margin: 0 }}>Asset Lifecycle History</h2>
-                      </div>
-                      <button onClick={() => setShowHistory(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
-                  </div>
-                  
-                  <div style={{ marginBottom: '2rem' }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
-                      <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {events.filter(e => e.tokenId === selectedVehicle.tokenId).map((e, idx) => (
-                          <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid var(--accent-secondary)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{String(e.type).replace(/_/g, ' ')}</span>
-                                  <span className="text-secondary" style={{ fontSize: '0.8rem' }}>{new Date(e.timestamp).toLocaleDateString()}</span>
-                              </div>
-                              <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                                  Actor: {e.actor}
-                              </div>
-                              {(e as any).txHash && (
-                                  <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--accent-primary)', marginTop: '0.25rem', wordBreak: 'break-all' }}>
-                                      TX: {(e as any).txHash}
-                                  </div>
-                              )}
-                          </div>
-                      ))}
-                      {events.filter(e => e.tokenId === selectedVehicle.tokenId).length === 0 && (
-                          <p className="text-secondary" style={{ fontStyle: 'italic' }}>No history records found for this asset.</p>
-                      )}
-                  </div>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <History size={28} color="var(--accent-secondary)" />
+                <h2 style={{ margin: 0 }}>Asset Lifecycle History</h2>
               </div>
-          </div>,
-          document.body
+              <button onClick={() => setShowHistory(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+            </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
+              <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {events.filter(e => e.tokenId === selectedVehicle.tokenId).map((e, idx) => (
+                <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid var(--accent-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{String(e.type).replace(/_/g, ' ')}</span>
+                    <span className="text-secondary" style={{ fontSize: '0.8rem' }}>{new Date(e.timestamp).toLocaleDateString()}</span>
+                  </div>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                    Actor: {e.actor}
+                  </div>
+                  {(e as any).txHash && (
+                    <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--accent-primary)', marginTop: '0.25rem', wordBreak: 'break-all' }}>
+                      TX: {(e as any).txHash}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {events.filter(e => e.tokenId === selectedVehicle.tokenId).length === 0 && (
+                <p className="text-secondary" style={{ fontStyle: 'italic' }}>No history records found for this asset.</p>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       <div>
-         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <CreditCard size={24} color="var(--accent-primary)" />
-            Verified Assets
-         </h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <CreditCard size={24} color="var(--accent-primary)" />
+          Verified Assets
+        </h2>
 
-         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
-            {myVehicles.length === 0 ? (
-                <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>You do not currently hold any vehicle NFTs associated with {displayUser}.</div>
-            ) : (
-                myVehicles.map(v => (
-                    <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                        <div style={{ padding: '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
-                                {v.lien.status === 'active' && <Lock size={20} color="var(--danger)" />}
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                                <div>
-                                    <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>VIN Number</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{v.vin}</div>
-                                </div>
-                                <div>
-                                    <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Odometer</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.warranty?.terms?.mileageKm || 0).toLocaleString()} KM</div>
-                                </div>
-                            </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
+          {myVehicles.length === 0 ? (
+            <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>You do not currently hold any vehicle NFTs associated with {displayUser}.</div>
+          ) : (
+            myVehicles.map(v => (
+              <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
+                    {v.lien.status === 'active' && <Lock size={20} color="var(--danger)" />}
+                  </div>
 
-                            {/* ── Insurance Info ── */}
-                            <div style={{ marginTop: '1.25rem', padding: '0.875rem', borderRadius: '10px', background: v.insurance ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${v.insurance ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Shield size={16} color={v.insurance ? '#10b981' : '#ef4444'} />
-                                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                                    {v.insurance ? 'Insured' : 'Uninsured'}
-                                  </span>
-                                </div>
-                                {v.insurance && (() => {
-                                  const daysLeft = Math.ceil((new Date(v.insurance.validUntil).getTime() - now.getTime()) / 86400000);
-                                  return (
-                                    <span className={`badge ${daysLeft <= 30 ? 'badge-warning' : daysLeft <= 0 ? 'badge-danger' : 'badge-success'}`}>
-                                      {daysLeft <= 0 ? 'EXPIRED' : daysLeft <= 30 ? `${daysLeft}d left` : v.insurance.coverageType}
-                                    </span>
-                                  );
-                                })()}
-                              </div>
-                              {v.insurance && (
-                                <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                  Policy: {v.insurance.policyNumber} • Until: {new Date(v.insurance.validUntil).toLocaleDateString()}
-                                </div>
-                              )}
-
-                              {/* Active Claim Status Tracker */}
-                              {v.activeClaim && (
-                                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Claim: {v.activeClaim.claimId}</span>
-                                    <span className="badge" style={{
-                                      fontSize: '0.6rem',
-                                      background: v.activeClaim.status === 'filed' ? 'rgba(245,158,11,0.15)' : v.activeClaim.status === 'investigating' ? 'rgba(59,130,246,0.15)' : v.activeClaim.status === 'approved' ? 'rgba(16,185,129,0.15)' : v.activeClaim.status === 'repaired' ? 'rgba(139,92,246,0.15)' : 'rgba(239,68,68,0.15)',
-                                      color: v.activeClaim.status === 'filed' ? '#f59e0b' : v.activeClaim.status === 'investigating' ? '#3b82f6' : v.activeClaim.status === 'approved' ? '#10b981' : v.activeClaim.status === 'repaired' ? '#8b5cf6' : '#ef4444',
-                                      border: 'none'
-                                    }}>
-                                      {v.activeClaim.status.toUpperCase()}
-                                    </span>
-                                  </div>
-                                  {/* Progress Bar */}
-                                  <div style={{ display: 'flex', gap: '3px' }}>
-                                    {['filed', 'investigating', 'approved', 'repaired'].map((step, idx) => {
-                                      const statusOrder = ['filed', 'investigating', 'approved', 'repaired'];
-                                      const currentIdx = statusOrder.indexOf(v.activeClaim!.status);
-                                      const isActive = idx <= currentIdx;
-                                      return (
-                                        <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                          <div style={{ width: '100%', height: '4px', borderRadius: '2px', background: isActive ? (idx === 0 ? '#f59e0b' : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#8b5cf6') : 'rgba(255,255,255,0.1)' }} />
-                                          <span style={{ fontSize: '0.55rem', color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', textTransform: 'capitalize' }}>{step}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  {v.activeClaim.estimateAmount && (
-                                    <div className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '0.5rem' }}>Estimate: {v.activeClaim.estimateAmount.toLocaleString()} THB</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
-                            <button onClick={() => { setShowGreenBook(v.tokenId); setShowPrivacy(null); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                                <FileText size={18} color="var(--success)" /> BOOK
-                            </button>
-                            <button onClick={() => { setShowPrivacy(v.tokenId); setShowGreenBook(null); setShowHistory(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                                <ShieldCheck size={18} color="var(--accent-primary)" /> PRIVACY
-                            </button>
-                            <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                                <History size={18} color="var(--accent-secondary)" /> HISTORY
-                            </button>
-                            <button
-                              onClick={() => handleOpenClaimModal(v.tokenId)}
-                              disabled={!!v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status) || !v.insurance}
-                              style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: (v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.05)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 'not-allowed' : 'pointer', opacity: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 0.5 : 1 }}
-                            >
-                                <AlertCircle size={18} color={(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? '#f59e0b' : '#ef4444'} /> {(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'CLAIMED' : 'CLAIM'}
-                            </button>
-                            <button 
-                              onClick={() => handleOpenSaleModal(v.tokenId)}
-                              disabled={!!v.pendingPurchase}
-                              style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: v.pendingPurchase ? 'rgba(251, 191, 36, 0.1)' : 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: v.pendingPurchase ? 'not-allowed' : 'pointer', opacity: v.pendingPurchase ? 0.6 : 1 }}
-                            >
-                                <ArrowRightLeft size={18} color={v.pendingPurchase ? '#fbbf24' : 'var(--accent-primary)'} /> {v.pendingPurchase ? 'PENDING' : 'SELL'}
-                            </button>
-                        </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>VIN Number</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{v.vin}</div>
                     </div>
-                ))
-            )}
-         </div>
+                    <div>
+                      <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Odometer</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.warranty?.terms?.mileageKm || 0).toLocaleString()} KM</div>
+                    </div>
+                  </div>
+
+                  {/* ── Insurance Info ── */}
+                  <div style={{ marginTop: '1.25rem', padding: '0.875rem', borderRadius: '10px', background: v.insurance ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${v.insurance ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Shield size={16} color={v.insurance ? '#10b981' : '#ef4444'} />
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                          {v.insurance ? 'Insured' : 'Uninsured'}
+                        </span>
+                      </div>
+                      {v.insurance && (() => {
+                        const daysLeft = Math.ceil((new Date(v.insurance.validUntil).getTime() - now.getTime()) / 86400000);
+                        return (
+                          <span className={`badge ${daysLeft <= 30 ? 'badge-warning' : daysLeft <= 0 ? 'badge-danger' : 'badge-success'}`}>
+                            {daysLeft <= 0 ? 'EXPIRED' : daysLeft <= 30 ? `${daysLeft}d left` : v.insurance.coverageType}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    {v.insurance && (
+                      <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                        Policy: {v.insurance.policyNumber} • Until: {new Date(v.insurance.validUntil).toLocaleDateString()}
+                      </div>
+                    )}
+
+                    {/* Active Claim Status Tracker */}
+                    {v.activeClaim && (
+                      <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Claim: {v.activeClaim.claimId}</span>
+                          <span className="badge" style={{
+                            fontSize: '0.6rem',
+                            background: v.activeClaim.status === 'filed' ? 'rgba(245,158,11,0.15)' : v.activeClaim.status === 'investigating' ? 'rgba(59,130,246,0.15)' : v.activeClaim.status === 'approved' ? 'rgba(16,185,129,0.15)' : v.activeClaim.status === 'repaired' ? 'rgba(139,92,246,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: v.activeClaim.status === 'filed' ? '#f59e0b' : v.activeClaim.status === 'investigating' ? '#3b82f6' : v.activeClaim.status === 'approved' ? '#10b981' : v.activeClaim.status === 'repaired' ? '#8b5cf6' : '#ef4444',
+                            border: 'none'
+                          }}>
+                            {v.activeClaim.status.toUpperCase()}
+                          </span>
+                        </div>
+                        {/* Progress Bar */}
+                        <div style={{ display: 'flex', gap: '3px' }}>
+                          {['filed', 'investigating', 'approved', 'repaired'].map((step, idx) => {
+                            const statusOrder = ['filed', 'investigating', 'approved', 'repaired'];
+                            const currentIdx = statusOrder.indexOf(v.activeClaim!.status);
+                            const isActive = idx <= currentIdx;
+                            return (
+                              <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                <div style={{ width: '100%', height: '4px', borderRadius: '2px', background: isActive ? (idx === 0 ? '#f59e0b' : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#8b5cf6') : 'rgba(255,255,255,0.1)' }} />
+                                <span style={{ fontSize: '0.55rem', color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', textTransform: 'capitalize' }}>{step}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {v.activeClaim.estimateAmount && (
+                          <div className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '0.5rem' }}>Estimate: {v.activeClaim.estimateAmount.toLocaleString()} THB</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                  <button onClick={() => { setShowGreenBook(v.tokenId); setShowPrivacy(null); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                    <FileText size={18} color="var(--success)" /> BOOK
+                  </button>
+                  <button onClick={() => { setShowPrivacy(v.tokenId); setShowGreenBook(null); setShowHistory(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                    <ShieldCheck size={18} color="var(--accent-primary)" /> PRIVACY
+                  </button>
+                  <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                    <History size={18} color="var(--accent-secondary)" /> HISTORY
+                  </button>
+                  <button
+                    onClick={() => handleOpenClaimModal(v.tokenId)}
+                    disabled={!!v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status) || !v.insurance}
+                    style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: (v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.05)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 'not-allowed' : 'pointer', opacity: ((v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) || !v.insurance) ? 0.5 : 1 }}
+                  >
+                    <AlertCircle size={18} color={(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? '#f59e0b' : '#ef4444'} /> {(v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status)) ? 'CLAIMED' : 'CLAIM'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (v.pendingPurchase?.isLien) {
+                        setC2cCounterModal(v.tokenId);
+                        setC2cCounterAmount(v.pendingPurchase?.price?.toString() || '');
+                      } else {
+                        handleOpenSaleModal(v.tokenId);
+                      }
+                    }}
+                    disabled={!!v.pendingPurchase && !v.pendingPurchase?.isLien}
+                    style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: v.pendingPurchase?.isLien ? 'rgba(245, 158, 11, 0.1)' : v.pendingPurchase ? 'rgba(251, 191, 36, 0.1)' : 'rgba(59, 130, 246, 0.1)', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: (v.pendingPurchase && !v.pendingPurchase?.isLien) ? 'not-allowed' : 'pointer', opacity: (v.pendingPurchase && !v.pendingPurchase?.isLien) ? 0.6 : 1 }}
+                  >
+                    <ArrowRightLeft size={18} color={v.pendingPurchase?.isLien ? '#f59e0b' : v.pendingPurchase ? '#fbbf24' : 'var(--accent-primary)'} /> {v.pendingPurchase?.isLien ? 'COUNTER' : v.pendingPurchase ? 'PENDING' : 'SELL'}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* ═══════════ Sale Modal (Consumer-to-Consumer) ═══════════ */}
@@ -794,6 +965,147 @@ export const ConsumerPage = () => {
               >
                 {claimFiles.length > 0 ? `Submit Claim (${claimFiles.length} photo${claimFiles.length > 1 ? 's' : ''})` : 'Submit Claim'}
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* ═══════════ LIEN Offer Modal ═══════════ */}
+      {lienModal && (() => {
+        const lienVehicle = vehicles.find(v => v.tokenId === lienModal);
+        const principal = lienVehicle?.pendingPurchase?.financePrincipal || 0;
+        return lienVehicle ? createPortal(
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '500px', background: '#0a0a0b', border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <Landmark size={28} color="#a78bfa" />
+                  <h2 style={{ margin: 0, color: '#a78bfa' }}>LIEN Financing</h2>
+                </div>
+                <button onClick={() => setLienModal(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{lienVehicle.makeModelTrim}</div>
+                <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {lienVehicle.vin}</div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Lender (Finance) Address</label>
+                  <input
+                    type="text"
+                    value={financeLender}
+                    onChange={(e) => setFinanceLender(e.target.value)}
+                    placeholder="0x..."
+                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#a78bfa', fontSize: '0.9rem', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div>
+                  <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Principal Amount (Pre-determined by Dealer)</label>
+                  <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '1.25rem', fontWeight: 700, color: 'white', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{principal.toLocaleString()}</span>
+                    <span style={{ color: '#a78bfa', fontSize: '0.9rem', alignSelf: 'center' }}>THB</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Interest Rate</label>
+                  <div style={{ padding: '0.75rem', background: 'rgba(139, 92, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.2)', fontSize: '1.25rem', fontWeight: 700, color: '#a78bfa' }}>
+                    3.50% <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 400 }}>(Fixed / 350 bps)</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Loan Term</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <button
+                      onClick={() => setLienTerm(48)}
+                      style={{
+                        padding: '1rem', borderRadius: '12px',
+                        background: lienTerm === 48 ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)',
+                        border: lienTerm === 48 ? '2px solid #a78bfa' : '1px solid var(--border-subtle)',
+                        color: lienTerm === 48 ? '#a78bfa' : 'inherit',
+                        fontWeight: lienTerm === 48 ? 700 : 400,
+                        cursor: 'pointer', textAlign: 'center'
+                      }}
+                    >
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>4</div>
+                      <div style={{ fontSize: '0.75rem' }}>Years (48 months)</div>
+                    </button>
+                    <button
+                      onClick={() => setLienTerm(60)}
+                      style={{
+                        padding: '1rem', borderRadius: '12px',
+                        background: lienTerm === 60 ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)',
+                        border: lienTerm === 60 ? '2px solid #a78bfa' : '1px solid var(--border-subtle)',
+                        color: lienTerm === 60 ? '#a78bfa' : 'inherit',
+                        fontWeight: lienTerm === 60 ? 700 : 400,
+                        cursor: 'pointer', textAlign: 'center'
+                      }}
+                    >
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>5</div>
+                      <div style={{ fontSize: '0.75rem' }}>Years (60 months)</div>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  className="premium-btn"
+                  onClick={handleLienSubmit}
+                  disabled={!principal || !financeLender || processingPurchase === lienModal}
+                  style={{ marginTop: '0.5rem', background: '#7c3aed', opacity: (!principal || processingPurchase === lienModal) ? 0.5 : 1 }}
+                >
+                  {processingPurchase === lienModal ? '⏳ Applying...' : 'Apply for Finance'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        ) : null;
+      })()}
+      {/* ═══════════ C2C Counter-Offer Modal ═══════════ */}
+      {c2cCounterModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '420px', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#f59e0b', margin: 0 }}>
+                <CreditCard size={24} />
+                Counter-Offer
+              </h2>
+              <button onClick={() => setC2cCounterModal(null)} style={{ padding: '0.5rem', borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <X size={20} color="var(--text-secondary)" />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                New Amount (THB)
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={c2cCounterAmount}
+                  onChange={e => setC2cCounterAmount(e.target.value)}
+                  placeholder="e.g. 750000"
+                  style={{ marginBottom: 0, paddingRight: '60px' }}
+                />
+                <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: '#f59e0b', fontWeight: 700, fontSize: '0.9rem' }}>THB</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="premium-btn"
+                onClick={handleC2cCounterOffer}
+                disabled={!c2cCounterAmount}
+                style={{ flex: 1, background: '#d97706', opacity: !c2cCounterAmount ? 0.5 : 1 }}
+              >
+                Yes, Send Counter-Offer
+              </button>
+              <button onClick={() => setC2cCounterModal(null)} className="text-secondary" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         </div>,

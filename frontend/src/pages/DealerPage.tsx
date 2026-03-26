@@ -10,10 +10,11 @@ export const DealerPage = () => {
     const [showDisclosure, setShowDisclosure] = useState<string | null>(null);
     const [disclosures, setDisclosures] = useState('');
 
-    // Sale Modal State
+    // Sale Modal State (Unified Cash + Finance)
     const [showSaleModal, setShowSaleModal] = useState<string | null>(null);
-    const [salePrice, setSalePrice] = useState('');
     const [buyerAddress, setBuyerAddress] = useState('');
+    const [salePrice, setSalePrice] = useState('');
+    const [financePrincipal, setFinancePrincipal] = useState('');
 
     // Dynamic Dealer ID from Auth
     const dealerId = address || 'UNKNOWN';
@@ -41,15 +42,18 @@ export const DealerPage = () => {
 
         setShowSaleModal(tokenId);
         setSalePrice('');
+        setFinancePrincipal('');
         setBuyerAddress(import.meta.env.VITE_CONSUMER_ADDRESS || '');
     };
 
     const handleSubmitSale = async () => {
-        if (!showSaleModal || !salePrice || !buyerAddress) return;
+        if (!showSaleModal || !salePrice || !buyerAddress || !financePrincipal) return;
 
         const price = parseFloat(salePrice);
-        if (isNaN(price) || price <= 0) {
-            alert('กรุณากรอกราคาที่ถูกต้อง');
+        const principal = parseFloat(financePrincipal);
+        
+        if (isNaN(price) || price <= 0 || isNaN(principal) || principal <= 0) {
+            alert('กรุณากรอกราคาให้ครบถ้วนและถูกต้อง (ETH และ BTH)');
             return;
         }
 
@@ -69,11 +73,13 @@ export const DealerPage = () => {
                     buyer: buyerAddress,
                     price: price,
                     currency: 'ETH',
+                    financePrincipal: principal,
                     offeredAt: new Date().toISOString()
                 }
             });
             setShowSaleModal(null);
             setSalePrice('');
+            setFinancePrincipal('');
             setBuyerAddress('');
         } catch (err) {
             console.error('Failed to create purchase offer:', err);
@@ -185,23 +191,44 @@ export const DealerPage = () => {
                                     style={{ marginBottom: 0, fontFamily: 'monospace' }}
                                 />
                             </div>
-                            <div>
-                                <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                                    Sale Price (ETH)
-                                </label>
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={salePrice}
-                                        onChange={e => setSalePrice(e.target.value)}
-                                        placeholder="0.00"
-                                        style={{ marginBottom: 0, paddingRight: '60px' }}
-                                    />
-                                    <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
-                                        ETH
-                                    </span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                        Cash Sale Price (ETH)
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={salePrice}
+                                            onChange={e => setSalePrice(e.target.value)}
+                                            placeholder="0.00"
+                                            style={{ marginBottom: 0, paddingRight: '50px' }}
+                                        />
+                                        <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                                            ETH
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                        Finance Principal (BTH)
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type="number"
+                                            step="1000"
+                                            min="0"
+                                            value={financePrincipal}
+                                            onChange={e => setFinancePrincipal(e.target.value)}
+                                            placeholder="0"
+                                            style={{ marginBottom: 0, paddingRight: '50px' }}
+                                        />
+                                        <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-secondary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                                            BTH
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -210,8 +237,8 @@ export const DealerPage = () => {
                             <button
                                 className="premium-btn"
                                 onClick={handleSubmitSale}
-                                disabled={!salePrice || !buyerAddress}
-                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress) ? 0.5 : 1 }}
+                                disabled={!salePrice || !buyerAddress || !financePrincipal}
+                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress || !financePrincipal) ? 0.5 : 1 }}
                             >
                                 <UserCheck size={16} /> Send Offer to Buyer
                             </button>
@@ -219,11 +246,13 @@ export const DealerPage = () => {
                         </div>
 
                         <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '1rem', textAlign: 'center', opacity: 0.7 }}>
-                            ⚠️ Vehicle will NOT transfer until the buyer accepts and pays the stated ETH amount.
+                            ⚠️ Buyer will choose whether to pay ETH upfront or apply for Finance using the Principal.
                         </p>
                     </div>
                 </div>
             )}
+
+
 
             {/* Disclosure Modal Overlay */}
             {showDisclosure && (
@@ -285,6 +314,8 @@ export const DealerPage = () => {
                         myStock.map(v => {
                             const hasAccident = v.flags.majorAccident || v.flags.flood;
                             const hasPendingOffer = !!v.pendingPurchase;
+                            const hasPendingLoan = !!v.pendingLoan;
+                            const isBusy = hasPendingOffer || hasPendingLoan;
                             return (
                                 <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden' }}>
                                     <div style={{ padding: '1.5rem' }}>
@@ -298,6 +329,12 @@ export const DealerPage = () => {
                                                         PENDING CONSENT
                                                     </span>
                                                 )}
+                                                {hasPendingLoan && (
+                                                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                                                        <Clock size={12} style={{ marginRight: '4px' }} />
+                                                        FINANCE REVIEW
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{v.makeModelTrim}</h3>
@@ -308,6 +345,17 @@ export const DealerPage = () => {
                                                 <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Offer Sent</div>
                                                 <div style={{ fontSize: '0.9rem' }}>
                                                     <strong>{v.pendingPurchase!.price} ETH</strong> → <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{v.pendingPurchase!.buyer.substring(0, 8)}...{v.pendingPurchase!.buyer.substring(38)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {hasPendingLoan && (
+                                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+                                                <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Applying For Finance</div>
+                                                <div style={{ fontSize: '0.9rem' }}>
+                                                    <strong>Lender:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{v.pendingLoan!.lender.substring(0, 8)}...</span>
+                                                    <br />
+                                                    <strong>Principal:</strong> {v.pendingLoan!.principal.toLocaleString()} BTH
                                                 </div>
                                             </div>
                                         )}
@@ -328,14 +376,14 @@ export const DealerPage = () => {
                                         <button
                                             className="premium-btn"
                                             onClick={() => handleOpenSaleModal(v.tokenId)}
-                                            style={{ flex: 1.5, opacity: hasPendingOffer ? 0.5 : 1 }}
-                                            disabled={hasPendingOffer}
+                                            style={{ flex: 1.5, opacity: isBusy ? 0.5 : 1 }}
+                                            disabled={isBusy}
                                         >
-                                            <UserCheck size={16} /> {hasPendingOffer ? 'Awaiting Consent' : 'Process Sale'}
+                                            <UserCheck size={16} /> {hasPendingLoan ? 'Finance App Pending' : hasPendingOffer ? 'Awaiting Consent' : 'Offer Deal'}
                                         </button>
                                         <button
                                             onClick={() => setShowDisclosure(v.tokenId)}
-                                            style={{ flex: 1, background: 'transparent' }}
+                                            style={{ flex: 0.5, background: 'transparent' }}
                                         >
                                             <AlertTriangle size={16} color={hasAccident ? 'var(--danger)' : 'var(--text-secondary)'} />
                                         </button>
@@ -346,6 +394,7 @@ export const DealerPage = () => {
                     )}
                 </div>
             </div>
+
         </div>
     );
 };

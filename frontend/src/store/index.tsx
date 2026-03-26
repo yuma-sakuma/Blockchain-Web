@@ -248,6 +248,103 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
           currentOwner: payload.buyer,
           ownerCount: v.ownerCount + 1
         };
+      case 'LIEN_OFFER_CREATED':
+        return {
+          ...v,
+          pendingPurchase: v.pendingPurchase ? {
+            ...v.pendingPurchase,
+            isLien: true,
+            price: payload.principal,
+            currency: 'THB',
+            lienOffer: {
+              principal: payload.principal,
+              interestRateBps: payload.interestRateBps,
+              termMonths: payload.termMonths,
+              isCountered: false
+            }
+          } : undefined
+        };
+      case 'LIEN_COUNTER_OFFER':
+        return {
+          ...v,
+          pendingPurchase: v.pendingPurchase ? {
+            ...v.pendingPurchase,
+            price: payload.counterOfferAmount,
+            counterOfferAmount: payload.counterOfferAmount,
+            lienOffer: v.pendingPurchase.lienOffer ? {
+              ...v.pendingPurchase.lienOffer,
+              principal: payload.counterOfferAmount,
+              isCountered: true
+            } : undefined
+          } : undefined
+        };
+      case 'LIEN_OFFER_ACCEPTED':
+        return {
+          ...v,
+          pendingPurchase: undefined,
+          currentOwner: payload.buyer,
+          ownerCount: v.ownerCount + 1,
+          lien: { status: 'active', transferLocked: true, lender: payload.seller },
+          loanAccount: {
+            borrower: payload.buyer,
+            principal: payload.principal,
+            interestRateBps: payload.interestRateBps,
+            termMonths: payload.termMonths,
+            payments: {},
+            lienStatus: 'ACTIVE'
+          }
+        };
+      case 'LOAN_APPLICATION_CREATED':
+        return {
+          ...v,
+          pendingLoan: {
+            borrower: event.actor,
+            lender: payload.lender,
+            principal: payload.principal,
+            interestRateBps: payload.interestRateBps,
+            termMonths: payload.termMonths,
+            appliedAt: event.timestamp
+          }
+        };
+      case 'LOAN_APPROVED':
+        return {
+          ...v,
+          pendingPurchase: undefined,
+          pendingLoan: undefined,
+          currentOwner: payload.lender, // Finance is owner
+          ownerCount: v.ownerCount + 1,
+          lien: { status: 'active', transferLocked: true, lender: payload.lender },
+          loanAccount: {
+            borrower: payload.borrower,
+            principal: payload.principal,
+            interestRateBps: payload.interestRateBps,
+            termMonths: payload.termMonths,
+            payments: {},
+            lienStatus: 'ACTIVE'
+          }
+        };
+      case 'INSTALLMENT_MILESTONE_RECORDED': {
+        if (!v.loanAccount) return v;
+        const newPayments = { ...v.loanAccount.payments, [payload.installmentNo]: payload.status || 'PAID' };
+        // Check loan completion
+        const totalMonths = v.loanAccount.termMonths;
+        const paidCount = Object.values(newPayments).filter(s => s === 'PAID').length;
+        const missedCount = Object.values(newPayments).filter(s => s === 'MISSED').length;
+        let newLienStatus = v.loanAccount.lienStatus;
+        let newLien = { ...v.lien };
+        if (paidCount === totalMonths) {
+          newLienStatus = 'RELEASED';
+          newLien = { status: 'released', transferLocked: false };
+        } else if (missedCount >= 3) {
+          newLienStatus = 'DEFAULTED';
+          newLien = { ...newLien, status: 'defaulted' };
+        }
+        return {
+          ...v,
+          lien: newLien,
+          loanAccount: { ...v.loanAccount, payments: newPayments, lienStatus: newLienStatus }
+        };
+      }
       // To be implemented: Other events
       default:
         return v;
@@ -261,6 +358,8 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
   const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   // Build a map: tokenId → pendingPurchase | undefined
   const pendingMap = new Map<string, VehicleNFT['pendingPurchase']>();
+  const pendingLoanMap = new Map<string, VehicleNFT['pendingLoan']>();
+  const loanMap = new Map<string, { loanAccount: VehicleNFT['loanAccount']; lien: VehicleNFT['lien']; currentOwner: string; ownerCount: number }>();
   for (const e of sorted) {
     if (e.type === 'PURCHASE_OFFER_CREATED') {
       pendingMap.set(e.tokenId, {
@@ -269,16 +368,152 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
         buyer: e.payload.buyer,
         price: e.payload.price,
         currency: e.payload.currency || 'ETH',
-        offeredAt: e.payload.offeredAt || e.timestamp
+        offeredAt: e.payload.offeredAt || e.timestamp,
+        financePrincipal: e.payload.financePrincipal
       });
-    } else if (e.type === 'PURCHASE_CONSENT_GIVEN' || e.type === 'OWNERSHIP_TRANSFERRED') {
+    } else if (e.type === 'PURCHASE_CONSENT_GIVEN' || e.type === 'OWNERSHIP_TRANSFERRED' || e.type === 'LIEN_OFFER_ACCEPTED' || e.type === 'LIEN_CREATED') {
       pendingMap.set(e.tokenId, undefined); // Clear pending
+      if (e.type === 'LIEN_OFFER_ACCEPTED') {
+        loanMap.set(e.tokenId, {
+          loanAccount: {
+            borrower: e.payload.buyer,
+            principal: e.payload.principal,
+            interestRateBps: e.payload.interestRateBps,
+            termMonths: e.payload.termMonths,
+            payments: {},
+            lienStatus: 'ACTIVE' as const
+          },
+          lien: { status: 'active' as const, transferLocked: true, lender: e.payload.seller },
+          currentOwner: e.payload.buyer,
+          ownerCount: 1 // Will be added
+        });
+      } else if (e.type === 'LIEN_CREATED') {
+        loanMap.set(e.tokenId, {
+          loanAccount: {
+            borrower: e.actor || 'UNKNOWN',
+            principal: e.payload.principal || 500000,
+            interestRateBps: e.payload.interestRateBps || 350,
+            termMonths: e.payload.termMonths || 48,
+            payments: e.payload.payments || {},
+            lienStatus: 'ACTIVE' as const
+          },
+          lien: { status: 'active' as const, transferLocked: true, lender: e.payload.lender },
+          currentOwner: e.actor || 'UNKNOWN',
+          ownerCount: 0
+        });
+      }
+    } else if (e.type === 'LOAN_APPLICATION_CREATED') {
+      pendingLoanMap.set(e.tokenId, {
+        borrower: e.actor,
+        lender: e.payload.lender,
+        principal: e.payload.principal,
+        interestRateBps: e.payload.interestRateBps,
+        termMonths: e.payload.termMonths,
+        appliedAt: e.timestamp
+      });
+    } else if (e.type === 'LOAN_APPROVED') {
+      pendingMap.set(e.tokenId, undefined);
+      pendingLoanMap.set(e.tokenId, undefined);
+      loanMap.set(e.tokenId, {
+        loanAccount: {
+          borrower: e.payload.borrower,
+          principal: e.payload.principal,
+          interestRateBps: e.payload.interestRateBps,
+          termMonths: e.payload.termMonths,
+          payments: {},
+          lienStatus: 'ACTIVE' as const
+        },
+        lien: { status: 'active' as const, transferLocked: true, lender: e.payload.lender },
+        currentOwner: e.payload.lender,
+        ownerCount: 1
+      });
+    } else if (e.type === 'LIEN_OFFER_CREATED' && pendingMap.has(e.tokenId)) {
+      const existing = pendingMap.get(e.tokenId);
+      if (existing) {
+        pendingMap.set(e.tokenId, {
+          ...existing,
+          isLien: true,
+          price: e.payload.principal,
+          currency: 'THB',
+          lienOffer: {
+            principal: e.payload.principal,
+            interestRateBps: e.payload.interestRateBps,
+            termMonths: e.payload.termMonths,
+            isCountered: false
+          }
+        });
+      }
+    } else if (e.type === 'LIEN_COUNTER_OFFER' && pendingMap.has(e.tokenId)) {
+      const existing = pendingMap.get(e.tokenId);
+      if (existing) {
+        pendingMap.set(e.tokenId, {
+          ...existing,
+          price: e.payload.counterOfferAmount,
+          counterOfferAmount: e.payload.counterOfferAmount,
+          lienOffer: existing.lienOffer ? {
+            ...existing.lienOffer,
+            principal: e.payload.counterOfferAmount,
+            isCountered: true
+          } : undefined
+        });
+      }
+    } else if (e.type === 'INSTALLMENT_MILESTONE_RECORDED' && loanMap.has(e.tokenId)) {
+      // Apply payment to the loan account built from LIEN_OFFER_ACCEPTED
+      const existing = loanMap.get(e.tokenId)!;
+      if (existing.loanAccount) {
+        const newPayments = { ...existing.loanAccount.payments, [e.payload.installmentNo]: e.payload.status || 'PAID' };
+        const totalMonths = existing.loanAccount.termMonths;
+        const paidCount = Object.values(newPayments).filter(s => s === 'PAID').length;
+        const missedCount = Object.values(newPayments).filter(s => s === 'MISSED').length;
+        let newLienStatus = existing.loanAccount.lienStatus;
+        let newLien = { ...existing.lien };
+        if (paidCount === totalMonths) {
+          newLienStatus = 'RELEASED' as const;
+          newLien = { status: 'released' as const, transferLocked: false };
+        } else if (missedCount >= 3) {
+          newLienStatus = 'DEFAULTED' as const;
+          newLien = { ...newLien, status: 'defaulted' as const };
+        }
+        loanMap.set(e.tokenId, {
+          ...existing,
+          lien: newLien,
+          loanAccount: { ...existing.loanAccount, payments: newPayments, lienStatus: newLienStatus }
+        });
+      }
+    } else if (e.type === 'REPOSSESSION_RECORDED' && loanMap.has(e.tokenId)) {
+      const existing = loanMap.get(e.tokenId)!;
+      loanMap.set(e.tokenId, {
+        ...existing,
+        lien: { ...existing.lien, transferLocked: true }
+      });
+    } else if (e.type === 'LIEN_RELEASED' && loanMap.has(e.tokenId)) {
+      const existing = loanMap.get(e.tokenId)!;
+      if (existing.loanAccount) {
+        loanMap.set(e.tokenId, {
+          ...existing,
+          lien: { status: 'released' as const, transferLocked: false, lender: existing.lien.lender },
+          loanAccount: { ...existing.loanAccount, lienStatus: 'RELEASED' as const }
+        });
+      }
     }
   }
-  return vehicles.map(v => ({
-    ...v,
-    pendingPurchase: pendingMap.has(v.tokenId) ? pendingMap.get(v.tokenId) : v.pendingPurchase
-  }));
+  return vehicles.map(v => {
+    const updates: any = {};
+    if (pendingMap.has(v.tokenId)) {
+      updates.pendingPurchase = pendingMap.get(v.tokenId);
+    }
+    if (pendingLoanMap.has(v.tokenId)) {
+      updates.pendingLoan = pendingLoanMap.get(v.tokenId);
+    }
+    if (loanMap.has(v.tokenId)) {
+      const loanData = loanMap.get(v.tokenId)!;
+      updates.loanAccount = loanData.loanAccount;
+      updates.lien = loanData.lien;
+      updates.currentOwner = loanData.currentOwner;
+      updates.ownerCount = v.ownerCount + loanData.ownerCount;
+    }
+    return Object.keys(updates).length > 0 ? { ...v, ...updates } : v;
+  });
 };
 
 export const VehicleProvider = ({ children }: { children: ReactNode }) => {
@@ -369,7 +604,13 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           'LIEN_RELEASED',
           'REPOSSESSION_RECORDED',
           'PURCHASE_OFFER_CREATED',
-          'PURCHASE_CONSENT_GIVEN'
+          'PURCHASE_CONSENT_GIVEN',
+          'LIEN_OFFER_CREATED',
+          'LIEN_COUNTER_OFFER',
+          'LIEN_OFFER_ACCEPTED',
+          'LOAN_APPLICATION_CREATED',
+          'LOAN_APPROVED',
+          'INSTALLMENT_MILESTONE_RECORDED'
         ];
 
         // Sort ascending by timestamp to apply state chronologically
@@ -463,7 +704,13 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         'LIEN_RELEASED',
         'REPOSSESSION_RECORDED',
         'PURCHASE_OFFER_CREATED',
-        'PURCHASE_CONSENT_GIVEN'
+        'PURCHASE_CONSENT_GIVEN',
+        'LIEN_OFFER_CREATED',
+        'LIEN_COUNTER_OFFER',
+        'LIEN_OFFER_ACCEPTED',
+        'LOAN_APPLICATION_CREATED',
+        'LOAN_APPROVED',
+        'INSTALLMENT_MILESTONE_RECORDED'
       ];
 
       // Sort ascending by timestamp to apply state chronologically
@@ -580,6 +827,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             txResult = await blockchainService.recordWarranty(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
           case 'PURCHASE_CONSENT_GIVEN':
+          case 'LIEN_OFFER_ACCEPTED':
             // ADMIN = lifecycle recording (has DEFAULT_ADMIN_ROLE)
             // Seller wallet = NFT transferFrom (is the NFT owner)
             if (!newEvent.payload.declined) {
@@ -591,7 +839,7 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
                   from: newEvent.payload.seller,
                   to: newEvent.payload.buyer,
                   reason: newEvent.payload.reason || 'resale',
-                  price: newEvent.payload.price,
+                  price: newEvent.payload.price || newEvent.payload.principal || 0,
                   paymentTxHash: newEvent.payload.paymentTxHash,
                   deliveryDate: new Date().toISOString()
                 }, sellerWallet || undefined);
@@ -618,8 +866,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         setEvents(prev => prev.map(e => (e.id === newEvent.id ? { ...e, txHash: response.txHash } : e)));
       }
 
-      // If PURCHASE_CONSENT_GIVEN (not declined), also send OWNERSHIP_TRANSFERRED to backend
-      if (newEvent.type === 'PURCHASE_CONSENT_GIVEN' && !newEvent.payload.declined) {
+      // If PURCHASE_CONSENT_GIVEN (not declined) OR LIEN_OFFER_ACCEPTED, also send OWNERSHIP_TRANSFERRED to backend
+      if ((newEvent.type === 'PURCHASE_CONSENT_GIVEN' || newEvent.type === 'LIEN_OFFER_ACCEPTED') && !newEvent.payload.declined) {
         const sellerRole = newEvent.payload.sellerRole || 'DEALER';
         const transferEvent: VehicleEvent = {
           id: crypto.randomUUID(),

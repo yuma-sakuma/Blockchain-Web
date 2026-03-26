@@ -25,7 +25,7 @@ export interface Warranty {
 }
 
 export interface Lien {
-  status: 'none' | 'active' | 'released';
+  status: 'none' | 'active' | 'released' | 'defaulted';
   transferLocked: boolean;
   lender?: string;
   contractHash?: string;
@@ -78,6 +78,33 @@ export interface PendingPurchase {
   price: number;
   currency: string;
   offeredAt: string;
+  isLien?: boolean;
+  financePrincipal?: number;
+  lienOffer?: {
+    principal: number;
+    interestRateBps: number;
+    termMonths: number;
+    isCountered?: boolean;
+  };
+  counterOfferAmount?: number;
+}
+
+export interface PendingLoan {
+  borrower: string;
+  lender: string;
+  principal: number;
+  interestRateBps: number;
+  termMonths: number;
+  appliedAt: string;
+}
+
+export interface LoanAccount {
+  borrower: string;
+  principal: number;
+  interestRateBps: number;
+  termMonths: number; // 48 or 60
+  payments: Record<number, 'PAID' | 'MISSED'>;
+  lienStatus: 'ACTIVE' | 'RELEASED' | 'DEFAULTED';
 }
 
 export interface VehicleNFT {
@@ -105,6 +132,10 @@ export interface VehicleNFT {
 
   // Purchase Offer
   pendingPurchase?: PendingPurchase;
+
+  // Loan / Lien Financing
+  pendingLoan?: PendingLoan;
+  loanAccount?: LoanAccount;
 }
 
 export type EventType =
@@ -145,7 +176,12 @@ export type EventType =
   | 'ESCROW_CANCELLED'
   | 'SPECIFICATION_UPDATED'
   | 'PURCHASE_OFFER_CREATED'
-  | 'PURCHASE_CONSENT_GIVEN';
+  | 'PURCHASE_CONSENT_GIVEN'
+  | 'LIEN_OFFER_CREATED'
+  | 'LIEN_COUNTER_OFFER'
+  | 'LIEN_OFFER_ACCEPTED'
+  | 'LOAN_APPLICATION_CREATED'
+  | 'LOAN_APPROVED';
 
 export interface VehicleEvent {
   id: string;
