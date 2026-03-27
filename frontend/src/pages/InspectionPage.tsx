@@ -1,10 +1,9 @@
 import { CheckCircle, ClipboardCheck, Search, XCircle, FileText, Gauge, X, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { uploadFile } from '../services/api';
+import { uploadFile, API_BASE_URL } from '../services/api';
 import { useVehicleStore } from '../store';
 
-const API_BASE = 'http://localhost:3000';
 
 export const InspectionPage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -129,7 +128,7 @@ export const InspectionPage = () => {
                         </div>
                         <div>
                             <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Engine No.</div>
-                            <div style={{ fontWeight: 600 }}>{(vehicle.spec as any)?.engineType?.toUpperCase() || 'Not Specified'}</div>
+                            <div style={{ fontWeight: 600 }}>{(vehicle.spec as any)?.engine?.toUpperCase() || 'Not Specified'}</div>
                         </div>
                         <div>
                             <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Previous Mileage</div>
@@ -292,12 +291,12 @@ export const InspectionPage = () => {
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                         {ev.evidence.map((file: any, idx: number) => (
                                             <div key={idx} onClick={() => {
-                                                const url = file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`;
+                                                const url = file.url?.startsWith('http') ? file.url : `${API_BASE_URL}${file.url}`;
                                                 if (file.mime?.startsWith('image/')) setLightboxUrl(url);
                                                 else window.open(url, '_blank');
                                             }} style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                 {file.mime?.startsWith('image/') ? (
-                                                    <img src={file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    <img src={file.url?.startsWith('http') ? file.url : `${API_BASE_URL}${file.url}`} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 ) : (
                                                     <FileText size={24} color="var(--accent-primary)" />
                                                 )}
