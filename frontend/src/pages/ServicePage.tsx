@@ -30,6 +30,7 @@ export const ServicePage = () => {
 
     const garageId = address || 'UNKNOWN';
     const targetVehicle = vehicles.find(v => v.vin === vin);
+    const hasConsent = targetVehicle ? events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) : false;
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
         const file = e.target.files?.[0];
@@ -194,12 +195,18 @@ export const ServicePage = () => {
                             <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{targetVehicle.makeModelTrim}</div>
                             <div className="text-secondary" style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginTop: '0.25rem' }}>Odometer: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
                         </div>
-                        <div className={`badge ${events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'badge-success' : 'badge-danger'}`} style={{ padding: '0.5rem 1rem' }}>{events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'Consent Granted' : 'No Consent'}</div>
+                        <div className={`badge ${hasConsent ? 'badge-success' : 'badge-danger'}`}>{hasConsent ? 'Consent Granted' : 'No Consent'}</div>
+                    </div>
+                )}
+                {targetVehicle && !hasConsent && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px', display: 'flex', gap: '0.75rem', alignItems: 'center', color: 'var(--danger)' }}>
+                        <AlertTriangle size={20} />
+                        <span style={{ fontSize: '0.9rem' }}>You do not have data access consent for this vehicle. Please request the owner to grant consent via the Consumer Portal before proceeding with service logging.</span>
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
+            <div className="service-forms" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', opacity: (!targetVehicle || !hasConsent) ? 0.4 : 1, pointerEvents: (!targetVehicle || !hasConsent) ? 'none' : 'auto', transition: 'all 0.3s' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                     {/* Log Service */}
                     <div className="section-card">
@@ -304,8 +311,8 @@ export const ServicePage = () => {
             </div>
 
             {/* Blockchain Transaction Log */}
-            {targetVehicle && (() => {
-                const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['MAINTENANCE_RECORDED', 'INSPECTION_RESULT_RECORDED', 'CRITICAL_PART_REPLACED', 'WORKSHOP_ESTIMATE_SUBMITTED', 'ODOMETER_SNAPSHOT'].includes(e.type));
+            {targetVehicle && hasConsent && (() => {
+                const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['MAINTENANCE_RECORDED', 'INSPECTION_RESULT_RECORDED', 'CRITICAL_PART_REPLACED', 'WORKSHOP_ESTIMATE_SUBMITTED', 'ODOMETER_SNAPSHOT', 'OWNERSHIP_TRANSFERRED'].includes(e.type));
                 return vehicleEvents.length > 0 ? (
                     <div className="section-card">
                         <h3 className="section-title">

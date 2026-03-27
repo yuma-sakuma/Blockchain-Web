@@ -1,17 +1,21 @@
-import { CheckCircle, ClipboardCheck, Search, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle, ClipboardCheck, Search, XCircle, FileText, Gauge, X, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { uploadFile } from '../services/api';
 import { useVehicleStore } from '../store';
 
+const API_BASE = 'http://localhost:3000';
+
 export const InspectionPage = () => {
-    const { vehicles, addEvent } = useVehicleStore();
+    const { vehicles, events, addEvent } = useVehicleStore();
     const { address } = useAuth();
     const [searchVin, setSearchVin] = useState('');
     const [result, setResult] = useState<'pass' | 'fail'>('pass');
     const [co2, setCo2] = useState(120);
+    const [mileage, setMileage] = useState<number | string>("");
     const [inspFile, setInspFile] = useState<any>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     const inspectorId = address || 'UNKNOWN';
 
@@ -45,6 +49,7 @@ export const InspectionPage = () => {
                 result: result,
                 passed: result === 'pass',
                 metrics: { co2_g_km: co2, brake_efficiency: '90%' },
+                mileageKm: Number(mileage),
                 validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
                 certHash: inspFile?.hash || "CERT-" + Date.now()
             },
@@ -55,7 +60,29 @@ export const InspectionPage = () => {
                 size: inspFile.size
             }] : undefined
         });
+
+        if (mileage) {
+            await addEvent({
+                type: 'ODOMETER_SNAPSHOT',
+                actor: inspectorId,
+                tokenId: vehicle.tokenId,
+                payload: {
+                    mileageKm: Number(mileage),
+                    date: new Date().toISOString(),
+                    evidenceHash: inspFile?.hash
+                },
+                evidence: inspFile ? [{
+                    hash: inspFile.hash,
+                    url: inspFile.path,
+                    mime: inspFile.mime,
+                    size: inspFile.size
+                }] : undefined
+            });
+        }
+
         setInspFile(null);
+        setMileage("");
+        setCo2(120);
     };
 
     return (
@@ -90,150 +117,211 @@ export const InspectionPage = () => {
             </div>
 
             {vehicle && (
-                <div className="section-card animate-slide-up">
-                    {/* Vehicle Info Bar */}
-                    <div style={{
-                        padding: '1.25rem 1.5rem',
-                        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.04))',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(59, 130, 246, 0.15)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '2rem'
-                    }}>
+                <div style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+                    <h3 style={{ marginTop: 0 }}>{vehicle.makeModelTrim}</h3>
+                    <div style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>VIN: {vehicle.vin}</div>
+
+                    {/* Vehicle Specification Display for Visual Verification */}
+                    <div style={{ marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                         <div>
-                            <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{vehicle.makeModelTrim}</div>
-                            <div className="text-secondary" style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginTop: '0.25rem' }}>VIN: {vehicle.vin}</div>
+                            <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Color</div>
+                            <div style={{ fontWeight: 600 }}>{(vehicle.spec as any)?.color || 'Not Specified'}</div>
                         </div>
-                        <span className="badge badge-info" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Token: {vehicle.tokenId}</span>
+                        <div>
+                            <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Engine No.</div>
+                            <div style={{ fontWeight: 600 }}>{(vehicle.spec as any)?.engineType?.toUpperCase() || 'Not Specified'}</div>
+                        </div>
+                        <div>
+                            <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Previous Mileage</div>
+                            <div style={{ fontWeight: 600 }}>{vehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                        </div>
                     </div>
 
-                    {/* Inspection Form */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                        {/* Left: Measurements */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div className="form-group">
-                                <label className="form-label">Emission Level (CO₂ g/km)</label>
+                    <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Current Odometer (KM)</label>
+                            <div style={{ position: 'relative' }}>
+                                <Gauge size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                 <input
                                     type="number"
-                                    value={co2}
-                                    onChange={e => setCo2(Number(e.target.value))}
-                                    style={{ fontSize: '1.1rem', fontWeight: 600 }}
+                                    value={mileage}
+                                    onChange={e => setMileage(e.target.value)}
+                                    style={{ paddingLeft: '2.5rem', width: '100%', marginBottom: 0 }}
+                                    placeholder="Enter current mileage..."
                                 />
                             </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Inspection Result</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <button
-                                        onClick={() => setResult('pass')}
-                                        style={{
-                                            padding: '1.25rem',
-                                            borderRadius: '16px',
-                                            background: result === 'pass'
-                                                ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15))'
-                                                : 'rgba(255,255,255,0.03)',
-                                            border: result === 'pass'
-                                                ? '2px solid var(--success)'
-                                                : '1px solid rgba(255,255,255,0.08)',
-                                            color: result === 'pass' ? 'var(--success)' : 'var(--text-secondary)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.25s ease',
-                                            fontSize: '1rem',
-                                            fontWeight: 700
-                                        }}
-                                    >
-                                        <CheckCircle size={28} />
-                                        PASS
-                                    </button>
-                                    <button
-                                        onClick={() => setResult('fail')}
-                                        style={{
-                                            padding: '1.25rem',
-                                            borderRadius: '16px',
-                                            background: result === 'fail'
-                                                ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15))'
-                                                : 'rgba(255,255,255,0.03)',
-                                            border: result === 'fail'
-                                                ? '2px solid var(--danger)'
-                                                : '1px solid rgba(255,255,255,0.08)',
-                                            color: result === 'fail' ? 'var(--danger)' : 'var(--text-secondary)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.25s ease',
-                                            fontSize: '1rem',
-                                            fontWeight: 700
-                                        }}
-                                    >
-                                        <XCircle size={28} />
-                                        FAIL
-                                    </button>
-                                </div>
-                            </div>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Emission (CO2 g/km)</label>
+                            <input
+                                type="number"
+                                value={co2}
+                                onChange={e => setCo2(Number(e.target.value))}
+                                style={{ fontSize: '1.1rem', fontWeight: 600 }}
+                            />
                         </div>
 
-                        {/* Right: Upload + Submit */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div className="form-group">
-                                <label className="form-label">Inspection Certificate Photo</label>
-                                <div
-                                    className="upload-area"
-                                    onClick={() => document.getElementById('insp-upload')?.click()}
-                                    style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}
+                        <div className="form-group">
+                            <label className="form-label">Inspection Result</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <button
+                                    onClick={() => setResult('pass')}
+                                    style={{
+                                        padding: '1.25rem',
+                                        borderRadius: '16px',
+                                        background: result === 'pass'
+                                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15))'
+                                            : 'rgba(255,255,255,0.03)',
+                                        border: result === 'pass'
+                                            ? '2px solid var(--success)'
+                                            : '1px solid rgba(255,255,255,0.08)',
+                                        color: result === 'pass' ? 'var(--success)' : 'var(--text-secondary)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s ease',
+                                        fontSize: '1rem',
+                                        fontWeight: 700
+                                    }}
                                 >
-                                    {isUploading ? (
-                                        <span style={{ color: 'var(--accent-primary)' }}>Uploading...</span>
-                                    ) : inspFile ? (
-                                        <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <CheckCircle size={24} />
-                                            <div>
-                                                <div style={{ fontWeight: 600 }}>{inspFile.originalname}</div>
-                                                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Certified ✓</div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <ClipboardCheck size={32} style={{ opacity: 0.4 }} />
-                                            <span>Click to upload inspection result</span>
-                                            <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Supports images & documents</span>
-                                        </>
-                                    )}
-                                    <input id="insp-upload" type="file" hidden onChange={handleFileChange} />
-                                </div>
+                                    <CheckCircle size={28} />
+                                    PASS
+                                </button>
+                                <button
+                                    onClick={() => setResult('fail')}
+                                    style={{
+                                        padding: '1.25rem',
+                                        borderRadius: '16px',
+                                        background: result === 'fail'
+                                            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15))'
+                                            : 'rgba(255,255,255,0.03)',
+                                        border: result === 'fail'
+                                            ? '2px solid var(--danger)'
+                                            : '1px solid rgba(255,255,255,0.08)',
+                                        color: result === 'fail' ? 'var(--danger)' : 'var(--text-secondary)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s ease',
+                                        fontSize: '1rem',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    <XCircle size={28} />
+                                    FAIL
+                                </button>
                             </div>
-
-                            <button
-                                className="premium-btn"
-                                onClick={handleSubmitResult}
-                                style={{
-                                    padding: '1.25rem',
-                                    fontSize: '1rem',
-                                    borderRadius: '16px',
-                                    marginTop: 'auto'
-                                }}
-                            >
-                                <ClipboardCheck size={20} />
-                                Submit Inspection Result
-                            </button>
                         </div>
+                    </div>
+
+                    {/* Right: Upload + Submit */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Inspection Certificate Photo</label>
+                            <div
+                                className="upload-area"
+                                onClick={() => document.getElementById('insp-upload')?.click()}
+                                style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}
+                            >
+                                {isUploading ? (
+                                    <span style={{ color: 'var(--accent-primary)' }}>Uploading...</span>
+                                ) : inspFile ? (
+                                    <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <CheckCircle size={24} />
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>{inspFile.originalname}</div>
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Certified ✓</div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <ClipboardCheck size={32} style={{ opacity: 0.4 }} />
+                                        <span>Click to upload inspection result</span>
+                                        <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Supports images & documents</span>
+                                    </>
+                                )}
+                                <input id="insp-upload" type="file" hidden onChange={handleFileChange} />
+                            </div>
+                        </div>
+
+                        <button
+                            className="premium-btn"
+                            onClick={handleSubmitResult}
+                            style={{
+                                padding: '1.25rem',
+                                fontSize: '1rem',
+                                borderRadius: '16px',
+                                marginTop: 'auto'
+                            }}
+                        >
+                            <ClipboardCheck size={20} />
+                            Submit Inspection Result
+                        </button>
                     </div>
                 </div>
             )}
 
-            {!vehicle && searchVin && (
-                <div className="section-card empty-state">
-                    <Search size={48} className="empty-icon" />
-                    <p>No vehicle found with VIN "{searchVin}"</p>
+            {/* Blockchain Transaction Log for Inspector */}
+            {vehicle && (() => {
+                const vehicleEvents = events.filter((e: any) => e.tokenId === vehicle.tokenId && e.txHash && ['INSPECTION_RESULT_RECORDED', 'ODOMETER_SNAPSHOT'].includes(e.type));
+            return vehicleEvents.length > 0 ? (
+                <div className="card" style={{ marginTop: '0.5rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        🔗 Inspection & Registry History
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {vehicleEvents.slice(-8).map((ev: any, i: number) => (
+                            <div key={i} style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <span className="badge badge-info" style={{ marginRight: '0.75rem', fontSize: '0.65rem' }}>{ev.type}</span>
+                                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    {ev.txHash && (
+                                        <code style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', cursor: 'pointer' }} title={ev.txHash}>
+                                            {ev.txHash.slice(0, 10)}...{ev.txHash.slice(-8)}
+                                        </code>
+                                    )}
+                                </div>
+                                {/* Evidence Gallery */}
+                                {ev.evidence && ev.evidence.length > 0 && (
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                        {ev.evidence.map((file: any, idx: number) => (
+                                            <div key={idx} onClick={() => {
+                                                const url = file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`;
+                                                if (file.mime?.startsWith('image/')) setLightboxUrl(url);
+                                                else window.open(url, '_blank');
+                                            }} style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                {file.mime?.startsWith('image/') ? (
+                                                    <img src={file.url?.startsWith('http') ? file.url : `${API_BASE}${file.url}`} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <FileText size={24} color="var(--accent-primary)" />
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
+            ) : null;
+            })()}
+
+            {/* Lightbox Modal */}
+            {lightboxUrl && (
+                <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', padding: '2rem' }}>
+                <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+                    <X size={24} />
+                </button>
+                <img src={lightboxUrl} alt="Evidence Preview" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '12px', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={(e: any) => e.stopPropagation()} />
+            </div>
             )}
         </div>
     );
 };
+
