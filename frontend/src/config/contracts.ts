@@ -43,7 +43,13 @@ export const ROLE_PRIVATE_KEYS: Record<string, string> = {
 
 export const getWalletForRole = (role: string): ethers.Wallet | null => {
   // Normalize role: strip trailing digits (e.g. "CONSUMER2" → "CONSUMER")
-  const normalizedRole = role.toUpperCase().replace(/\d+$/, '');
+  let normalizedRole = role.toUpperCase().replace(/\d+$/, '');
+  
+  // Handle aliases
+  if (normalizedRole === 'SERVICE' || normalizedRole === 'WORKSHOP') {
+    normalizedRole = 'SERVICE_PROVIDER';
+  }
+  
   const privateKey = ROLE_PRIVATE_KEYS[normalizedRole];
   if (!privateKey) {
     console.warn(`No private key found for role: ${role} (normalized: ${normalizedRole})`);

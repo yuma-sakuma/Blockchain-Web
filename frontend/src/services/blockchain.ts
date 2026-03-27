@@ -144,7 +144,8 @@ export const blockchainService = {
   async grantConsent(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     return this.withTxLock(async () => {
       const contract = getContract("VEHICLE_LIFECYCLE", wallet);
-      const tx = await contract.grantWriteConsent(tokenId, ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress, 1, Math.floor(new Date(payload.expiresAt).getTime() / 1000), false, Date.now());
+      const expiresAt = payload.expiresAt ? Math.floor(new Date(payload.expiresAt).getTime() / 1000) : Math.floor(Date.now() / 1000) + 315360000; // Default 10 years
+      const tx = await contract.grantWriteConsent(tokenId, ethers.isAddress(payload.grantTo) ? ethers.getAddress(payload.grantTo) : ethers.ZeroAddress, 1, expiresAt, false, Date.now());
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });
@@ -165,7 +166,7 @@ export const blockchainService = {
       const contract = getContract("VEHICLE_CONSENT", wallet);
       const granteeDid = ethers.id(payload.grantTo);
       const scopeMask = payload.scopeMask || 1;
-      const expiresAt = Math.floor(new Date(payload.expiresAt).getTime() / 1000);
+      const expiresAt = payload.expiresAt ? Math.floor(new Date(payload.expiresAt).getTime() / 1000) : Math.floor(Date.now() / 1000) + 315360000; // Default 10 years
       const nonce = Date.now();
       const tx = await contract.grantConsent(tokenId, granteeDid, scopeMask, expiresAt, payload.singleUse || false, nonce);
       const receipt = await tx.wait();

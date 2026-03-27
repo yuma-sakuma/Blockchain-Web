@@ -743,12 +743,14 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
       ...newEventData,
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      actorRole: sessionStorage.getItem('auth_role') || undefined
+      actorRole: newEventData.actorRole || sessionStorage.getItem('auth_role') || undefined
     };
 
     try {
       // --- Direct Blockchain TX from role wallet ---
-      const role = sessionStorage.getItem('auth_role') || 'CONSUMER';
+      // Use event's explicit actorRole if provided (e.g., consumer approving a SERVICE action)
+      // Otherwise fall back to session role
+      const role = newEvent.actorRole || sessionStorage.getItem('auth_role') || 'CONSUMER';
       const roleWallet = blockchainService.getRoleWallet(role);
 
       if (roleWallet) {

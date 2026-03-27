@@ -2,9 +2,9 @@ import { AlertTriangle, Cpu, FileText, Gauge, Save, Search, Wrench, X } from 'lu
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
-import { uploadFile } from '../services/api';
+import { API_BASE_URL, uploadFile } from '../services/api';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = API_BASE_URL;
 
 export const ServicePage = () => {
     const { vehicles, events, addEvent } = useVehicleStore();
@@ -30,7 +30,7 @@ export const ServicePage = () => {
 
     const garageId = address || 'UNKNOWN';
     const targetVehicle = vehicles.find(v => v.vin === vin);
-    const hasConsent = targetVehicle ? events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) : false;
+
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
         const file = e.target.files?.[0];
@@ -59,45 +59,37 @@ export const ServicePage = () => {
         }
 
         await addEvent({
-            type: 'MAINTENANCE_RECORDED',
+            type: 'SERVICE_ACCESS_REQUESTED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
             payload: {
                 workshop: garageId,
-                date: new Date().toISOString(),
-                mileageKm: Number(mileage),
-                jobs: jobs.split(',').map(j => j.trim()),
-                cost: { total: 1500 },
-                evidenceHash: maintFile?.hash || undefined
-            },
-            evidence: maintFile ? [{
-                hash: maintFile.hash,
-                url: maintFile.path,
-                mime: maintFile.mime,
-                size: maintFile.size
-            }] : undefined
-        });
-
-        await addEvent({
-            type: 'ODOMETER_SNAPSHOT',
-            actor: garageId,
-            tokenId: targetVehicle.tokenId,
-            payload: {
-                mileageKm: Number(mileage),
-                date: new Date().toISOString(),
-                evidenceHash: maintFile?.hash
-            },
-            evidence: maintFile ? [{
-                hash: maintFile.hash,
-                url: maintFile.path,
-                mime: maintFile.mime,
-                size: maintFile.size
-            }] : undefined
+                vehicleVin: targetVehicle.vin,
+                vehicleModel: targetVehicle.makeModelTrim,
+                actionType: 'MAINTENANCE_RECORDED',
+                actionLabel: `Maintenance: ${jobs}`,
+                requestedAt: new Date().toISOString(),
+                actionPayload: {
+                    workshop: garageId,
+                    date: new Date().toISOString(),
+                    mileageKm: Number(mileage),
+                    jobs: jobs.split(',').map(j => j.trim()),
+                    cost: { total: 1500 },
+                    evidenceHash: maintFile?.hash || undefined
+                },
+                actionEvidence: maintFile ? [{
+                    hash: maintFile.hash,
+                    url: maintFile.path,
+                    mime: maintFile.mime,
+                    size: maintFile.size
+                }] : undefined
+            }
         });
 
         setJobs('');
         setMileage("");
         setMaintFile(null);
+        alert('✅ Service request sent to owner for approval.');
     };
 
     // Helper: render uploaded file preview
@@ -119,51 +111,69 @@ export const ServicePage = () => {
     const handleRegisterPart = async () => {
         if (!targetVehicle || !newPartNo) return;
         await addEvent({
-            type: 'CRITICAL_PART_REPLACED',
+            type: 'SERVICE_ACCESS_REQUESTED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
             payload: {
-                date: new Date().toISOString(),
-                partType,
-                newPartNo,
-                oldPartNo: (targetVehicle.spec as any)[partType.toLowerCase()] || "UNKNOWN",
-                reason: "Replacement/Upgrade",
-                evidenceHash: partFile?.hash || undefined
-            },
-            evidence: partFile ? [{
-                hash: partFile.hash,
-                url: partFile.path,
-                mime: partFile.mime,
-                size: partFile.size
-            }] : undefined
+                workshop: garageId,
+                vehicleVin: targetVehicle.vin,
+                vehicleModel: targetVehicle.makeModelTrim,
+                actionType: 'CRITICAL_PART_REPLACED',
+                actionLabel: `Part Replacement: ${partType} → ${newPartNo}`,
+                requestedAt: new Date().toISOString(),
+                actionPayload: {
+                    date: new Date().toISOString(),
+                    partType,
+                    newPartNo,
+                    oldPartNo: (targetVehicle.spec as any)[partType.toLowerCase()] || "UNKNOWN",
+                    reason: "Replacement/Upgrade",
+                    evidenceHash: partFile?.hash || undefined
+                },
+                actionEvidence: partFile ? [{
+                    hash: partFile.hash,
+                    url: partFile.path,
+                    mime: partFile.mime,
+                    size: partFile.size
+                }] : undefined
+            }
         });
         setNewPartNo('');
         setPartFile(null);
+        alert('✅ Part certification request sent to owner for approval.');
     };
 
     const handleSubmitEstimate = async () => {
         if (!targetVehicle || !estimateJobs || !estimateTotal) return;
         await addEvent({
-            type: 'WORKSHOP_ESTIMATE_SUBMITTED',
+            type: 'SERVICE_ACCESS_REQUESTED',
             actor: garageId,
             tokenId: targetVehicle.tokenId,
             payload: {
-                id: "EST-" + Date.now(),
                 workshop: garageId,
-                jobs: estimateJobs.split(',').map(j => j.trim()),
-                total: Number(estimateTotal),
-                evidenceHash: estimateFile?.hash || undefined
-            },
-            evidence: estimateFile ? [{
-                hash: estimateFile.hash,
-                url: estimateFile.path,
-                mime: estimateFile.mime,
-                size: estimateFile.size
-            }] : undefined
+                vehicleVin: targetVehicle.vin,
+                vehicleModel: targetVehicle.makeModelTrim,
+                actionType: 'WORKSHOP_ESTIMATE_SUBMITTED',
+                actionLabel: `Estimate: ${estimateJobs} (${Number(estimateTotal).toLocaleString()} THB)`,
+                requestedAt: new Date().toISOString(),
+                actionPayload: {
+                    id: "EST-" + Date.now(),
+                    workshop: garageId,
+                    jobs: estimateJobs.split(',').map(j => j.trim()),
+                    total: Number(estimateTotal),
+                    evidenceHash: estimateFile?.hash || undefined
+                },
+                actionEvidence: estimateFile ? [{
+                    hash: estimateFile.hash,
+                    url: estimateFile.path,
+                    mime: estimateFile.mime,
+                    size: estimateFile.size
+                }] : undefined
+            }
         });
         setEstimateJobs('');
         setEstimateTotal("");
         setEstimateFile(null);
+        alert('✅ Estimate request sent to owner for approval.');
     };
 
     return (
@@ -195,18 +205,12 @@ export const ServicePage = () => {
                             <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{targetVehicle.makeModelTrim}</div>
                             <div className="text-secondary" style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginTop: '0.25rem' }}>Odometer: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
                         </div>
-                        <div className={`badge ${hasConsent ? 'badge-success' : 'badge-danger'}`}>{hasConsent ? 'Consent Granted' : 'No Consent'}</div>
-                    </div>
-                )}
-                {targetVehicle && !hasConsent && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px', display: 'flex', gap: '0.75rem', alignItems: 'center', color: 'var(--danger)' }}>
-                        <AlertTriangle size={20} />
-                        <span style={{ fontSize: '0.9rem' }}>You do not have data access consent for this vehicle. Please request the owner to grant consent via the Consumer Portal before proceeding with service logging.</span>
+                        <div className="badge badge-info">Vehicle Found</div>
                     </div>
                 )}
             </div>
 
-            <div className="service-forms" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', opacity: (!targetVehicle || !hasConsent) ? 0.4 : 1, pointerEvents: (!targetVehicle || !hasConsent) ? 'none' : 'auto', transition: 'all 0.3s' }}>
+            <div className="service-forms" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', opacity: !targetVehicle ? 0.4 : 1, pointerEvents: !targetVehicle ? 'none' : 'auto', transition: 'all 0.3s' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                     {/* Log Service */}
                     <div className="section-card">
@@ -311,7 +315,7 @@ export const ServicePage = () => {
             </div>
 
             {/* Blockchain Transaction Log */}
-            {targetVehicle && hasConsent && (() => {
+            {targetVehicle && (() => {
                 const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['MAINTENANCE_RECORDED', 'INSPECTION_RESULT_RECORDED', 'CRITICAL_PART_REPLACED', 'WORKSHOP_ESTIMATE_SUBMITTED', 'ODOMETER_SNAPSHOT', 'OWNERSHIP_TRANSFERRED'].includes(e.type));
                 return vehicleEvents.length > 0 ? (
                     <div className="section-card">

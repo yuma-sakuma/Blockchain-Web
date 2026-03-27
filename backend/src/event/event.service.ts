@@ -1079,6 +1079,20 @@ export class EventService {
             if (claims.length > 0) {
               const claimToUpdate = claims[0];
               claimToUpdate.status = payload.status.toUpperCase() as any;
+
+              // Merge new evidence files if provided
+              if (createEventDto.evidence && createEventDto.evidence.length > 0) {
+                const existingEvidence = claimToUpdate.evidenceFiles || [];
+                const newEvidenceFiles = createEventDto.evidence.map((e: any) => ({
+                  type: (e.type || 'other') as any,
+                  url: e.url || e.path,
+                  hash: e.hash || '',
+                  mime: e.mime || 'application/octet-stream'
+                }));
+                claimToUpdate.evidenceFiles = [...existingEvidence, ...newEvidenceFiles];
+                console.log(`  Merged ${newEvidenceFiles.length} new evidence files → total: ${claimToUpdate.evidenceFiles.length}`);
+              }
+
               await this.insuranceClaimRepository.save(claimToUpdate);
               console.log(`  Claim ${claimToUpdate.claimNo} updated to status: ${payload.status}`);
             } else {
@@ -1271,6 +1285,42 @@ export class EventService {
           };
           await this.vehicleRepository.save(vehicle);
           console.log(`  Mileage updated: ${currentMileage} → ${newMileage}`);
+
+          // Blockchain Interaction
+          if (!createEventDto.txHash) {
+            try {
+              await Promise.race([
+                this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+              ]);
+
+              try {
+                await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+              } catch (e) {
+                console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Odometer.`);
+                throw new Error('STOP_SYNC');
+              }
+
+              const ODOMETER_EVENT_TYPE = 300;
+              txHash = await this.blockchainService.withTxLock(async () => {
+                const tx = await this.blockchainService.vehicleLifecycleContract.logEvent(
+                  createEventDto.tokenId,
+                  ODOMETER_EVENT_TYPE,
+                  Math.floor(Date.now() / 1000),
+                  ethers.id(JSON.stringify({ mileageKm: newMileage, previous: currentMileage })),
+                  ethers.id('ODOMETER_SNAPSHOT')
+                );
+                const receipt = await tx.wait();
+                console.log('[EventService] ✅ ODOMETER_SNAPSHOT Transaction Confirmed!');
+                return receipt.hash;
+              });
+            } catch (err) {
+              if (err.message !== 'STOP_SYNC') {
+                console.warn(`[EventService] Blockchain Odometer sync failed: ${err.message || err}`);
+                // Non-fatal: mileage is already saved to DB
+              }
+            }
+          }
           break;
         }
         case 'CRITICAL_PART_REPLACED': {

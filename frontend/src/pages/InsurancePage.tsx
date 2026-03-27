@@ -2,9 +2,9 @@ import { AlertCircle, BarChart3, CheckCircle, ClipboardCheck, Clock, FileText, I
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
-import { uploadFile } from '../services/api';
+import { API_BASE_URL, uploadFile } from '../services/api';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = API_BASE_URL;
 
 type TabKey = 'dashboard' | 'underwriting' | 'claims' | 'workshop';
 
@@ -19,6 +19,8 @@ export const InsurancePage = () => {
     const [vin, setVin] = useState('');
     const [policyNo, setPolicyNo] = useState('');
     const [coverage, setCoverage] = useState('1st_class');
+    const [premiumAmount, setPremiumAmount] = useState<number | string>('');
+    const [deductible, setDeductible] = useState<number | string>('');
 
     // Claim state
     const [claimVin, setClaimVin] = useState('');
@@ -79,6 +81,8 @@ export const InsurancePage = () => {
                 validFrom: new Date().toISOString(),
                 validUntil: new Date(Date.now() + 86400000 * 365).toISOString(),
                 coverageType: coverage,
+                premiumAmount: premiumAmount ? Number(premiumAmount) : undefined,
+                deductible: deductible ? Number(deductible) : undefined,
                 evidenceHash: policyFiles.length > 0 ? policyFiles[0].hash : undefined
             },
             evidence: policyFiles.length > 0
@@ -87,6 +91,8 @@ export const InsurancePage = () => {
         });
         setPolicyNo('');
         setPolicyFiles([]);
+        setPremiumAmount('');
+        setDeductible('');
     };
 
     const handleRenewPolicy = async (vehicle: any) => {
@@ -427,6 +433,22 @@ export const InsurancePage = () => {
                                         <option value="2nd_class">Tier 2: Collision & Fire</option>
                                         <option value="3rd_class">Tier 3: Third Party Liability</option>
                                     </select>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Premium Amount (THB)</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <input type="number" value={premiumAmount} onChange={e => setPremiumAmount(e.target.value)} placeholder="e.g. 15000" style={{ marginBottom: 0, paddingRight: '50px' }} />
+                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.8rem' }}>THB</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Deductible (THB)</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <input type="number" value={deductible} onChange={e => setDeductible(e.target.value)} placeholder="e.g. 5000" style={{ marginBottom: 0, paddingRight: '50px' }} />
+                                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-secondary)', fontWeight: 700, fontSize: '0.8rem' }}>THB</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Policy Documents</label>

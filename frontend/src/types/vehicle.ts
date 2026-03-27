@@ -183,7 +183,9 @@ export type EventType =
   | 'LIEN_OFFER_ACCEPTED'
   | 'LOAN_APPLICATION_CREATED'
   | 'LOAN_APPLICATION_CANCELLED'
-  | 'LOAN_APPROVED';
+  | 'LOAN_APPROVED'
+  | 'SERVICE_ACCESS_REQUESTED'
+  | 'SERVICE_ACCESS_REJECTED';
 
 export interface VehicleEvent {
   id: string;

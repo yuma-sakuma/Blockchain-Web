@@ -1,13 +1,13 @@
-import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign, FileText, History, Image, Landmark, Lock, Shield, ShieldCheck, ShoppingCart, Trash2, User, X } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign, FileText, History, Image, Key, Landmark, Lock, Send, Shield, ShieldCheck, ShoppingCart, Trash2, User, Wrench, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getWalletForRole } from '../config/contracts';
-import { uploadFile } from '../services/api';
+import { API_BASE_URL, uploadFile } from '../services/api';
 import { blockchainService } from '../services/blockchain';
 import { useVehicleStore } from '../store';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = API_BASE_URL;
 
 export const ConsumerPage = () => {
   const { vehicles, events, addEvent } = useVehicleStore();
@@ -36,6 +36,7 @@ export const ConsumerPage = () => {
   const [c2cCounterModal, setC2cCounterModal] = useState<string | null>(null);
   const [c2cCounterAmount, setC2cCounterAmount] = useState('');
 
+
   // Dynamic User ID — raw address for blockchain, prefixed for display only
   const currentUser = address || 'UNKNOWN';
   const displayUser = address ? `${address.substring(0, 6)}...` : 'Guest';
@@ -63,6 +64,120 @@ export const ConsumerPage = () => {
     const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
     return daysLeft <= 30 && daysLeft > 0;
   });
+
+  // --- Consent Helpers ---
+  const getActiveConsents = (tokenId: string) => {
+    const consentEvents = events.filter(e => e.tokenId === tokenId && e.type === 'CONSENT_UPDATED');
+    const revokeEvents = events.filter(e => e.tokenId === tokenId && e.type === 'CONSENT_REVOKED');
+    return consentEvents.filter(ce => {
+      const isRevoked = revokeEvents.some(re => re.payload?.revokeFrom === ce.payload?.grantTo && new Date(re.timestamp) > new Date(ce.timestamp));
+      return !isRevoked;
+    });
+  };
+
+  // --- Pending Service Requests (from workshops) ---
+  const pendingServiceRequests = events.filter(e =>
+    e.type === 'SERVICE_ACCESS_REQUESTED' &&
+    myVehicles.some(v => v.tokenId === e.tokenId) &&
+    // Not yet approved or rejected
+    !events.some(r =>
+      r.tokenId === e.tokenId &&
+      (r.type === 'CONSENT_UPDATED' || r.type === 'SERVICE_ACCESS_REJECTED') &&
+      r.payload?.requestId === e.id &&
+      new Date(r.timestamp) > new Date(e.timestamp)
+    )
+  );
+
+  const handleApproveServiceRequest = async (request: any) => {
+    try {
+      const { actionType, actionPayload, actionEvidence, actionLabel } = request.payload;
+
+      // 1. First, grant consent so the workshop has permission on the blockchain
+      // Mark request as approved
+      await addEvent({
+        type: 'CONSENT_UPDATED',
+        actor: currentUser,
+        tokenId: request.tokenId,
+        payload: {
+          grantTo: request.payload.workshop,
+          scope: 'write',
+          approvedAction: actionType,
+          approvedLabel: actionLabel,
+          requestId: request.id,
+          grantedAt: new Date().toISOString()
+        }
+      });
+
+      // 2. Fire the actual event that the workshop requested
+      if (actionType && actionPayload) {
+        await addEvent({
+          type: actionType,
+          actor: request.payload.workshop,
+          actorRole: 'SERVICE',
+          tokenId: request.tokenId,
+          payload: actionPayload,
+          evidence: actionEvidence || undefined
+        });
+
+        // 3. Auto-fire ODOMETER_SNAPSHOT for maintenance events
+        if (actionType === 'MAINTENANCE_RECORDED' && actionPayload.mileageKm) {
+          await addEvent({
+            type: 'ODOMETER_SNAPSHOT',
+            actor: request.payload.workshop,
+            actorRole: 'SERVICE',
+            tokenId: request.tokenId,
+            payload: {
+              mileageKm: actionPayload.mileageKm,
+              date: actionPayload.date || new Date().toISOString(),
+              evidenceHash: actionPayload.evidenceHash
+            },
+            evidence: actionEvidence || undefined
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to approve:', err);
+      alert(`Failed: ${err.message}`);
+    }
+  };
+
+  const handleRejectServiceRequest = async (request: any) => {
+    if (!confirm('Reject this service request?')) return;
+    try {
+      await addEvent({
+        type: 'SERVICE_ACCESS_REJECTED',
+        actor: currentUser,
+        tokenId: request.tokenId,
+        payload: {
+          rejectFrom: request.payload.workshop,
+          requestId: request.id,
+          rejectedAt: new Date().toISOString(),
+          reason: 'Declined by owner'
+        }
+      });
+    } catch (err: any) {
+      console.error('Failed to reject:', err);
+      alert(`Failed: ${err.message}`);
+    }
+  };
+
+  const handleRevokeConsent = async (tokenId: string, revokeFrom: string) => {
+    if (!confirm(`Revoke consent for ${revokeFrom.substring(0, 8)}...?`)) return;
+    try {
+      await addEvent({
+        type: 'CONSENT_REVOKED',
+        actor: currentUser,
+        tokenId,
+        payload: {
+          revokeFrom,
+          revokedAt: new Date().toISOString()
+        }
+      });
+    } catch (err: any) {
+      console.error('Failed to revoke consent:', err);
+      alert(`Failed: ${err.message}`);
+    }
+  };
 
   // --- Sale Modal Handlers (Consumer-to-Consumer) ---
   const handleOpenSaleModal = (tokenId: string) => {
@@ -599,6 +714,70 @@ export const ConsumerPage = () => {
         document.body
       )}
 
+      {/* ═══════════ Pending Service Requests ═══════════ */}
+      {pendingServiceRequests.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Send size={24} color="#a78bfa" />
+            Pending Service Requests
+            <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', border: '1px solid rgba(139, 92, 246, 0.3)', fontSize: '0.8rem' }}>
+              {pendingServiceRequests.length}
+            </span>
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {pendingServiceRequests.map((req, idx) => {
+              const vehicle = vehicles.find(v => v.tokenId === req.tokenId);
+              const timeSince = Math.ceil((Date.now() - new Date(req.payload.requestedAt).getTime()) / 60000);
+              return (
+                <div key={idx} className="card" style={{ padding: '1.5rem', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{vehicle?.makeModelTrim || 'Unknown'}</div>
+                      <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>VIN: {req.payload.vehicleVin}</div>
+                    </div>
+                    <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.12)', color: '#a78bfa', fontSize: '0.7rem', border: 'none' }}>
+                      {timeSince < 60 ? `${timeSince}m ago` : `${Math.floor(timeSince / 60)}h ago`}
+                    </span>
+                  </div>
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <Wrench size={14} color="var(--accent-secondary)" />
+                      <span className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Workshop</span>
+                    </div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{req.payload.workshop.substring(0, 10)}...{req.payload.workshop.substring(38)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <FileText size={14} color="var(--accent-primary)" />
+                      <span className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Requested Action</span>
+                      {req.payload.actionType && (
+                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-primary)', fontSize: '0.6rem', border: 'none', marginLeft: 'auto' }}>
+                          {req.payload.actionType.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>{req.payload.actionLabel || req.payload.requestedJobs || 'Service action'}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      className="premium-btn"
+                      onClick={() => handleApproveServiceRequest(req)}
+                      style={{ flex: 1, background: '#10b981' }}
+                    >
+                      <CheckCircle size={16} /> Approve Access
+                    </button>
+                    <button
+                      onClick={() => handleRejectServiceRequest(req)}
+                      style={{ flex: 1, padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    >
+                      <X size={16} /> Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <CreditCard size={24} color="var(--accent-primary)" />
@@ -685,6 +864,41 @@ export const ConsumerPage = () => {
                         )}
                       </div>
                     )}
+
+                    {/* ── Data Access Consent ── */}
+                    {(() => {
+                      const activeConsents = getActiveConsents(v.tokenId);
+                      return activeConsents.length > 0 ? (
+                        <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <Key size={14} color="#a78bfa" />
+                              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#a78bfa' }}>Active Consents</span>
+                            </div>
+                            <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', fontSize: '0.6rem', border: 'none' }}>{activeConsents.length}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {activeConsents.map((ce, idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.15)', borderRadius: '6px' }}>
+                                <div>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{ce.payload.grantTo.substring(0, 8)}...{ce.payload.grantTo.substring(38)}</span>
+                                  {ce.payload?.approvedJobs && (
+                                    <span className="text-secondary" style={{ fontSize: '0.65rem', marginLeft: '0.5rem' }}>
+                                      ({ce.payload.approvedJobs.substring(0, 30)}{ce.payload.approvedJobs.length > 30 ? '...' : ''})
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleRevokeConsent(v.tokenId, ce.payload.grantTo)}
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', cursor: 'pointer' }}
+                                >Revoke</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
                   </div>
                 </div>
 

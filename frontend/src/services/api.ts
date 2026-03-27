@@ -67,7 +67,16 @@ export const createAuthenticatedEvent = async (eventData: any, wallet: import('e
     headers,
     body: JSON.stringify(eventData),
   });
-  if (!response.ok) throw new Error('Failed to create event');
+  if (!response.ok) {
+    let errorDetail = '';
+    try {
+      const errorJson = await response.json();
+      errorDetail = errorJson.message || JSON.stringify(errorJson);
+    } catch {
+      errorDetail = await response.text();
+    }
+    throw new Error(`Failed to create event: ${response.status} ${response.statusText} - ${errorDetail}`);
+  }
   return response.json();
 };
 
