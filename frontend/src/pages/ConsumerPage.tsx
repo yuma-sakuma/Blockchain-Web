@@ -36,6 +36,9 @@ export const ConsumerPage = () => {
   const [c2cCounterModal, setC2cCounterModal] = useState<string | null>(null);
   const [c2cCounterAmount, setC2cCounterAmount] = useState('');
 
+  // Privacy Modal state
+  const [privacyModal, setPrivacyModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
+  const [consentAddress, setConsentAddress] = useState('');
 
   // Dynamic User ID — raw address for blockchain, prefixed for display only
   const currentUser = address || 'UNKNOWN';
@@ -194,6 +197,57 @@ export const ConsumerPage = () => {
     setSaleModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
     setSaleBuyerAddress('');
     setSalePrice('');
+  };
+
+  // --- Privacy Handlers ---
+  const handleOpenPrivacyModal = (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle) return;
+    setPrivacyModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
+    setConsentAddress('');
+  };
+
+  const handleGrantConsent = async () => {
+    if (!privacyModal || !consentAddress) return;
+    if (!consentAddress.startsWith('0x') || consentAddress.length !== 42) {
+      alert('กรุณากรอก Wallet Address ที่ถูกต้อง (0x...)');
+      return;
+    }
+
+    try {
+      await addEvent({
+        type: 'CONSENT_UPDATED',
+        actor: currentUser,
+        tokenId: privacyModal.tokenId,
+        payload: {
+          grantTo: consentAddress,
+          scope: ['service', 'read'],
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+        }
+      });
+      setConsentAddress('');
+      alert(`✅ สิทธิ์การเข้าถึงข้อมูลถูกมอบให้กับ ${consentAddress.substring(0,8)}... เรียบร้อยแล้ว`);
+    } catch (err: any) {
+      alert(`❌ ล้มเหลว: ${err.message}`);
+    }
+  };
+
+  const handleRevokeConsent = async (tokenId: string, revokeFrom: string) => {
+    if (!confirm(`คุณต้องการยกเลิกสิทธิ์ของ ${revokeFrom.substring(0,8)}... ใช่หรือไม่?`)) return;
+    
+    try {
+      await addEvent({
+        type: 'CONSENT_REVOKED',
+        actor: currentUser,
+        tokenId: tokenId,
+        payload: {
+          revokeFrom: revokeFrom
+        }
+      });
+      alert('✅ ยกเลิกสิทธิ์สำเร็จ');
+    } catch (err: any) {
+      alert(`❌ ล้มเหลว: ${err.message}`);
+    }
   };
 
   // --- Claim Modal Handlers ---
@@ -864,50 +918,18 @@ export const ConsumerPage = () => {
                         )}
                       </div>
                     )}
-
-                    {/* ── Data Access Consent ── */}
-                    {(() => {
-                      const activeConsents = getActiveConsents(v.tokenId);
-                      return activeConsents.length > 0 ? (
-                        <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Key size={14} color="#a78bfa" />
-                              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#a78bfa' }}>Active Consents</span>
-                            </div>
-                            <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', fontSize: '0.6rem', border: 'none' }}>{activeConsents.length}</span>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {activeConsents.map((ce, idx) => (
-                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.15)', borderRadius: '6px' }}>
-                                <div>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{ce.payload.grantTo.substring(0, 8)}...{ce.payload.grantTo.substring(38)}</span>
-                                  {ce.payload?.approvedJobs && (
-                                    <span className="text-secondary" style={{ fontSize: '0.65rem', marginLeft: '0.5rem' }}>
-                                      ({ce.payload.approvedJobs.substring(0, 30)}{ce.payload.approvedJobs.length > 30 ? '...' : ''})
-                                    </span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => handleRevokeConsent(v.tokenId, ce.payload.grantTo)}
-                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.6rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', cursor: 'pointer' }}
-                                >Revoke</button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
                   <button onClick={() => { setShowGreenBook(v.tokenId); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <FileText size={18} color="var(--success)" /> BOOK
                   </button>
                   <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <History size={18} color="var(--accent-secondary)" /> HISTORY
+                  </button>
+                  <button onClick={() => handleOpenPrivacyModal(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                    <ShieldCheck size={18} color="#a78bfa" /> PRIVACY
                   </button>
                   <button
                     onClick={() => handleOpenClaimModal(v.tokenId)}
@@ -1226,6 +1248,106 @@ export const ConsumerPage = () => {
         </div>,
         document.body
       )}
+
+      {/* ═══════════ Privacy Settings Modal ═══════════ */}
+      {privacyModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', background: '#0a0a0b', border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <ShieldCheck size={28} color="#a78bfa" />
+                <h2 style={{ margin: 0, color: '#a78bfa' }}>Data Privacy</h2>
+              </div>
+              <button onClick={() => setPrivacyModal(null)} style={{ padding: '0.5rem', borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={24} color="var(--text-secondary)" /></button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{privacyModal.model}</div>
+              <div className="text-secondary" style={{ fontSize: '0.9rem' }}>VIN: {privacyModal.vin}</div>
+            </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.75rem' }}>Active Data Sharing Consents</label>
+              {(() => {
+                // Find all CONSENT_UPDATED and CONSENT_REVOKED for this token
+                const grantEvents = events.filter(e => e.tokenId === privacyModal.tokenId && e.type === 'CONSENT_UPDATED');
+                const revokeEvents = events.filter(e => e.tokenId === privacyModal.tokenId && e.type === 'CONSENT_REVOKED');
+                
+                // Active mapping
+                const activeConsents = new Map<string, any>();
+                
+                // Add all grants (latest overrides)
+                grantEvents.forEach(g => {
+                  if (g.payload?.grantTo) {
+                    activeConsents.set(g.payload.grantTo, g);
+                  }
+                });
+                
+                // Remove revoked
+                revokeEvents.forEach(r => {
+                  if (r.payload?.revokeFrom) {
+                    activeConsents.delete(r.payload.revokeFrom);
+                  }
+                });
+
+                const activeArray = Array.from(activeConsents.entries());
+
+                return activeArray.length === 0 ? (
+                  <div style={{ padding: '1rem', textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontStyle: 'italic' }}>
+                    No active garage access.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {activeArray.map(([wallet, eventData]) => {
+                      const eventTime = new Date(eventData.timestamp).toLocaleDateString();
+                      return (
+                        <div key={wallet} style={{ padding: '0.75rem 1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: '0.9rem', fontFamily: 'monospace', fontWeight: 600 }}>{wallet.substring(0, 12)}...{wallet.substring(34)}</div>
+                            <div className="text-secondary" style={{ fontSize: '0.7rem' }}>Granted: {eventTime}</div>
+                          </div>
+                          <button
+                            onClick={() => handleRevokeConsent(privacyModal.tokenId, wallet)}
+                            style={{ padding: '0.4rem 0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div>
+              <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.75rem' }}>Grant New Access</label>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <input
+                  type="text"
+                  value={consentAddress}
+                  onChange={(e) => setConsentAddress(e.target.value)}
+                  placeholder="Workshop Wallet (0x...)"
+                  style={{ flex: 1, marginBottom: 0, padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: 'white', fontFamily: 'monospace' }}
+                />
+                <button
+                  className="premium-btn"
+                  onClick={handleGrantConsent}
+                  disabled={!consentAddress || consentAddress.length !== 42}
+                  style={{ whiteSpace: 'nowrap', opacity: (!consentAddress || consentAddress.length !== 42) ? 0.5 : 1, background: '#8b5cf6' }}
+                >
+                  Confirm
+                </button>
+              </div>
+              <p className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '0.75rem', lineHeight: 1.4 }}>
+                * By granting access, the specified workshop will have rights to view history and log official maintenance records to your vehicle's blockchain ledger.
+              </p>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 };
