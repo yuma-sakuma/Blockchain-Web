@@ -115,55 +115,54 @@ export const DLTPage = () => {
     };
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-            <header>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Land Transport Authority</h1>
-                <p className="text-secondary">Official registry for vehicle identities, license plates, and legal flags.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="badge badge-info">Logged in as {actorId}</span>
-
+        <div className="page-container">
+            <header className="page-header">
+                <h1>Land Transport Authority</h1>
+                <p>Official registry for vehicle identities, license plates, and legal flags.</p>
+                <div className="identity-bar">
+                    <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+                        <Book size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+                        Officer: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{actorId.substring(0, 10)}...</span>
+                    </span>
                 </div>
             </header>
 
-            <div className="card">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <Search color="var(--accent-primary)" size={20} />
+            <div className="section-card">
+                <div className="card-accent blue" />
+                <h3 className="section-title">
+                    <span className="icon-wrap blue"><Search size={20} color="var(--accent-primary)" /></span>
                     Lookup Central Registry
-                </h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input
-                        value={searchVin}
-                        onChange={(e) => setSearchVin(e.target.value)}
-                        placeholder="Enter Chassis Number (VIN)..."
-                        style={{ marginBottom: 0 }}
-                    />
-                    <button className="premium-btn">Query Asset</button>
+                </h3>
+                <div className="search-container">
+                    <Search className="search-icon" size={22} />
+                    <input value={searchVin} onChange={(e) => setSearchVin(e.target.value)} placeholder="Enter Chassis Number (VIN)..." />
                 </div>
             </div>
 
             {searchResult ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div className="card">
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                                <Book color="var(--success)" size={20} />
+                        <div className="section-card">
+                            <div className="card-accent green" />
+                            <h3 className="section-title">
+                                <span className="icon-wrap green"><Book size={20} color="var(--success)" /></span>
                                 Registration Status
                             </h3>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-                                <div>
-                                    <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Current State</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                            <div className="grid-3" style={{ marginBottom: '2rem' }}>
+                                <div className="data-cell">
+                                    <div className="data-cell-label">Current State</div>
+                                    <div className="data-cell-value" style={{ color: searchResult.registration.isRegistered ? 'var(--success)' : 'var(--warning)' }}>
                                         {searchResult.registration.isRegistered ? 'REGISTERED' : 'NOT REGISTERED'}
                                     </div>
                                 </div>
-                                <div>
-                                    <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>License Plate</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.registration.plateNo || 'None'}</div>
+                                <div className="data-cell">
+                                    <div className="data-cell-label">License Plate</div>
+                                    <div className="data-cell-value">{searchResult.registration.plateNo || 'None'}</div>
                                 </div>
-                                <div>
-                                    <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Registered Color</div>
-                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{searchResult.spec.color}</div>
+                                <div className="data-cell">
+                                    <div className="data-cell-label">Registered Color</div>
+                                    <div className="data-cell-value">{searchResult.spec.color}</div>
                                 </div>
                             </div>
 
@@ -176,20 +175,21 @@ export const DLTPage = () => {
                             </div>
                         </div>
 
-                        <div className="card">
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                                <History color="var(--accent-primary)" size={20} />
+                        <div className="section-card">
+                            <div className="card-accent blue" />
+                            <h3 className="section-title">
+                                <span className="icon-wrap blue"><History size={20} color="var(--accent-primary)" /></span>
                                 Official Plate History
                             </h3>
                             {plateEvents.length === 0 ? <p className="text-secondary">No plate changes recorded.</p> : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {plateEvents.map((pe, idx) => (
-                                        <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '4px solid var(--accent-primary)', fontSize: '0.9rem' }}>
+                                        <div key={idx} style={{ padding: '0.875rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid var(--accent-primary)', fontSize: '0.9rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <span style={{ fontWeight: 700 }}>{pe.payload.plateNo}</span>
+                                                <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{pe.payload.plateNo}</span>
                                                 <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{new Date(pe.timestamp).toLocaleDateString()}</span>
                                             </div>
-                                            <div className="text-secondary" style={{ fontSize: '0.8rem' }}>{pe.payload.province} — Action: {pe.payload.action.toUpperCase()}</div>
+                                            <div className="text-secondary" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{pe.payload.province} — Action: {pe.payload.action.toUpperCase()}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -198,12 +198,13 @@ export const DLTPage = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div className="card" style={{ border: '1px solid var(--danger)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', marginBottom: '1.5rem' }}>
-                                <ShieldAlert size={20} />
+                        <div className="section-card" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <div className="card-accent red" />
+                            <h3 className="section-title" style={{ color: 'var(--danger)' }}>
+                                <span className="icon-wrap red"><ShieldAlert size={20} color="var(--danger)" /></span>
                                 Enforcement Flags
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span className="text-secondary">Loss/Theft</span>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -309,14 +310,15 @@ export const DLTPage = () => {
                             </div>
                         </div>
 
-                        <div className="card">
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                <Settings size={20} color="var(--warning)" />
+                        <div className="section-card">
+                            <div className="card-accent yellow" />
+                            <h3 className="section-title">
+                                <span className="icon-wrap yellow"><Settings size={20} color="var(--warning)" /></span>
                                 Legal Modification
                             </h3>
 
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Assign New Plate No.</label>
+                                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Assign New Plate No.</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                                     <input value={plateNumber} onChange={e => setPlateNumber(e.target.value)} placeholder="e.g. 7กพ-9999" style={{ marginBottom: 0 }} />
                                     <button onClick={async () => {
@@ -332,7 +334,7 @@ export const DLTPage = () => {
                             </div>
 
                             <div>
-                                <label className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Update Vehicle Attributes</label>
+                                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Update Vehicle Attributes</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                                     <input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="New Color..." style={{ marginBottom: 0 }} />
                                     <button onClick={handleUpdateColor} style={{ fontSize: '0.8rem' }}>Update Spec</button>
@@ -342,8 +344,8 @@ export const DLTPage = () => {
                     </div>
                 </div>
             ) : (
-                <div className="card" style={{ textAlign: 'center', padding: '4rem', opacity: 0.5 }}>
-                    <Book size={48} style={{ margin: '0 auto 1.5rem auto' }} />
+                <div className="section-card empty-state">
+                    <Book size={48} className="empty-icon" />
                     <p>Enter a valid VIN to retrieve official registration records.</p>
                 </div>
             )}

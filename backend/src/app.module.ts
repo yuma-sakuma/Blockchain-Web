@@ -58,7 +58,7 @@ import { VehicleModule } from './vehicle/vehicle.module';
         TradeInEvaluation,
       ],
       migrations: [__dirname + '/database/migrations/*.ts'],
-      synchronize: false,
+      synchronize: true,
     }),
     TypeOrmModule.forFeature([
       Vehicle,

@@ -60,6 +60,10 @@ export class InsuranceClaim {
   @Column({ type: 'simple-array' })
   evidenceHashes: string[];
 
+  /** คำอธิบายเหตุการณ์ */
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
   /** ใบเสนอราคาซ่อม */
   @Column({ type: 'text', nullable: true })
   estimateDocUrl: string | null;

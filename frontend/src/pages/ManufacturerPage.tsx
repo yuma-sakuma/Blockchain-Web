@@ -1,4 +1,4 @@
-import { ArrowRightLeft, PackagePlus, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRightLeft, Factory, Settings, ShieldCheck, X, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { checkEngineExists, checkVinExists } from '../services/api';
@@ -13,6 +13,9 @@ export const ManufacturerPage = () => {
   const [engineError, setEngineError] = useState('');
   const [isCheckingVin, setIsCheckingVin] = useState(false);
   const [isCheckingEngine, setIsCheckingEngine] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState<string | null>(null);
+  const [transferDealerAddress, setTransferDealerAddress] = useState(import.meta.env.VITE_DEALER_ADDRESS || '');
+  const [isTransferring, setIsTransferring] = useState(false);
   const vinCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const engineCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formData, setFormData] = useState({
@@ -176,24 +179,33 @@ export const ManufacturerPage = () => {
   };
 
   const handleTransferToDealer = (tokenId: string) => {
-    // Default to the standard mock Dealer address for convenience
-    const defaultDealer = import.meta.env.VITE_DEALER_ADDRESS;
-    const dest = prompt("Enter Dealer Wallet Address:", defaultDealer);
-    if (!dest) return;
+    setShowTransferModal(tokenId);
+  };
 
-    const targetDealerId = dest;
+  const handleConfirmTransfer = async () => {
+    const isValidAddress = transferDealerAddress.startsWith('0x') && transferDealerAddress.length === 42;
+    if (!showTransferModal || !transferDealerAddress || !isValidAddress) return;
+    
+    setIsTransferring(true);
+    try {
+      // Simulate network delay for premium feel
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-    addEvent({
-      type: 'OWNERSHIP_TRANSFERRED',
-      actor: address || 'UNKNOWN',
-      tokenId: tokenId,
-      payload: {
-        from: address,
-        to: targetDealerId,
-        reason: 'inventory_transfer',
-        docRef: 'INV-' + Math.floor(Math.random() * 10000)
-      }
-    });
+      addEvent({
+        type: 'OWNERSHIP_TRANSFERRED',
+        actor: address || 'UNKNOWN',
+        tokenId: showTransferModal,
+        payload: {
+          from: address,
+          to: transferDealerAddress,
+          reason: 'inventory_transfer',
+          docRef: 'INV-' + Math.floor(Math.random() * 10000)
+        }
+      });
+      setShowTransferModal(null);
+    } finally {
+      setIsTransferring(false);
+    }
   };
 
   const normalizedAddress = address?.toLowerCase() || '';
@@ -202,14 +214,23 @@ export const ManufacturerPage = () => {
       return ownerLower === normalizedAddress;
   });
 
+  const manufacturer = address || 'UNKNOWN';
+
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-      <header>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Production Dashboard</h1>
-        <p className="text-secondary">Mint high-fidelity vehicle NFTs and certify production specifications.</p>
+    <>
+      <div className="page-container">
+      <header className="page-header">
+        <h1>Production Dashboard</h1>
+        <p>Certified Vehicle Assembly & NFT Minting Terminal</p>
+        <div className="identity-bar">
+          <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+            <Factory size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+            Manufacturer: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{manufacturer.substring(0, 10)}...</span>
+          </span>
+        </div>
       </header>
 
-      <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div className="section-card">
         {isSigning && (
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -221,10 +242,10 @@ export const ManufacturerPage = () => {
             <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>RSA-4096 / SHA-256</div>
           </div>
         )}
-
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-          <PackagePlus color="var(--accent-primary)" />
-          New Unit Genesis
+        <div className="card-accent blue" />
+        <h2 className="section-title">
+          <span className="icon-wrap blue"><Settings size={20} color="var(--accent-primary)" /></span>
+          Assembly Configuration
         </h2>
 
         <form onSubmit={handleMint} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -330,9 +351,75 @@ export const ManufacturerPage = () => {
               </div>
             </div>
           ))}
-        </div>
+      </div>
       </div>
     </div>
+
+    {/* Transfer Modal */}
+    {showTransferModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ width: '450px' }}>
+            <div className="modal-header">
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <ArrowRightLeft size={24} color="var(--accent-primary)" />
+                Transfer to Dealer
+              </h2>
+              <button 
+                onClick={() => setShowTransferModal(null)} 
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem' }}
+              >
+                <X size={20} color="var(--text-secondary)" />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Transferring Asset</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '0.25rem' }}>
+                    {vehicles.find(v => v.tokenId === showTransferModal)?.makeModelTrim}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontFamily: 'monospace', marginTop: '0.25rem' }}>
+                    VIN: {vehicles.find(v => v.tokenId === showTransferModal)?.vin}
+                  </div>
+                </div>
+
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Dealer Wallet Address</label>
+                <input 
+                  value={transferDealerAddress} 
+                  onChange={e => setTransferDealerAddress(e.target.value)} 
+                  placeholder="0x..." 
+                  style={{ fontFamily: 'monospace' }}
+                  autoFocus
+                />
+                <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                  Verify the dealer address before proceeding. This action will transfer the NFT ownership on the blockchain.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  className="premium-btn" 
+                  style={{ flex: 1 }} 
+                  onClick={handleConfirmTransfer}
+                  disabled={isTransferring || !transferDealerAddress || !transferDealerAddress.startsWith('0x') || transferDealerAddress.length !== 42}
+                >
+                  {isTransferring ? 'Processing...' : 'Confirm Delivery'}
+                </button>
+                <button 
+                  className="btn" 
+                  onClick={() => setShowTransferModal(null)}
+                  disabled={isTransferring}
+                  style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

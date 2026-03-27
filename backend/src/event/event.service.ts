@@ -941,6 +941,8 @@ export class EventService {
             filedAt: new Date(payload.date || Date.now()).getTime().toString(),
             status: 'FILED' as any,
             severity: (payload.severity?.toUpperCase() || 'MINOR') as any,
+            // §4.1 Fix: Map description from Frontend payload
+            description: payload.description || null,
             // §4.1 Fix: Map evidence files & hashes from Frontend instead of hardcoding []
             evidenceFiles: (createEventDto.evidence || []).map((e: any) => ({
               type: e.mime?.startsWith('image/') ? 'photo' : 'other',

@@ -185,20 +185,25 @@ export const FinancePage = () => {
     const paidCount = loan ? Object.values(loan.payments).filter(s => s === 'PAID').length : 0;
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <header>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Asset Finance & Lien Registry</h1>
-                <p className="text-secondary">Corporate portal for hire-purchase contracts, lien registration, and debt recovery.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                    <span className="badge badge-info">Logged in as {lender}</span>
+        <div className="page-container">
+            <header className="page-header">
+                <h1>Asset Finance & Lien Registry</h1>
+                <p>Corporate portal for hire-purchase contracts, lien registration, and debt recovery.</p>
+                <div className="identity-bar">
+                    <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+                        <Landmark size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+                        Lender: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{lender.substring(0, 10)}...</span>
+                    </span>
                 </div>
             </header>
 
             {pendingApplications.length > 0 && (
-                <div className="card" style={{ border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.03)' }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: '#3b82f6' }}>
-                        <Clock size={20} />
-                        Pending Loan Applications ({pendingApplications.length})
+                <div className="section-card" style={{ border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <div className="card-accent blue" />
+                    <h2 className="section-title" style={{ color: '#3b82f6' }}>
+                        <span className="icon-wrap blue"><Clock size={20} color="#3b82f6" /></span>
+                        Pending Loan Applications
+                        <span className="badge badge-info" style={{ marginLeft: 'auto' }}>{pendingApplications.length}</span>
                     </h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {pendingApplications.map(v => (
@@ -572,8 +577,8 @@ export const FinancePage = () => {
                                     <button
                                         className="premium-btn"
                                         onClick={handleLiquidate}
-                                        disabled={!auctionPrice || !auctionWinner}
-                                        style={{ flex: 1, background: '#d97706', opacity: (!auctionPrice || !auctionWinner) ? 0.5 : 1 }}
+                                        disabled={!auctionPrice || !auctionWinner || !auctionWinner.startsWith('0x') || auctionWinner.length !== 42}
+                                        style={{ flex: 1, background: '#d97706', opacity: (!auctionPrice || !auctionWinner || !auctionWinner.startsWith('0x') || auctionWinner.length !== 42) ? 0.5 : 1 }}
                                     >
                                         Confirm Liquidation
                                     </button>

@@ -166,30 +166,35 @@ export const ServicePage = () => {
     };
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <header>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Service & Maintenance Registry</h1>
-                <p className="text-secondary">Official workshop logs for vehicle lifecycle maintenance and parts certification.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                    <span className="badge badge-info">Registered Workshop: {garageId}</span>
+        <div className="page-container">
+            <header className="page-header">
+                <h1>Service & Maintenance Registry</h1>
+                <p>Official workshop logs for vehicle lifecycle maintenance and parts certification.</p>
+                <div className="identity-bar">
+                    <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+                        <Wrench size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+                        Workshop: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{garageId.substring(0, 10)}...</span>
+                    </span>
                 </div>
             </header>
 
-            <div className="card">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <Search color="var(--accent-primary)" size={20} />
+            <div className="section-card">
+                <div className="card-accent blue" />
+                <h3 className="section-title">
+                    <span className="icon-wrap blue"><Search size={20} color="var(--accent-primary)" /></span>
                     Check-in Vehicle
-                </h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <input value={vin} onChange={e => setVin(e.target.value)} placeholder="Scan or Type VIN to identify asset..." style={{ marginBottom: 0 }} />
+                </h3>
+                <div className="search-container">
+                    <Search className="search-icon" size={22} />
+                    <input value={vin} onChange={e => setVin(e.target.value)} placeholder="Scan or Type VIN to identify asset..." />
                 </div>
                 {targetVehicle && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--accent-primary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ marginTop: '1.25rem', padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.04))', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <div style={{ fontWeight: 700 }}>{targetVehicle.makeModelTrim}</div>
-                            <div className="text-secondary" style={{ fontSize: '0.9rem' }}>Current Mileage: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                            <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>{targetVehicle.makeModelTrim}</div>
+                            <div className="text-secondary" style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginTop: '0.25rem' }}>Odometer: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
                         </div>
-                        <div className={`badge ${events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'badge-success' : 'badge-danger'}`}>{events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'Consent Granted' : 'No Consent'}</div>
+                        <div className={`badge ${events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'badge-success' : 'badge-danger'}`} style={{ padding: '0.5rem 1rem' }}>{events.some(e => e.tokenId === targetVehicle.tokenId && e.type === 'CONSENT_UPDATED' && !events.some(r => r.tokenId === targetVehicle.tokenId && r.type === 'CONSENT_REVOKED' && r.payload?.revokeFrom === e.payload?.grantTo)) ? 'Consent Granted' : 'No Consent'}</div>
                     </div>
                 )}
             </div>
@@ -197,18 +202,19 @@ export const ServicePage = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                     {/* Log Service */}
-                    <div className="card">
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <Wrench color="var(--accent-primary)" size={20} />
+                    <div className="section-card">
+                        <div className="card-accent blue" />
+                        <h3 className="section-title">
+                            <span className="icon-wrap blue"><Wrench size={20} color="var(--accent-primary)" /></span>
                             Log Final Service Record
-                        </h2>
+                        </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div>
-                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Labor & Parts Details</label>
+                            <div className="form-group">
+                                <label className="form-label">Labor & Parts Details</label>
                                 <input value={jobs} onChange={e => setJobs(e.target.value)} placeholder="e.g. Engine Oil (OW-20), Air Filter..." />
                             </div>
-                            <div>
-                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Odometer Certified (KM)</label>
+                            <div className="form-group">
+                                <label className="form-label">Odometer Certified (KM)</label>
                                 <div style={{ position: 'relative' }}>
                                     <Gauge size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input type="number" value={mileage} onChange={e => setMileage(e.target.value)} style={{ paddingLeft: '3rem' }} />
@@ -228,18 +234,25 @@ export const ServicePage = () => {
                     </div>
 
                     {/* Part Registry */}
-                    <div className="card">
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <Cpu color="var(--accent-secondary)" size={20} />
+                    <div className="section-card">
+                        <div className="card-accent green" />
+                        <h3 className="section-title">
+                            <span className="icon-wrap purple"><Cpu size={20} color="var(--accent-secondary)" /></span>
                             Critical Part Certification
-                        </h2>
+                        </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <select value={partType} onChange={e => setPartType(e.target.value)}>
-                                <option value="ECU">Electronic Control Unit (ECU)</option>
-                                <option value="BATTERY">EV Battery Module</option>
-                                <option value="MOTOR">Main Drive Motor</option>
-                            </select>
-                            <input value={newPartNo} onChange={e => setNewPartNo(e.target.value)} placeholder="Enter New Serial Number (PartID)..." />
+                            <div className="form-group">
+                                <label className="form-label">Component Type</label>
+                                <select value={partType} onChange={e => setPartType(e.target.value)}>
+                                    <option value="ECU">Electronic Control Unit (ECU)</option>
+                                    <option value="BATTERY">EV Battery Module</option>
+                                    <option value="MOTOR">Main Drive Motor</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">New Serial Number</label>
+                                <input value={newPartNo} onChange={e => setNewPartNo(e.target.value)} placeholder="Enter New Serial Number (PartID)..." />
+                            </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <button className="btn" onClick={() => document.getElementById('part-upload')?.click()} style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
                                     {isUploading === 'part' ? 'Uploading...' : partFile ? '✓ Part SN Photo' : '+ Photo'}
@@ -256,22 +269,23 @@ export const ServicePage = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                     {/* Insurance Estimate */}
-                    <div className="card" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--accent-primary)' }}>
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <FileText color="var(--accent-primary)" size={18} />
+                    <div className="section-card" style={{ border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        <div className="card-accent blue" />
+                        <h3 className="section-title">
+                            <span className="icon-wrap blue"><FileText size={20} color="var(--accent-primary)" /></span>
                             Insurance Claim Appraisal
-                        </h2>
+                        </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', display: 'flex', gap: '0.75rem', fontSize: '0.85rem' }}>
-                                <AlertTriangle size={24} color="var(--accent-primary)" />
+                            <div className="info-banner info">
+                                <AlertTriangle size={22} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
                                 <span>Use this form to submit repair estimates for vehicles with active accident claims.</span>
                             </div>
-                            <div>
-                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Estimated Repair Jobs</label>
+                            <div className="form-group">
+                                <label className="form-label">Estimated Repair Jobs</label>
                                 <textarea value={estimateJobs} onChange={e => setEstimateJobs(e.target.value)} placeholder="e.g. Frame Alignment, Front Bumper, Headlight Assy..." style={{ minHeight: '80px' }} />
                             </div>
-                            <div>
-                                <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Total Appraisal Value (THB)</label>
+                            <div className="form-group">
+                                <label className="form-label">Total Appraisal Value (THB)</label>
                                 <input type="number" value={estimateTotal} onChange={e => setEstimateTotal(e.target.value)} placeholder="0.00" />
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -293,8 +307,8 @@ export const ServicePage = () => {
             {targetVehicle && (() => {
                 const vehicleEvents = events.filter(e => e.tokenId === targetVehicle.tokenId && e.txHash && ['MAINTENANCE_RECORDED', 'INSPECTION_RESULT_RECORDED', 'CRITICAL_PART_REPLACED', 'WORKSHOP_ESTIMATE_SUBMITTED', 'ODOMETER_SNAPSHOT'].includes(e.type));
                 return vehicleEvents.length > 0 ? (
-                    <div className="card" style={{ marginTop: '1rem' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    <div className="section-card">
+                        <h3 className="section-title">
                             🔗 Service Blockchain Transactions
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

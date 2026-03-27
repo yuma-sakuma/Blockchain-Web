@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRightLeft, Clock, DollarSign, History, ShieldAlert, Store, UserCheck, X } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, Clock, DollarSign, ShieldAlert, Store, UserCheck, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVehicleStore } from '../store';
@@ -18,7 +18,6 @@ export const DealerPage = () => {
 
     // Dynamic Dealer ID from Auth
     const dealerId = address || 'UNKNOWN';
-    const displayId = address ? `${address.substring(0, 6)}...${address.substring(38)}` : 'Unknown';
 
     const normalizedAddress = address?.toLowerCase() || '';
     const myStock = vehicles.filter(v => {
@@ -51,9 +50,10 @@ export const DealerPage = () => {
 
         const price = parseFloat(salePrice);
         const principal = parseFloat(financePrincipal);
+        const isValidAddress = buyerAddress.startsWith('0x') && buyerAddress.length === 42;
         
-        if (isNaN(price) || price <= 0 || isNaN(principal) || principal <= 0) {
-            alert('กรุณากรอกราคาให้ครบถ้วนและถูกต้อง (ETH และ BTH)');
+        if (isNaN(price) || price <= 0 || isNaN(principal) || principal <= 0 || !isValidAddress) {
+            alert('กรุณากรอกราคาให้ครบถ้วนและที่อยู่กระเป๋าผู้ซื้อต้องถูกต้อง (42 ตัวอักษร)');
             return;
         }
 
@@ -83,6 +83,31 @@ export const DealerPage = () => {
             setBuyerAddress('');
         } catch (err) {
             console.error('Failed to create purchase offer:', err);
+        }
+    };
+
+    const handleCancelPending = async (tokenId: string) => {
+        const vehicle = vehicles.find(v => v.tokenId === tokenId);
+        if (!vehicle) return;
+
+        const type = vehicle.pendingLoan ? 'LOAN_APPLICATION_CANCELLED' : 'PURCHASE_OFFER_CANCELLED';
+        
+        if (!confirm(`Are you sure you want to cancel this pending ${vehicle.pendingLoan ? 'finance application' : 'sale offer'}?`)) {
+            return;
+        }
+
+        try {
+            await addEvent({
+                type,
+                actor: dealerId,
+                tokenId: tokenId,
+                payload: {
+                    cancelledAt: new Date().toISOString(),
+                    reason: 'Dealer retracted offer'
+                }
+            });
+        } catch (err) {
+            console.error('Failed to cancel pending:', err);
         }
     };
 
@@ -145,12 +170,15 @@ export const DealerPage = () => {
     };
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <header>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Inventory Control</h1>
-                <p className="text-secondary">Track showroom stock, evaluate trade-ins, and certify sale disclosures.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                    <span className="badge badge-info">Logged in as {displayId}</span>
+        <div className="page-container">
+            <header className="page-header">
+                <h1>Inventory Control</h1>
+                <p>Dealer Showroom — Accept deliveries, manage vehicle inventory, and connect with consumers.</p>
+                <div className="identity-bar">
+                    <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+                        <Store size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+                        Dealer: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{address?.substring(0, 10)}...</span>
+                    </span>
                 </div>
             </header>
 
@@ -213,7 +241,7 @@ export const DealerPage = () => {
                                 </div>
                                 <div>
                                     <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                                        Finance Principal (BTH)
+                                        Finance Principal (THB)
                                     </label>
                                     <div style={{ position: 'relative' }}>
                                         <input
@@ -226,7 +254,7 @@ export const DealerPage = () => {
                                             style={{ marginBottom: 0, paddingRight: '50px' }}
                                         />
                                         <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-secondary)', fontWeight: 700, fontSize: '0.9rem' }}>
-                                            BTH
+                                            THB
                                         </span>
                                     </div>
                                 </div>
@@ -237,8 +265,8 @@ export const DealerPage = () => {
                             <button
                                 className="premium-btn"
                                 onClick={handleSubmitSale}
-                                disabled={!salePrice || !buyerAddress || !financePrincipal}
-                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress || !financePrincipal) ? 0.5 : 1 }}
+                                disabled={!salePrice || !buyerAddress || !financePrincipal || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42}
+                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress || !financePrincipal || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42) ? 0.5 : 1 }}
                             >
                                 <UserCheck size={16} /> Send Offer to Buyer
                             </button>
@@ -280,9 +308,10 @@ export const DealerPage = () => {
                 </div>
             )}
 
-            <div className="card">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <History color="var(--accent-primary)" size={20} />
+            <div className="section-card">
+                <div className="card-accent blue" />
+                <h2 className="section-title">
+                    <span className="icon-wrap blue"><DollarSign size={20} color="var(--accent-primary)" /></span>
                     Trade-In Valuation
                 </h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
@@ -355,7 +384,7 @@ export const DealerPage = () => {
                                                 <div style={{ fontSize: '0.9rem' }}>
                                                     <strong>Lender:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{v.pendingLoan!.lender.substring(0, 8)}...</span>
                                                     <br />
-                                                    <strong>Principal:</strong> {v.pendingLoan!.principal.toLocaleString()} BTH
+                                                    <strong>Principal:</strong> {v.pendingLoan!.principal.toLocaleString()} THB
                                                 </div>
                                             </div>
                                         )}
@@ -367,7 +396,7 @@ export const DealerPage = () => {
                                             </div>
                                             <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
                                                 <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Mileage</div>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.warranty.terms.mileageKm} KM</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.spec?.mileageKm?.toLocaleString() ?? '0'} KM</div>
                                             </div>
                                         </div>
                                     </div>
@@ -381,6 +410,20 @@ export const DealerPage = () => {
                                         >
                                             <UserCheck size={16} /> {hasPendingLoan ? 'Finance App Pending' : hasPendingOffer ? 'Awaiting Consent' : 'Offer Deal'}
                                         </button>
+                                        {isBusy && (
+                                            <button
+                                                onClick={() => handleCancelPending(v.tokenId)}
+                                                style={{ 
+                                                    flex: 1, 
+                                                    background: 'rgba(239, 68, 68, 0.1)', 
+                                                    color: 'var(--danger)', 
+                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    borderRadius: '12px'
+                                                }}
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => setShowDisclosure(v.tokenId)}
                                             style={{ flex: 0.5, background: 'transparent' }}

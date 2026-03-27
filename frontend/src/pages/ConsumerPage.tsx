@@ -2,10 +2,10 @@ import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
-import { blockchainService } from '../services/blockchain';
 import { getWalletForRole } from '../config/contracts';
-import { useVehicleStore } from '../store';
 import { uploadFile } from '../services/api';
+import { blockchainService } from '../services/blockchain';
+import { useVehicleStore } from '../store';
 
 const API_BASE = 'http://localhost:3000';
 
@@ -13,7 +13,6 @@ export const ConsumerPage = () => {
   const { vehicles, events, addEvent } = useVehicleStore();
   const { address } = useAuth();
   const [showGreenBook, setShowGreenBook] = useState<string | null>(null);
-  const [showPrivacy, setShowPrivacy] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
   const [processingPurchase, setProcessingPurchase] = useState<string | null>(null);
 
@@ -332,77 +331,26 @@ export const ConsumerPage = () => {
     alert(`✅ Counter-offer sent: ${amount.toLocaleString()} THB`);
   };
 
-  const handleGrantConsent = async (tokenId: string, granteeOverride?: string) => {
-    const grantee = granteeOverride || prompt("Target Entity ID (e.g. DEALER:0x... or INSURER:0x...):");
-    if (!grantee) return;
+  const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showHistory));
 
-    await addEvent({
-      type: 'CONSENT_UPDATED',
-      actor: currentUser,
-      tokenId: tokenId,
-      payload: {
-        owner: currentUser,
-        grantTo: grantee,
-        permissions: {
-          showPersonalData: false,
-          showFullMaintenance: true,
-          showClaims: true
-        },
-        expiresAt: new Date(Date.now() + 86400000 * 30).toISOString()
-      }
-    });
-  };
-
-  const handleRevokeConsent = async (tokenId: string, grantee: string) => {
-    if (!confirm(`Revoke access for ${grantee}?`)) return;
-    await addEvent({
-      type: 'CONSENT_REVOKED',
-      actor: currentUser,
-      tokenId: tokenId,
-      payload: {
-        owner: currentUser,
-        revokeFrom: grantee,
-        revokedAt: new Date().toISOString()
-      }
-    });
-  };
-
-  const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showPrivacy || showHistory));
-
-  // Derive active consents
-  const activeConsents = selectedVehicle ? events.filter(e =>
-    e.type === 'CONSENT_UPDATED' &&
-    e.tokenId === selectedVehicle.tokenId &&
-    e.payload.owner.includes(address || 'x') &&
-    new Date(e.payload.expiresAt) > new Date()
-  ) : [];
-
-  // Filter out revoked ones (rudimentary check)
-  const revokedEvents = selectedVehicle ? events.filter(e => e.type === 'CONSENT_REVOKED' && e.tokenId === selectedVehicle.tokenId) : [];
-  const validConsents = activeConsents.filter(ac => !revokedEvents.some(re => re.payload.revokeFrom === ac.payload.grantTo && new Date(re.timestamp) > new Date(ac.timestamp)));
 
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Asset Wallet</h1>
-          <p className="text-secondary">Manage your verified vehicle NFTs and privacy protocols.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1.25rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-          <User size={20} color="var(--accent-primary)" />
-          <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{displayUser}</span>
+    <div className="page-container">
+      <header className="page-header">
+        <h1>Asset Wallet</h1>
+        <p>Manage your verified vehicle NFTs and privacy protocols.</p>
+        <div className="identity-bar">
+          <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+            <User size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+            Owner: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{displayUser}</span>
+          </span>
         </div>
       </header>
 
       {/* ═══════════ Insurance Expiry Notification ═══════════ */}
       {expiringVehicles.length > 0 && (
-        <div style={{
-          padding: '1rem 1.5rem', borderRadius: '12px',
-          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05))',
-          border: '1px solid rgba(245, 158, 11, 0.25)',
-          display: 'flex', alignItems: 'center', gap: '1rem'
-        }}>
+        <div className="info-banner warning">
           <AlertCircle size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 600, color: '#f59e0b', fontSize: '0.9rem' }}>⚠️ Insurance Expiring Soon</div>
@@ -430,8 +378,8 @@ export const ConsumerPage = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
             {pendingOffers.map(v => (
-              <div key={v.tokenId} className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-                <div style={{ padding: '1.5rem' }}>
+              <div key={v.tokenId} className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(251, 191, 36, 0.25)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '1.5rem', flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
                       <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
@@ -447,7 +395,7 @@ export const ConsumerPage = () => {
                     </div>
                     <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
                       <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Mileage</div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.warranty.terms.mileageKm.toLocaleString()} KM</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{v.spec?.mileageKm?.toLocaleString() ?? '0'} KM</div>
                     </div>
                   </div>
 
@@ -606,51 +554,7 @@ export const ConsumerPage = () => {
         document.body
       )}
 
-      {/* Privacy Management Modal */}
-      {showPrivacy && selectedVehicle && createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', background: '#0a0a0b', border: '1px solid var(--accent-primary)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <ShieldCheck size={28} color="var(--accent-primary)" />
-                <h2 style={{ margin: 0 }}>Data Privacy Control</h2>
-              </div>
-              <button onClick={() => setShowPrivacy(null)} style={{ padding: '0.5rem', borderRadius: '50%' }}><X size={24} /></button>
-            </div>
 
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{selectedVehicle.makeModelTrim}</div>
-              <div className="text-secondary">VIN: {selectedVehicle.vin}</div>
-            </div>
-
-            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Access Grants</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-              {validConsents.length === 0 ? (
-                <div className="text-secondary" style={{ fontStyle: 'italic' }}>No active 3rd party access grants.</div>
-              ) : (
-                validConsents.map((c, idx) => (
-                  <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{c.payload.grantTo}</div>
-                      <div className="text-secondary" style={{ fontSize: '0.8rem' }}>Expires: {new Date(c.payload.expiresAt).toLocaleDateString()}</div>
-                    </div>
-                    <button onClick={() => handleRevokeConsent(selectedVehicle.tokenId, c.payload.grantTo)} style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>REVOKE</button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Grant New Access</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'INSURER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Insurance</button>
-              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'LENDER:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Finance</button>
-              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId, 'SERVICE:Generic')} className="btn" style={{ fontSize: '0.9rem' }}>+ Share w/ Service</button>
-              <button onClick={() => handleGrantConsent(selectedVehicle.tokenId)} className="btn" style={{ fontSize: '0.9rem' }}>+ Custom Entity...</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* History Timeline Modal */}
       {showHistory && selectedVehicle && createPortal(
@@ -706,8 +610,8 @@ export const ConsumerPage = () => {
             <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.5 }}>You do not currently hold any vehicle NFTs associated with {displayUser}.</div>
           ) : (
             myVehicles.map(v => (
-              <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                <div style={{ padding: '2rem' }}>
+              <div key={v.tokenId} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '2rem', flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
                     {v.lien.status === 'active' && <Lock size={20} color="var(--danger)" />}
@@ -720,7 +624,7 @@ export const ConsumerPage = () => {
                     </div>
                     <div>
                       <div className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Odometer</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.warranty?.terms?.mileageKm || 0).toLocaleString()} KM</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{(v.spec?.mileageKm?.toLocaleString() ?? '0').toLocaleString()} KM</div>
                     </div>
                   </div>
 
@@ -784,14 +688,11 @@ export const ConsumerPage = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
-                  <button onClick={() => { setShowGreenBook(v.tokenId); setShowPrivacy(null); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                  <button onClick={() => { setShowGreenBook(v.tokenId); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <FileText size={18} color="var(--success)" /> BOOK
                   </button>
-                  <button onClick={() => { setShowPrivacy(v.tokenId); setShowGreenBook(null); setShowHistory(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                    <ShieldCheck size={18} color="var(--accent-primary)" /> PRIVACY
-                  </button>
-                  <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); setShowPrivacy(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                  <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <History size={18} color="var(--accent-secondary)" /> HISTORY
                   </button>
                   <button
@@ -864,8 +765,8 @@ export const ConsumerPage = () => {
               <button
                 className="premium-btn"
                 onClick={handleSubmitSale}
-                disabled={!saleBuyerAddress || !salePrice}
-                style={{ marginTop: '0.5rem', opacity: (!saleBuyerAddress || !salePrice) ? 0.5 : 1 }}
+                disabled={!saleBuyerAddress || !salePrice || !saleBuyerAddress.startsWith('0x') || saleBuyerAddress.length !== 42}
+                style={{ marginTop: '0.5rem', opacity: (!saleBuyerAddress || !salePrice || !saleBuyerAddress.startsWith('0x') || saleBuyerAddress.length !== 42) ? 0.5 : 1 }}
               >
                 <ShoppingCart size={16} /> Create Sale Offer
               </button>

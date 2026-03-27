@@ -306,6 +306,10 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
             appliedAt: event.timestamp
           }
         };
+      case 'PURCHASE_OFFER_CANCELLED':
+        return { ...v, pendingPurchase: undefined };
+      case 'LOAN_APPLICATION_CANCELLED':
+        return { ...v, pendingLoan: undefined };
       case 'LOAN_APPROVED':
         return {
           ...v,
@@ -424,10 +428,14 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
           lienStatus: 'ACTIVE' as const
         },
         lien: { status: 'active' as const, transferLocked: true, lender: e.payload.lender },
-        currentOwner: e.payload.lender,
-        ownerCount: 1
-      });
-    } else if (e.type === 'LIEN_OFFER_CREATED' && pendingMap.has(e.tokenId)) {
+          currentOwner: e.payload.lender,
+          ownerCount: 1
+        });
+      } else if (e.type === 'PURCHASE_OFFER_CANCELLED') {
+        pendingMap.set(e.tokenId, undefined);
+      } else if (e.type === 'LOAN_APPLICATION_CANCELLED') {
+        pendingLoanMap.set(e.tokenId, undefined);
+      } else if (e.type === 'LIEN_OFFER_CREATED' && pendingMap.has(e.tokenId)) {
       const existing = pendingMap.get(e.tokenId);
       if (existing) {
         pendingMap.set(e.tokenId, {
@@ -599,7 +607,6 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           'MANUFACTURER_MINTED',
           'OWNERSHIP_TRANSFERRED',
           'DLT_REGISTRATION_UPDATED',
-          'FLAG_UPDATED',
           'LIEN_CREATED',
           'LIEN_RELEASED',
           'REPOSSESSION_RECORDED',
@@ -699,7 +706,6 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         'MANUFACTURER_MINTED',
         'OWNERSHIP_TRANSFERRED',
         'DLT_REGISTRATION_UPDATED',
-        'FLAG_UPDATED',
         'LIEN_CREATED',
         'LIEN_RELEASED',
         'REPOSSESSION_RECORDED',

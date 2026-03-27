@@ -269,44 +269,30 @@ export const InsurancePage = () => {
     // ── Main Render ──
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <header>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Insurance Management</h1>
-                <p className="text-secondary">End-to-end insurance workflow: Underwriting, Claims, Repair & Renewal.</p>
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
-                    <span className="badge badge-info">Certified Insurer: {insurerId}</span>
+        <div className="page-container">
+            <header className="page-header">
+                <h1>Insurance Management</h1>
+                <p>End-to-end insurance workflow: Underwriting, Claims, Repair & Renewal.</p>
+                <div className="identity-bar">
+                    <span className="badge badge-info" style={{ padding: '0.6rem 1.2rem', borderRadius: '100px' }}>
+                        <Shield size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
+                        Insurer: <span style={{ color: 'var(--accent-primary)', fontWeight: 600, marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{insurerId.substring(0, 10)}...</span>
+                    </span>
                 </div>
             </header>
 
             {/* ═══════ Tab Navigation ═══════ */}
-            <div style={{
-                display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0'
-            }}>
+            <div className="tab-nav">
                 {tabs.map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.75rem 1.25rem',
-                            background: activeTab === tab.key ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                            border: 'none',
-                            borderBottom: activeTab === tab.key ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                            color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            fontWeight: activeTab === tab.key ? 600 : 400,
-                            cursor: 'pointer',
-                            borderRadius: '8px 8px 0 0',
-                            transition: 'all 0.2s ease',
-                            fontSize: '0.9rem'
-                        }}
+                        className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`}
                     >
                         {tab.icon}
                         {tab.label}
                         {tab.count !== undefined && tab.count > 0 && (
-                            <span style={{
-                                background: 'var(--danger)', color: 'white', borderRadius: '999px',
-                                padding: '1px 8px', fontSize: '0.7rem', fontWeight: 700, marginLeft: '0.25rem'
-                            }}>
+                            <span className="tab-count">
                                 {tab.count}
                             </span>
                         )}
