@@ -1,5 +1,6 @@
 import { Activity, AlertTriangle, Car, CheckCircle2, Clipboard, FileText, History, Info, Lock, Search, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../services/api';
 import { useVehicleStore } from '../store';
 import { EventType } from '../types/vehicle';
 
@@ -287,8 +288,7 @@ export const OverviewPage = () => {
                         {e.evidence && e.evidence.length > 0 ? (
                           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             {e.evidence.map((ev, i) => {
-                              const backendOrigin = 'http://localhost:3000';
-                              const fullUrl = ev.url.startsWith('http') ? ev.url : `${backendOrigin}${ev.url}`;
+                              const fullUrl = ev.url.startsWith('http') ? ev.url : `${API_BASE_URL}${ev.url}`;
                               return (
                                 <a key={i} href={fullUrl} target="_blank" rel="noreferrer" style={{ display: 'block', width: '90px', height: '65px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.4)', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.05)' } } as any}>
                                   {ev.mime.startsWith('image/') ? (

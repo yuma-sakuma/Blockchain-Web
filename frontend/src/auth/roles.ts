@@ -5,7 +5,7 @@ export enum UserRole {
   CONSUMER = 'CONSUMER',
   CONSUMER2 = 'CONSUMER2',
   DLT_OFFICER = 'DLT_OFFICER',
-  LENDER = 'LENDER', // Finance
+  // LENDER = 'LENDER', // Finance
   INSURER = 'INSURER',
   SERVICE_PROVIDER = 'SERVICE_PROVIDER',
   INSPECTOR = 'INSPECTOR',
@@ -17,7 +17,7 @@ export const RolePermissions = {
   [UserRole.CONSUMER]: ['/consumer'],
   [UserRole.CONSUMER2] : ['/consumer'],
   [UserRole.DLT_OFFICER]: ['/dlt'],
-  [UserRole.LENDER]: ['/finance'],
+  // [UserRole.LENDER]: ['/finance'],
   [UserRole.INSURER]: ['/insurance'],
   [UserRole.SERVICE_PROVIDER]: ['/service'],
   [UserRole.INSPECTOR]: ['/inspection'],
@@ -29,7 +29,7 @@ export const RoleNames = {
   [UserRole.CONSUMER]: 'Consumer',
   [UserRole.CONSUMER2]: 'Consumer',
   [UserRole.DLT_OFFICER]: 'DLT Officer',
-  [UserRole.LENDER]: 'Finance / Lender',
+  // [UserRole.LENDER]: 'Finance / Lender',
   [UserRole.INSURER]: 'Insurer',
   [UserRole.SERVICE_PROVIDER]: 'Service Center',
   [UserRole.INSPECTOR]: 'Inspection Center (Tor-Ror-Or)',
@@ -50,7 +50,7 @@ const buildRoleMap = (): Record<string, UserRole> => {
   addIfValid(import.meta.env.VITE_DLT_OFFICER_ADDRESS, UserRole.DLT_OFFICER);
   addIfValid(import.meta.env.VITE_CONSUMER_ADDRESS, UserRole.CONSUMER);
   addIfValid(import.meta.env.VITE_CONSUMER_2_ADDRESS, UserRole.CONSUMER2);
-  addIfValid(import.meta.env.VITE_LENDER_ADDRESS, UserRole.LENDER);
+  // addIfValid(import.meta.env.VITE_LENDER_ADDRESS, UserRole.LENDER);
   addIfValid(import.meta.env.VITE_INSURER_ADDRESS, UserRole.INSURER);
   addIfValid(import.meta.env.VITE_SERVICE_PROVIDER_ADDRESS, UserRole.SERVICE_PROVIDER);
   addIfValid(import.meta.env.VITE_INSPECTOR_ADDRESS, UserRole.INSPECTOR);
