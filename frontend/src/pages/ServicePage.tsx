@@ -83,7 +83,13 @@ export const ServicePage = () => {
                     mime: maintFile.mime,
                     size: maintFile.size
                 }] : undefined
-            }
+            },
+            evidence: maintFile ? [{
+                hash: maintFile.hash,
+                url: maintFile.path,
+                mime: maintFile.mime,
+                size: maintFile.size
+            }] : undefined
         });
 
         setJobs('');
@@ -135,7 +141,13 @@ export const ServicePage = () => {
                     mime: partFile.mime,
                     size: partFile.size
                 }] : undefined
-            }
+            },
+            evidence: partFile ? [{
+                hash: partFile.hash,
+                url: partFile.path,
+                mime: partFile.mime,
+                size: partFile.size
+            }] : undefined
         });
         setNewPartNo('');
         setPartFile(null);
@@ -168,7 +180,13 @@ export const ServicePage = () => {
                     mime: estimateFile.mime,
                     size: estimateFile.size
                 }] : undefined
-            }
+            },
+            evidence: estimateFile ? [{
+                hash: estimateFile.hash,
+                url: estimateFile.path,
+                mime: estimateFile.mime,
+                size: estimateFile.size
+            }] : undefined
         });
         setEstimateJobs('');
         setEstimateTotal("");

@@ -167,7 +167,12 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'INSURER_APPROVED_ESTIMATE':
         return v.activeClaim ? {
           ...v,
-          activeClaim: { ...v.activeClaim, status: 'approved', estimateAmount: payload.amount }
+          activeClaim: { 
+            ...v.activeClaim, 
+            status: 'approved', 
+            estimateAmount: payload.amount,
+            repairDetails: payload.repairDetails || v.activeClaim.repairDetails
+          }
         } : v;
       case 'WRITE_CONSENT_GRANTED':
         return {
@@ -311,18 +316,32 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
       case 'LOAN_APPLICATION_CANCELLED':
         return { ...v, pendingLoan: undefined };
       case 'SERVICE_ACCESS_REQUESTED':
-        return {
+        const updatedV = {
           ...v,
           pendingServiceRequest: {
             workshop: payload.workshop,
             vehicleVin: payload.vehicleVin,
             vehicleModel: payload.vehicleModel,
+            id: event.id,
             actionLabel: payload.actionLabel,
+            actionType: payload.actionType,
             requestedAt: payload.requestedAt,
             actionPayload: payload.actionPayload,
-            actionEvidence: payload.actionEvidence
+            actionEvidence: event.evidence || payload.actionEvidence,
+            evidence: event.evidence,
+            payloadHash: event.payloadHash,
+            evidenceHash: event.evidenceHash
           }
         };
+        // Update active claim estimate if this is a workshop estimate
+        if (payload.actionType === 'WORKSHOP_ESTIMATE_SUBMITTED' && updatedV.activeClaim) {
+          updatedV.activeClaim = {
+            ...updatedV.activeClaim,
+            estimateAmount: payload.actionPayload?.total,
+            repairDetails: payload.actionPayload?.jobs
+          };
+        }
+        return updatedV;
       case 'SERVICE_ACCESS_APPROVED':
         // Apply the maintenance data from the stored request
         return {
@@ -534,13 +553,18 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
       }
     } else if (e.type === 'SERVICE_ACCESS_REQUESTED') {
       pendingServiceMap.set(e.tokenId, {
+        id: e.id,
         workshop: e.payload.workshop,
         vehicleVin: e.payload.vehicleVin,
         vehicleModel: e.payload.vehicleModel,
         actionLabel: e.payload.actionLabel,
+        actionType: e.payload.actionType,
         requestedAt: e.payload.requestedAt,
         actionPayload: e.payload.actionPayload,
-        actionEvidence: e.payload.actionEvidence
+        actionEvidence: e.evidence || e.payload.actionEvidence,
+        evidence: e.evidence,
+        payloadHash: e.payloadHash,
+        evidenceHash: e.evidenceHash
       });
     } else if (e.type === 'SERVICE_ACCESS_APPROVED' || e.type === 'SERVICE_ACCESS_REJECTED') {
       pendingServiceMap.set(e.tokenId, undefined);
@@ -596,8 +620,10 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
           actor: e.actorAddress || 'UNKNOWN',
           type: e.type,
           payload: e.payload,
-          evidence: e.evidence || undefined,
-          txHash: e.txHash || undefined,
+          payloadHash: e.payloadHash,
+          evidence: (e.evidence && e.evidence !== 'undefined' && e.evidence !== 'null') ? e.evidence : undefined,
+          evidenceHash: e.evidenceHash,
+          txHash: (e.txHash && e.txHash !== 'undefined' && e.txHash !== 'null') ? e.txHash : undefined,
         }));
         setEvents(mappedEvents);
 
@@ -699,8 +725,8 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
         actor: e.actorAddress || 'UNKNOWN',
         type: e.type,
         payload: e.payload,
-        evidence: e.evidence || undefined,
-        txHash: e.txHash || undefined,
+        evidence: (e.evidence && e.evidence !== 'undefined' && e.evidence !== 'null') ? e.evidence : undefined,
+        txHash: (e.txHash && e.txHash !== 'undefined' && e.txHash !== 'null') ? e.txHash : undefined,
       }));
       setEvents(mappedEvents);
 

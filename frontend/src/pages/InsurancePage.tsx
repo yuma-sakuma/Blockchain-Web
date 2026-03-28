@@ -1,8 +1,8 @@
 import { AlertCircle, BarChart3, CheckCircle, ClipboardCheck, Clock, FileText, Image, RefreshCw, Search, Shield, ShieldCheck, Trash2, Wrench, X, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useVehicleStore } from '../store';
 import { API_BASE_URL, uploadFile } from '../services/api';
+import { useVehicleStore } from '../store';
 
 const API_BASE = API_BASE_URL;
 
@@ -62,10 +62,18 @@ export const InsurancePage = () => {
         .slice(0, 10);
 
     // Pending Estimates from workshops
-    const pendingEstimates = events.filter(e =>
-        e.type === 'WORKSHOP_ESTIMATE_SUBMITTED' &&
-        !events.some(ae => ae.type === 'INSURER_APPROVED_ESTIMATE' && ae.payload.estimateId === e.payload.id)
-    );
+    // Filter for repair estimates coming from workshops (actionType="WORKSHOP_ESTIMATE_SUBMITTED")
+    const pendingEstimates = events.filter(e => {
+        const isEstimate = e.type === 'WORKSHOP_ESTIMATE_SUBMITTED' || 
+                          (e.type === 'SERVICE_ACCESS_REQUESTED' && e.payload?.actionType === 'WORKSHOP_ESTIMATE_SUBMITTED');
+        if (!isEstimate) return false;
+        
+        // Extract ID from either top-level or payload
+        const estId = e.payload?.id || e.payload?.actionPayload?.id;
+        if (!estId) return false;
+
+        return !events.some(ae => ae.type === 'INSURER_APPROVED_ESTIMATE' && ae.payload.estimateId === estId);
+    });
 
     // ── Handlers ──
 
@@ -168,14 +176,18 @@ export const InsurancePage = () => {
     };
 
     const handleApproveEstimate = async (estimate: any) => {
+        const estId = estimate.payload?.id || estimate.payload?.actionPayload?.id;
+        const amount = estimate.payload?.total || estimate.payload?.actionPayload?.total || 0;
+        
         await addEvent({
             type: 'INSURER_APPROVED_ESTIMATE',
             actor: insurerId,
             tokenId: estimate.tokenId,
             payload: {
-                estimateId: estimate.payload.id,
-                amount: estimate.payload.total,
-                approvedAmount: estimate.payload.total,
+                estimateId: estId,
+                amount: amount,
+                approvedAmount: amount,
+                repairDetails: estimate.payload?.actionPayload?.jobs || estimate.payload?.jobs || [],
                 approvalCode: crypto.randomUUID(),
                 notes: "Standard labor rates applied."
             }
@@ -435,7 +447,7 @@ export const InsurancePage = () => {
                                     </select>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
+                                    {/* <div>
                                         <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Premium Amount (THB)</label>
                                         <div style={{ position: 'relative' }}>
                                             <input type="number" value={premiumAmount} onChange={e => setPremiumAmount(e.target.value)} placeholder="e.g. 15000" style={{ marginBottom: 0, paddingRight: '50px' }} />
@@ -448,7 +460,7 @@ export const InsurancePage = () => {
                                             <input type="number" value={deductible} onChange={e => setDeductible(e.target.value)} placeholder="e.g. 5000" style={{ marginBottom: 0, paddingRight: '50px' }} />
                                             <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-secondary)', fontWeight: 700, fontSize: '0.8rem' }}>THB</span>
                                         </div>
-                                    </div>
+                                    </div> */}
                                 </div>
                                 <div>
                                     <label className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Policy Documents</label>
@@ -591,7 +603,16 @@ export const InsurancePage = () => {
                                         <div key={i} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.8rem' }}>
                                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{v.makeModelTrim}</div>
                                             <div className="text-secondary" style={{ fontSize: '0.7rem', marginBottom: '0.5rem' }}>
-                                                {v.activeClaim!.estimateAmount ? `Est: ${v.activeClaim!.estimateAmount.toLocaleString()} THB` : 'Awaiting estimate'}
+                                                {v.activeClaim!.estimateAmount ? (
+                                                    <>
+                                                        <div style={{ fontWeight: 700, color: 'var(--success)' }}>Est: {Number(v.activeClaim!.estimateAmount).toLocaleString()} THB</div>
+                                                        {v.activeClaim!.repairDetails && (
+                                                            <div style={{ marginTop: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
+                                                                🔧 {v.activeClaim!.repairDetails.join(', ')}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : 'Awaiting estimate'}
                                             </div>
                                             <button onClick={() => handleClaimStatusChange(v, 'repaired')} style={{ width: '100%', fontSize: '0.7rem', padding: '0.35rem', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
                                                 ✅ Mark Repaired
@@ -721,18 +742,63 @@ export const InsurancePage = () => {
                     </h2>
                     {pendingEstimates.length === 0 ? <p className="text-secondary">No pending repair estimates.</p> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {pendingEstimates.map((est, idx) => (
-                                <div key={idx} style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontWeight: 700 }}>{est.payload.workshop}</span>
-                                        <span style={{ color: 'var(--success)', fontWeight: 700 }}>{est.payload.total.toLocaleString()} THB</span>
+                            {pendingEstimates.map((est, idx) => {
+                                const payload = est.payload?.actionPayload || est.payload;
+                                const total = payload?.total || 0;
+                                const workshop = payload?.workshop || est.payload?.workshop || 'Workshop';
+                                const jobs = payload?.jobs || [];
+                                const vehicle = vehicles.find(v => v.tokenId === est.tokenId);
+                                
+                                return (
+                                    <div key={idx} style={{ 
+                                        padding: '1.25rem', 
+                                        background: 'rgba(255,255,255,0.03)', 
+                                        borderRadius: '16px', 
+                                        border: '1px solid var(--border-subtle)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '1rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--accent-primary)' }}>{vehicle?.makeModelTrim || 'Unknown Vehicle'}</div>
+                                                <div className="text-secondary" style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>VIN: {vehicle?.vin || 'N/A'} (Token #{est.tokenId})</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ color: 'var(--success)', fontWeight: 800, fontSize: '1.1rem' }}>{total.toLocaleString()} THB</div>
+                                                <div className="text-secondary" style={{ fontSize: '0.7rem' }}>{new Date(est.timestamp).toLocaleString()}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', borderLeft: '3px solid var(--accent-primary)' }}>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Repair Items</div>
+                                            <div style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>
+                                                {jobs.length > 0 ? jobs.map((j: string, i: number) => (
+                                                    <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--accent-primary)' }} />
+                                                        {j}
+                                                    </div>
+                                                )) : 'No details provided'}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ fontSize: '0.85rem' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>From:</span> <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{workshop}</span>
+                                        </div>
+
+                                        {/* Show images/evidence */}
+                                        {renderEvidence(est)}
+
+                                        <button 
+                                            onClick={() => handleApproveEstimate(est)} 
+                                            className="premium-btn" 
+                                            style={{ width: '100%', marginTop: '0.5rem' }}
+                                        >
+                                            <CheckCircle size={18} /> Approve & Authorize Repair
+                                        </button>
                                     </div>
-                                    <div className="text-secondary" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
-                                        Items: {est.payload.jobs.join(', ')}
-                                    </div>
-                                    <button onClick={() => handleApproveEstimate(est)} className="premium-btn" style={{ width: '100%', fontSize: '0.85rem' }}>Approve & Release Funds</button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

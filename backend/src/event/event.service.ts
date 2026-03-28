@@ -14,6 +14,7 @@ import { PlateRecord } from '../database/entities/plate-record.entity';
 import { Registration } from '../database/entities/registration.entity';
 import { TaxPayment } from '../database/entities/tax-payment.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { ClaimStatus } from '../database/entities/enums';
 import { VehicleFlagRecord } from '../database/entities/vehicle-flag.entity';
 
 @Injectable()
@@ -467,6 +468,54 @@ export class EventService {
             }
           } // end if (!createEventDto.txHash)
           await this.taxPaymentRepository.save(tax);
+          break;
+        }
+        case 'SPECIFICATION_UPDATED': {
+          console.log('[EventService] 🎨 SPECIFICATION_UPDATED event');
+          if (payload.changes) {
+            // 1. Update DB specification
+            const spec = vehicle.specJson || {};
+            Object.assign(spec, payload.changes);
+            vehicle.specJson = spec;
+            vehicle.specHash = ethers.id(JSON.stringify(spec));
+            vehicleUpdated = true;
+
+            // 2. Blockchain Interaction
+            if (!createEventDto.txHash) {
+              try {
+                await Promise.race([
+                  this.blockchainService.vehicleLifecycleContract.runner?.provider?.getNetwork(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Blockchain unreachable')), 2000))
+                ]);
+
+                try {
+                  await this.blockchainService.vehicleNFTContract.ownerOf(createEventDto.tokenId);
+                } catch (e) {
+                  console.info(`[EventService] ℹ️ Token ${createEventDto.tokenId} not on-chain. Skipping sync for Spec Update.`);
+                  throw new Error('STOP_SYNC');
+                }
+
+                const SPEC_UPDATED_EVENT_TYPE = 400;
+                txHash = await this.blockchainService.withTxLock(async () => {
+                  const tx = await this.blockchainService.vehicleLifecycleContract.logEvent(
+                    createEventDto.tokenId,
+                    SPEC_UPDATED_EVENT_TYPE,
+                    Math.floor(Date.now() / 1000),
+                    ethers.id(JSON.stringify(payload.changes)),
+                    ethers.id(payload.reason || 'Legal Modification')
+                  );
+                  const receipt = await tx.wait();
+                  console.log('[EventService] ✅ SPECIFICATION_UPDATED Transaction Confirmed!');
+                  return receipt.hash;
+                });
+              } catch (err) {
+                if (err.message !== 'STOP_SYNC') {
+                  console.warn(`[EventService] Blockchain Spec update sync failed: ${err.message || err}`);
+                  throw err;
+                }
+              }
+            }
+          }
           break;
         }
         case 'FLAG_UPDATED': {
@@ -1103,15 +1152,35 @@ export class EventService {
         }
 
         case 'INSURER_APPROVED_ESTIMATE': {
-          // §3.3 Fix: อัปเดต claim status เป็น APPROVED
+          // §3.3 Fix: อัปเดต claim status เป็น APPROVED และบันทึกยอดเงินประเมิน/รายการ
           console.log('[EventService] ✅ INSURER_APPROVED_ESTIMATE event');
           if (payload.estimateId) {
-            const claims = await this.insuranceClaimRepository.find({ where: { tokenId: vehicle.tokenId } });
-            const latestClaim = claims.sort((a, b) => Number(b.filedAt) - Number(a.filedAt))[0];
+            const claims = await this.insuranceClaimRepository.find({ where: { tokenId: vehicle.tokenId }, order: { filedAt: 'DESC' } });
+            const latestClaim = claims[0];
             if (latestClaim) {
               latestClaim.status = 'APPROVED' as any;
+              latestClaim.estimateAmount = payload.amount?.toString() || null;
+              if (payload.repairDetails) {
+                latestClaim.repairDetails = payload.repairDetails;
+              }
               await this.insuranceClaimRepository.save(latestClaim);
               console.log(`  Claim ${latestClaim.claimNo} approved, amount: ${payload.amount}`);
+            }
+          }
+          break;
+        }
+
+        case 'SERVICE_ACCESS_REQUESTED': {
+          console.log('[EventService] 📥 SERVICE_ACCESS_REQUESTED event');
+          // ถ้าเป็นการส่งใบเสนอราคา (WORKSHOP_ESTIMATE_SUBMITTED) ให้เก็บข้อมูลลงใน Claim
+          if (payload.actionType === 'WORKSHOP_ESTIMATE_SUBMITTED') {
+            const claims = await this.insuranceClaimRepository.find({ where: { tokenId: vehicle.tokenId }, order: { filedAt: 'DESC' } });
+            const latestClaim = claims[0];
+            if (latestClaim && latestClaim.status !== ClaimStatus.CLOSED) {
+               latestClaim.estimateAmount = payload.actionPayload?.total?.toString() || null;
+               latestClaim.repairDetails = payload.actionPayload?.jobs || null;
+               await this.insuranceClaimRepository.save(latestClaim);
+               console.log(`  Estimate attached to Claim ${latestClaim.claimNo}: ${latestClaim.estimateAmount} THB`);
             }
           }
           break;

@@ -69,6 +69,7 @@ export interface InsuranceClaim {
   description: string;
   status: 'filed' | 'investigating' | 'approved' | 'rejected' | 'repaired';
   estimateAmount?: number;
+  repairDetails?: string[];
 }
 
 export interface PendingPurchase {
@@ -99,13 +100,18 @@ export interface PendingLoan {
 }
 
 export interface PendingServiceRequest {
+  id: string;
   workshop: string;
   vehicleVin: string;
   vehicleModel: string;
   actionLabel: string;
+  actionType: EventType;
   requestedAt: string;
   actionPayload: any;
   actionEvidence?: any[];
+  evidence?: any[];
+  payloadHash?: string;
+  evidenceHash?: string;
 }
 
 export interface LoanAccount {
@@ -209,12 +215,14 @@ export interface VehicleEvent {
   actorRole?: string;
   type: EventType;
   payload: any;
+  payloadHash?: string;
   evidence?: Array<{
     hash: string;
     url: string;
     mime: string;
     size: number;
   }>;
+  evidenceHash?: string;
   signature?: string;
   txHash?: string;
 }

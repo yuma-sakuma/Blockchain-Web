@@ -68,6 +68,14 @@ export class InsuranceClaim {
   @Column({ type: 'text', nullable: true })
   estimateDocUrl: string | null;
 
+  /** จำนวนเงินประเมินค่าซ่อม (THB) */
+  @Column({ type: 'bigint', nullable: true })
+  estimateAmount: string | null;
+
+  /** รายละเอียดรายการซ่อม */
+  @Column({ type: 'simple-array', nullable: true })
+  repairDetails: string[] | null;
+
   /** Fraud signals (internal use) */
   @Column({ type: 'json', nullable: true })
   fraudSignals: Record<string, any> | null;

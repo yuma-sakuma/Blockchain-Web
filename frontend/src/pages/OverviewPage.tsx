@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Car, CheckCircle2, Clipboard, FileText, History, Info, Lock, Search, ShieldCheck, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Car, CheckCircle2, Clipboard, FileText, History, Info, Link, Lock, Search, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../services/api';
 import { useVehicleStore } from '../store';
@@ -108,7 +108,18 @@ export const OverviewPage = () => {
                   {v.flags?.majorAccident && <span className="badge badge-danger" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 800 }}>HISTORY LOSS</span>}
                 </div>
                 <h3 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 0.5rem 0', letterSpacing: '-0.5px' }}>{v.makeModelTrim}</h3>
-                <p className="text-secondary" style={{ fontSize: '0.95rem', fontFamily: 'monospace', letterSpacing: '1px' }}>{v.vin}</p>
+                <p className="text-secondary" style={{ fontSize: '0.95rem', fontFamily: 'monospace', letterSpacing: '1px', marginBottom: '0.5rem' }}>{v.vin}</p>
+                {(() => {
+                  const mintEvent = events.find(e => e.tokenId === v.tokenId && e.type === 'MANUFACTURER_MINTED');
+                  if (mintEvent) {
+                    return (
+                      <div style={{ fontSize: '0.65rem', color: 'var(--accent-primary)', fontFamily: 'monospace', opacity: 0.8, marginTop: '0.5rem' }}>
+                        MINT EVENT ID: {mintEvent.id}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div style={{ marginTop: '2.25rem', paddingTop: '1.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '3rem' }}>
                   <div>
@@ -199,13 +210,33 @@ export const OverviewPage = () => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'white' }}>{e.type.replace(/_/g, ' ')}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'white' }}>{e.type.replace(/_/g, ' ')}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontFamily: 'monospace', opacity: 0.8, marginTop: '4px' }}>EVENT ID: {e.id}</div>
+                      </div>
                       <div className="text-secondary" style={{ fontSize: '0.8rem' }}>{new Date(e.timestamp).toLocaleString()}</div>
                     </div>
                     <div className="text-secondary" style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       Actor Authority: <span style={{ color: e.actor ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: 600, wordBreak: 'break-all', fontStyle: e.actor ? 'normal' : 'italic' }}>{e.actor || 'undefined'}</span>
                     </div>
                     <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      {/* Linked Request reference */}
+                      {e.type === 'SERVICE_ACCESS_APPROVED' && e.payload?.requestId && (
+                        <div style={{ marginBottom: '1.25rem', padding: '1rem', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.2)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
+                            <Link size={14} /> Linked Service Request
+                          </div>
+                          <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'white', wordBreak: 'break-all' }}>
+                            ID: {e.payload.requestId}
+                          </div>
+                          {e.payload.requestPayloadHash && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                              Payload Hash: <span style={{ fontFamily: 'monospace' }}>{e.payload.requestPayloadHash.substring(0, 20)}...</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         {(() => {
                           const payloadObj = (e.payload || {}) as Record<string, any>;
@@ -219,7 +250,9 @@ export const OverviewPage = () => {
                             'LIEN_CREATED': ['borrower', 'lender', 'principalAmount']
                           };
                           const typeKeys = knownKeysMap[e.type] || [];
-                          const allKeys = Array.from(new Set([...typeKeys, ...Object.keys(payloadObj)]));
+                          const linkedKeys = ['requestId', 'requestPayloadHash', 'requestEvidenceHash'];
+                          const allKeys = Array.from(new Set([...typeKeys, ...Object.keys(payloadObj)]))
+                            .filter(key => !linkedKeys.includes(key));
 
                           if (allKeys.length === 0) {
                             return <div className="text-secondary" style={{ fontStyle: 'italic' }}>No payload data</div>;
@@ -276,10 +309,10 @@ export const OverviewPage = () => {
                       
                       <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>TX Hash:</span>
-                        {e.txHash ? (
+                        {e.txHash && e.txHash !== 'undefined' && e.txHash !== 'null' ? (
                           <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--success)', wordBreak: 'break-all' }}>{e.txHash}</span>
                         ) : (
-                          <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-secondary)', fontStyle: 'italic' }}>undefined</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Off-chain record</span>
                         )}
                       </div>
 
@@ -303,7 +336,7 @@ export const OverviewPage = () => {
                             })}
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.85rem' }}>undefined</span>
+                          <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.8rem' }}>None</span>
                         )}
                       </div>
                     </div>

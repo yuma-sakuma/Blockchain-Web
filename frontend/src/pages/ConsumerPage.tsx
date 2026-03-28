@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getWalletForRole } from '../config/contracts';
-import { uploadFile } from '../services/api';
+import { API_BASE_URL, uploadFile } from '../services/api';
 import { blockchainService } from '../services/blockchain';
 import { useVehicleStore } from '../store';
+import { VehicleNFT } from '../types/vehicle';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = API_BASE_URL;
 
 export const ConsumerPage = () => {
   const { vehicles, events, addEvent } = useVehicleStore();
@@ -405,7 +406,10 @@ export const ConsumerPage = () => {
         payload: {
           workshop: req.workshop,
           mileageKm: req.actionPayload?.mileageKm || 0,
-          approvedAt: new Date().toISOString()
+          approvedAt: new Date().toISOString(),
+          requestId: req.id,
+          requestPayloadHash: req.payloadHash,
+          requestEvidenceHash: req.evidenceHash
         }
       });
 
@@ -720,7 +724,7 @@ export const ConsumerPage = () => {
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
-            {pendingServiceVehicles.map(v => {
+            {pendingServiceVehicles.map((v: VehicleNFT) => {
               const req = v.pendingServiceRequest!;
               return (
                 <div key={v.tokenId + '-svc'} className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column' }}>
@@ -733,23 +737,85 @@ export const ConsumerPage = () => {
                       <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>SERVICE REQUEST</span>
                     </div>
 
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(56, 189, 248, 0.03))', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Service Description</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 600, color: '#38bdf8' }}>{req.actionLabel}</div>
+                    <div style={{ marginTop: '1rem', padding: '1.25rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(56, 189, 248, 0.03))', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Service Description</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8' }}>{req.actionLabel}</div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
                         <div>
-                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Workshop</div>
-                          <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 600 }}>{req.workshop.substring(0, 10)}...{req.workshop.substring(38)}</div>
+                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Workshop</div>
+                          <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 600, color: 'white' }}>{req.workshop.substring(0, 10)}...{req.workshop.substring(38)}</div>
                         </div>
                         <div>
-                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>New Mileage</div>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{req.actionPayload?.mileageKm?.toLocaleString() || 'N/A'} KM</div>
+                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>{req.actionType === 'CRITICAL_PART_REPLACED' ? 'Odometer' : 'New Mileage'}</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>{req.actionPayload?.mileageKm?.toLocaleString() || v.spec?.mileageKm?.toLocaleString() || 'N/A'} KM</div>
                         </div>
                       </div>
-                      <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.75rem' }}>
-                        Requested: {new Date(req.requestedAt).toLocaleString()}
+
+                      {/* Dynamic Payload Details */}
+                      <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', marginBottom: '1.25rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div className="text-secondary" style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>Technical Details</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {req.actionPayload?.jobs && (
+                             <div style={{ fontSize: '0.85rem' }}>
+                               <span style={{ color: 'var(--text-secondary)' }}>Jobs: </span>
+                               <span style={{ color: 'white' }}>{req.actionPayload.jobs.join(', ')}</span>
+                             </div>
+                          )}
+                          {req.actionPayload?.partType && (
+                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                               <div>
+                                 <div className="text-secondary" style={{ fontSize: '0.6rem' }}>PART TYPE</div>
+                                 <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{req.actionPayload.partType}</div>
+                               </div>
+                               <div>
+                                 <div className="text-secondary" style={{ fontSize: '0.6rem' }}>NEW PART NO.</div>
+                                 <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--success)' }}>{req.actionPayload.newPartNo}</div>
+                               </div>
+                             </div>
+                          )}
+                          {req.actionPayload?.total && (
+                             <div style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', color: 'var(--accent-primary)' }}>
+                               <span>ESTIMATE TOTAL</span>
+                               <span>{Number(req.actionPayload.total).toLocaleString()} THB</span>
+                             </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Evidence Gallery */}
+                      {(() => {
+                        const evidence = req.evidence || req.actionEvidence;
+                        if (evidence && evidence.length > 0) {
+                          return (
+                            <div style={{ marginBottom: '1rem' }}>
+                              <div className="text-secondary" style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>Attached Evidence ({evidence.length})</div>
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {evidence.map((ev: any, i: number) => {
+                                  const fullUrl = ev.url?.startsWith('http') ? ev.url : `${API_BASE}${ev.url}`;
+                                  return (
+                                    <a key={i} href={fullUrl} target="_blank" rel="noreferrer" style={{ display: 'block', width: '70px', height: '50px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', transition: 'transform 0.2s' }}>
+                                      {ev.mime?.startsWith('image/') ? (
+                                        <img src={fullUrl} alt="Evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      ) : (
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                                          <FileText size={16} color="#38bdf8" />
+                                        </div>
+                                      )}
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      <div className="text-secondary" style={{ fontSize: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Clock size={12} /> Requested: {new Date(req.requestedAt).toLocaleString()}
                       </div>
                     </div>
                   </div>
