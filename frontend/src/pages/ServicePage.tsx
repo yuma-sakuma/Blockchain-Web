@@ -206,6 +206,9 @@ export const ServicePage = () => {
                             <div className="text-secondary" style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginTop: '0.25rem' }}>Odometer: {targetVehicle.warranty.terms.mileageKm.toLocaleString()} KM</div>
                         </div>
                         <div className="badge badge-info">Vehicle Found</div>
+                        {targetVehicle.pendingServiceRequest && (
+                            <div className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>⏳ Awaiting Owner Approval</div>
+                        )}
                     </div>
                 )}
             </div>
@@ -225,10 +228,13 @@ export const ServicePage = () => {
                                 <input value={jobs} onChange={e => setJobs(e.target.value)} placeholder="e.g. Engine Oil (OW-20), Air Filter..." />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Odometer Certified (KM)</label>
+                                <label className="form-label">
+                                    Odometer Certified (KM)
+                                    {targetVehicle && <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>(Min: {targetVehicle.warranty.terms.mileageKm.toLocaleString()})</span>}
+                                </label>
                                 <div style={{ position: 'relative' }}>
                                     <Gauge size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                                    <input type="number" value={mileage} onChange={e => setMileage(e.target.value)} style={{ paddingLeft: '3rem' }} />
+                                    <input type="number" min={targetVehicle?.warranty.terms.mileageKm || 0} value={mileage} onChange={e => setMileage(e.target.value)} style={{ paddingLeft: '3rem' }} />
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -236,8 +242,8 @@ export const ServicePage = () => {
                                     {isUploading === 'maint' ? 'Uploading...' : maintFile ? '✓ Photo Ready' : '+ Upload Receipt/Odometer'}
                                 </button>
                                 <input id="maint-upload" type="file" hidden onChange={(e) => handleFileUpload(e, 'maint')} />
-                                <button className="premium-btn" onClick={handleRecordService} disabled={!targetVehicle} style={{ flex: 1 }}>
-                                    <Save size={18} /> Commit Service to Chain
+                                <button className="premium-btn" onClick={handleRecordService} disabled={!targetVehicle || !!targetVehicle?.pendingServiceRequest || Number(mileage) <= 0 || Number(mileage) < (targetVehicle?.warranty.terms.mileageKm || 0)} style={{ flex: 1, opacity: (!targetVehicle || !!targetVehicle?.pendingServiceRequest || Number(mileage) <= 0 || Number(mileage) < (targetVehicle?.warranty.terms.mileageKm || 0)) ? 0.5 : 1 }}>
+                                    <Save size={18} /> {targetVehicle?.pendingServiceRequest ? 'Pending Approval...' : (Number(mileage) <= 0 || Number(mileage) < (targetVehicle?.warranty.terms.mileageKm || 0)) ? 'Invalid Mileage' : 'Commit Service to Chain'}
                                 </button>
                             </div>
                             {renderFilePreview(maintFile)}

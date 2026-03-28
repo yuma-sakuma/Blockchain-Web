@@ -310,6 +310,34 @@ const applyEventToState = (currentVehicles: VehicleNFT[], event: VehicleEvent): 
         return { ...v, pendingPurchase: undefined };
       case 'LOAN_APPLICATION_CANCELLED':
         return { ...v, pendingLoan: undefined };
+      case 'SERVICE_ACCESS_REQUESTED':
+        return {
+          ...v,
+          pendingServiceRequest: {
+            workshop: payload.workshop,
+            vehicleVin: payload.vehicleVin,
+            vehicleModel: payload.vehicleModel,
+            actionLabel: payload.actionLabel,
+            requestedAt: payload.requestedAt,
+            actionPayload: payload.actionPayload,
+            actionEvidence: payload.actionEvidence
+          }
+        };
+      case 'SERVICE_ACCESS_APPROVED':
+        // Apply the maintenance data from the stored request
+        return {
+          ...v,
+          pendingServiceRequest: undefined,
+          warranty: {
+            ...v.warranty,
+            terms: {
+              ...v.warranty.terms,
+              mileageKm: Math.max(v.warranty.terms.mileageKm, payload.mileageKm || 0)
+            }
+          }
+        };
+      case 'SERVICE_ACCESS_REJECTED':
+        return { ...v, pendingServiceRequest: undefined };
       case 'LOAN_APPROVED':
         return {
           ...v,
@@ -363,6 +391,7 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
   // Build a map: tokenId → pendingPurchase | undefined
   const pendingMap = new Map<string, VehicleNFT['pendingPurchase']>();
   const pendingLoanMap = new Map<string, VehicleNFT['pendingLoan']>();
+  const pendingServiceMap = new Map<string, VehicleNFT['pendingServiceRequest']>();
   const loanMap = new Map<string, { loanAccount: VehicleNFT['loanAccount']; lien: VehicleNFT['lien']; currentOwner: string; ownerCount: number }>();
   for (const e of sorted) {
     if (e.type === 'PURCHASE_OFFER_CREATED') {
@@ -503,6 +532,18 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
           loanAccount: { ...existing.loanAccount, lienStatus: 'RELEASED' as const }
         });
       }
+    } else if (e.type === 'SERVICE_ACCESS_REQUESTED') {
+      pendingServiceMap.set(e.tokenId, {
+        workshop: e.payload.workshop,
+        vehicleVin: e.payload.vehicleVin,
+        vehicleModel: e.payload.vehicleModel,
+        actionLabel: e.payload.actionLabel,
+        requestedAt: e.payload.requestedAt,
+        actionPayload: e.payload.actionPayload,
+        actionEvidence: e.payload.actionEvidence
+      });
+    } else if (e.type === 'SERVICE_ACCESS_APPROVED' || e.type === 'SERVICE_ACCESS_REJECTED') {
+      pendingServiceMap.set(e.tokenId, undefined);
     }
   }
   return vehicles.map(v => {
@@ -512,6 +553,9 @@ const reconstructPendingPurchases = (vehicles: VehicleNFT[], events: VehicleEven
     }
     if (pendingLoanMap.has(v.tokenId)) {
       updates.pendingLoan = pendingLoanMap.get(v.tokenId);
+    }
+    if (pendingServiceMap.has(v.tokenId)) {
+      updates.pendingServiceRequest = pendingServiceMap.get(v.tokenId);
     }
     if (loanMap.has(v.tokenId)) {
       const loanData = loanMap.get(v.tokenId)!;
@@ -812,6 +856,9 @@ export const VehicleProvider = ({ children }: { children: ReactNode }) => {
             break;
           case 'INSPECTION_RESULT_RECORDED':
             txResult = await blockchainService.recordInspection(roleWallet, newEvent.tokenId, newEvent.payload);
+            break;
+          case 'SERVICE_ACCESS_APPROVED':
+            txResult = await blockchainService.logServiceApproval(roleWallet, newEvent.tokenId, newEvent.payload);
             break;
           case 'MAINTENANCE_RECORDED':
             txResult = await blockchainService.logMaintenance(roleWallet, newEvent.tokenId, newEvent.payload);

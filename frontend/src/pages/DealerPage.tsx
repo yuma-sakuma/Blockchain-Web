@@ -14,7 +14,7 @@ export const DealerPage = () => {
     const [showSaleModal, setShowSaleModal] = useState<string | null>(null);
     const [buyerAddress, setBuyerAddress] = useState('');
     const [salePrice, setSalePrice] = useState('');
-    const [financePrincipal, setFinancePrincipal] = useState('');
+    // const [financePrincipal, setFinancePrincipal] = useState('');
 
     // Dynamic Dealer ID from Auth
     const dealerId = address || 'UNKNOWN';
@@ -41,18 +41,17 @@ export const DealerPage = () => {
 
         setShowSaleModal(tokenId);
         setSalePrice('');
-        setFinancePrincipal('');
+        // setFinancePrincipal('');
         setBuyerAddress(import.meta.env.VITE_CONSUMER_ADDRESS || '');
     };
 
     const handleSubmitSale = async () => {
-        if (!showSaleModal || !salePrice || !buyerAddress || !financePrincipal) return;
+        if (!showSaleModal || !salePrice || !buyerAddress) return;
 
         const price = parseFloat(salePrice);
-        const principal = parseFloat(financePrincipal);
         const isValidAddress = buyerAddress.startsWith('0x') && buyerAddress.length === 42;
         
-        if (isNaN(price) || price <= 0 || isNaN(principal) || principal <= 0 || !isValidAddress) {
+        if (isNaN(price) || price <= 0 || !isValidAddress) {
             alert('กรุณากรอกราคาให้ครบถ้วนและที่อยู่กระเป๋าผู้ซื้อต้องถูกต้อง (42 ตัวอักษร)');
             return;
         }
@@ -73,13 +72,13 @@ export const DealerPage = () => {
                     buyer: buyerAddress,
                     price: price,
                     currency: 'ETH',
-                    financePrincipal: principal,
+                    financePrincipal: 0,
                     offeredAt: new Date().toISOString()
                 }
             });
             setShowSaleModal(null);
             setSalePrice('');
-            setFinancePrincipal('');
+            // setFinancePrincipal('');
             setBuyerAddress('');
         } catch (err) {
             console.error('Failed to create purchase offer:', err);
@@ -90,9 +89,10 @@ export const DealerPage = () => {
         const vehicle = vehicles.find(v => v.tokenId === tokenId);
         if (!vehicle) return;
 
-        const type = vehicle.pendingLoan ? 'LOAN_APPLICATION_CANCELLED' : 'PURCHASE_OFFER_CANCELLED';
+        // const type = vehicle.pendingLoan ? 'LOAN_APPLICATION_CANCELLED' : 'PURCHASE_OFFER_CANCELLED';
+        const type = 'PURCHASE_OFFER_CANCELLED';
         
-        if (!confirm(`Are you sure you want to cancel this pending ${vehicle.pendingLoan ? 'finance application' : 'sale offer'}?`)) {
+        if (!confirm(`Are you sure you want to cancel this pending sale offer?`)) {
             return;
         }
 
@@ -219,7 +219,7 @@ export const DealerPage = () => {
                                     style={{ marginBottom: 0, fontFamily: 'monospace' }}
                                 />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr ', gap: '1rem' }}>
                                 <div>
                                     <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                                         Cash Sale Price (ETH)
@@ -240,7 +240,7 @@ export const DealerPage = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                    {/* <label className="text-secondary" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                                         Finance Principal (THB)
                                     </label>
                                     <div style={{ position: 'relative' }}>
@@ -256,7 +256,7 @@ export const DealerPage = () => {
                                         <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-secondary)', fontWeight: 700, fontSize: '0.9rem' }}>
                                             THB
                                         </span>
-                                    </div>
+                                    </div> */}
                                 </div>
                             </div>
                         </div>
@@ -265,17 +265,17 @@ export const DealerPage = () => {
                             <button
                                 className="premium-btn"
                                 onClick={handleSubmitSale}
-                                disabled={!salePrice || !buyerAddress || !financePrincipal || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42}
-                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress || !financePrincipal || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42) ? 0.5 : 1 }}
+                                disabled={!salePrice || !buyerAddress || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42}
+                                style={{ flex: 1, opacity: (!salePrice || !buyerAddress || !buyerAddress.startsWith('0x') || buyerAddress.length !== 42) ? 0.5 : 1 }}
                             >
                                 <UserCheck size={16} /> Send Offer to Buyer
                             </button>
                             <button className="text-secondary" onClick={() => setShowSaleModal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>Cancel</button>
                         </div>
 
-                        <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '1rem', textAlign: 'center', opacity: 0.7 }}>
+                        {/* <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '1rem', textAlign: 'center', opacity: 0.7 }}>
                             ⚠️ Buyer will choose whether to pay ETH upfront or apply for Finance using the Principal.
-                        </p>
+                        </p> */}
                     </div>
                 </div>
             )}
@@ -358,12 +358,12 @@ export const DealerPage = () => {
                                                         PENDING CONSENT
                                                     </span>
                                                 )}
-                                                {hasPendingLoan && (
+                                                {/* {hasPendingLoan && (
                                                     <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                                                         <Clock size={12} style={{ marginRight: '4px' }} />
                                                         FINANCE REVIEW
                                                     </span>
-                                                )}
+                                                )} */}
                                             </div>
                                         </div>
                                         <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{v.makeModelTrim}</h3>
@@ -378,7 +378,7 @@ export const DealerPage = () => {
                                             </div>
                                         )}
 
-                                        {hasPendingLoan && (
+                                        {/* {hasPendingLoan && (
                                             <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
                                                 <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Applying For Finance</div>
                                                 <div style={{ fontSize: '0.9rem' }}>
@@ -387,7 +387,7 @@ export const DealerPage = () => {
                                                     <strong>Principal:</strong> {v.pendingLoan!.principal.toLocaleString()} THB
                                                 </div>
                                             </div>
-                                        )}
+                                        )} */}
 
                                         <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
@@ -408,7 +408,7 @@ export const DealerPage = () => {
                                             style={{ flex: 1.5, opacity: isBusy ? 0.5 : 1 }}
                                             disabled={isBusy}
                                         >
-                                            <UserCheck size={16} /> {hasPendingLoan ? 'Finance App Pending' : hasPendingOffer ? 'Awaiting Consent' : 'Offer Deal'}
+                                            <UserCheck size={16} /> {/* {hasPendingLoan ? 'Finance App Pending' :  */} {hasPendingOffer ? 'Awaiting Consent' : 'Offer Deal'}
                                         </button>
                                         {isBusy && (
                                             <button

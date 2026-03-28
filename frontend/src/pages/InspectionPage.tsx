@@ -138,11 +138,15 @@ export const InspectionPage = () => {
 
                     <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Current Odometer (KM)</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                Current Odometer (KM)
+                                {vehicle && <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>(Min: {vehicle.warranty.terms.mileageKm.toLocaleString()})</span>}
+                            </label>
                             <div style={{ position: 'relative' }}>
                                 <Gauge size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                 <input
                                     type="number"
+                                    min={vehicle?.warranty.terms.mileageKm || 0}
                                     value={mileage}
                                     onChange={e => setMileage(e.target.value)}
                                     style={{ paddingLeft: '2.5rem', width: '100%', marginBottom: 0 }}
@@ -250,15 +254,17 @@ export const InspectionPage = () => {
                         <button
                             className="premium-btn"
                             onClick={handleSubmitResult}
+                            disabled={!vehicle || Number(mileage) < (vehicle?.warranty.terms.mileageKm || 0)}
                             style={{
                                 padding: '1.25rem',
                                 fontSize: '1rem',
                                 borderRadius: '16px',
-                                marginTop: 'auto'
+                                marginTop: 'auto',
+                                opacity: (!vehicle || Number(mileage) < (vehicle?.warranty.terms.mileageKm || 0)) ? 0.5 : 1
                             }}
                         >
                             <ClipboardCheck size={20} />
-                            Submit Inspection Result
+                            {Number(mileage) < (vehicle?.warranty.terms.mileageKm || 0) ? 'Invalid Mileage' : 'Submit Inspection Result'}
                         </button>
                     </div>
                 </div>

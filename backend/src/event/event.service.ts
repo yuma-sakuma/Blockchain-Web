@@ -1120,6 +1120,16 @@ export class EventService {
         case 'INSPECTION_RESULT_RECORDED': {
           console.log('[EventService] 🔍 INSPECTION_RESULT_RECORDED event');
           const inspMetrics = payload.metrics || {};
+          
+          // คำนวณ Hash ให้เหมือนกันทั้งระบบ Database และ Blockchain
+          const finalMetricsHash = ethers.id(JSON.stringify(inspMetrics));
+          
+          let finalCertHash = payload.certHash || ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, passed: payload.passed, inspectedAt: Date.now() }));
+          // ถ้า certHash ที่ส่งมาจาก Frontend ไม่ใช่รูปแบบ 32-byte Hex (0x...) เช่นเป็นข้อความธรรมดา "CERT-123" ให้ทำการแปลงก่อน
+          if (!ethers.isHexString(finalCertHash, 32)) {
+            finalCertHash = ethers.id(finalCertHash.toString());
+          }
+
           const inspection = this.inspectionRepository.create({
             tokenId: vehicle.tokenId,
             stationAddress: createEventDto.actor,
@@ -1127,9 +1137,9 @@ export class EventService {
             stationName: payload.stationId || 'Authorized Station',
             vinVerified: true,
             result: payload.passed ? 'PASS' as any : 'FAIL' as any,
-            metrics: payload.metrics || {},
-            metricsHash: ethers.id(JSON.stringify(payload.metrics || {})),
-            certHash: payload.certHash || ethers.id(JSON.stringify({ tokenId: vehicle.tokenId, passed: payload.passed, inspectedAt: Date.now() })),
+            metrics: inspMetrics,
+            metricsHash: finalMetricsHash,
+            certHash: finalCertHash,
             issuedAt: Date.now().toString(),
             // §4.4 Fix: Map inspection certificate URL from uploaded evidence
             certUrl: createEventDto.evidence?.[0]?.url || null,
@@ -1153,8 +1163,8 @@ export class EventService {
                 const tx = await this.blockchainService.vehicleRegistryContract.recordInspection(
                   createEventDto.tokenId,
                   payload.passed ? 1 : 0,
-                  ethers.id(JSON.stringify(payload.metrics || {})),
-                  ethers.id(JSON.stringify({ tokenId: vehicle!.tokenId, passed: payload.passed, inspectedAt: Date.now() }))
+                  finalMetricsHash,
+                  finalCertHash
                 );
                 const receipt = await tx.wait();
                 console.log('[EventService] ✅ INSPECTION Transaction Confirmed!');
@@ -1168,6 +1178,13 @@ export class EventService {
             }
           } // end if (!createEventDto.txHash)
           await this.inspectionRepository.save(inspection);
+          break;
+        }
+
+        case 'SERVICE_ACCESS_APPROVED': {
+          console.log('[EventService] 📝 SERVICE_ACCESS_APPROVED event');
+          // No specific backend data logic required, handled off-chain or by generic event saving
+          // Ensure it falls through to save the basic event history
           break;
         }
 
@@ -1303,12 +1320,18 @@ export class EventService {
 
               const ODOMETER_EVENT_TYPE = 300;
               txHash = await this.blockchainService.withTxLock(async () => {
+                
+                let finalEvidenceHash = payload.evidenceHash || createEventDto.evidence?.[0]?.hash || ethers.id('ODOMETER_SNAPSHOT');
+                if (!ethers.isHexString(finalEvidenceHash, 32)) {
+                  finalEvidenceHash = ethers.id(finalEvidenceHash.toString());
+                }
+
                 const tx = await this.blockchainService.vehicleLifecycleContract.logEvent(
                   createEventDto.tokenId,
                   ODOMETER_EVENT_TYPE,
                   Math.floor(Date.now() / 1000),
                   ethers.id(JSON.stringify({ mileageKm: newMileage, previous: currentMileage })),
-                  ethers.id('ODOMETER_SNAPSHOT')
+                  finalEvidenceHash
                 );
                 const receipt = await tx.wait();
                 console.log('[EventService] ✅ ODOMETER_SNAPSHOT Transaction Confirmed!');

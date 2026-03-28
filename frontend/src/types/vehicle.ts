@@ -98,6 +98,16 @@ export interface PendingLoan {
   appliedAt: string;
 }
 
+export interface PendingServiceRequest {
+  workshop: string;
+  vehicleVin: string;
+  vehicleModel: string;
+  actionLabel: string;
+  requestedAt: string;
+  actionPayload: any;
+  actionEvidence?: any[];
+}
+
 export interface LoanAccount {
   borrower: string;
   principal: number;
@@ -136,6 +146,9 @@ export interface VehicleNFT {
   // Loan / Lien Financing
   pendingLoan?: PendingLoan;
   loanAccount?: LoanAccount;
+
+  // Pending Service Request (workshop -> owner approval)
+  pendingServiceRequest?: PendingServiceRequest;
 }
 
 export type EventType =
@@ -185,6 +198,7 @@ export type EventType =
   | 'LOAN_APPLICATION_CANCELLED'
   | 'LOAN_APPROVED'
   | 'SERVICE_ACCESS_REQUESTED'
+  | 'SERVICE_ACCESS_APPROVED'
   | 'SERVICE_ACCESS_REJECTED';
 
 export interface VehicleEvent {

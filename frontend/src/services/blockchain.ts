@@ -188,7 +188,14 @@ export const blockchainService = {
       const contract = getContract("VEHICLE_LIFECYCLE", wallet);
       const policyNumber = payload.policyNo || payload.policyNumber;
       const actionMap: Record<string, number> = { new: 0, renew: 1, change: 2, cancel: 3 };
-      const tx = await contract.recordInsurancePolicy(tokenId, ethers.id(policyNumber), actionMap[payload.type?.toLowerCase()] || 0, Math.floor(new Date(payload.startDate || payload.validFrom || Date.now()).getTime() / 1000), Math.floor(new Date(payload.validUntil || payload.endDate || Date.now()).getTime() / 1000), ethers.id(JSON.stringify({ policyNo: policyNumber, coverageType: payload.coverageType })));
+
+      // ใช้ evidenceHash จากไฟล์ที่อัปโหลด (ถ้ามี) เป็น coverageHash บน Blockchain
+      let coverageHash = payload.evidenceHash || ethers.id(JSON.stringify({ policyNo: policyNumber, coverageType: payload.coverageType }));
+      if (!ethers.isHexString(coverageHash, 32)) {
+        coverageHash = ethers.id(coverageHash.toString());
+      }
+
+      const tx = await contract.recordInsurancePolicy(tokenId, ethers.id(policyNumber), actionMap[payload.type?.toLowerCase()] || 0, Math.floor(new Date(payload.startDate || payload.validFrom || Date.now()).getTime() / 1000), Math.floor(new Date(payload.validUntil || payload.endDate || Date.now()).getTime() / 1000), coverageHash);
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });
@@ -223,7 +230,16 @@ export const blockchainService = {
   async recordInspection(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     return this.withTxLock(async () => {
       const contract = getContract("VEHICLE_REGISTRY", wallet);
-      const tx = await contract.recordInspection(tokenId, payload.passed ? 1 : 0, ethers.id(JSON.stringify(payload.metrics || {})), ethers.id(JSON.stringify({ tokenId, passed: payload.passed, inspectedAt: Date.now() })));
+      
+      // ใช้ certHash จาก payload (ที่มาจากไฟล์ที่อัปโหลด) เพื่อให้ตรงกับ Off-Chain Database
+      const metricsHash = ethers.id(JSON.stringify(payload.metrics || {}));
+      let certHash = payload.certHash || ethers.id(JSON.stringify({ tokenId, passed: payload.passed, inspectedAt: Date.now() }));
+      // ถ้า certHash ยังไม่ใช่รูปแบบ bytes32 ให้แปลงก่อน
+      if (!ethers.isHexString(certHash, 32)) {
+        certHash = ethers.id(certHash.toString());
+      }
+
+      const tx = await contract.recordInspection(tokenId, payload.passed ? 1 : 0, metricsHash, certHash);
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });
@@ -281,11 +297,18 @@ export const blockchainService = {
       }
 
       const maintJobs = payload.jobs || payload.parts || [];
+
+      // ใช้ evidenceHash จากไฟล์ที่อัปโหลด (ถ้ามี) เป็น maintenanceHash บน Blockchain
+      let maintenanceHash = payload.evidenceHash || ethers.id(JSON.stringify({ tokenId, mileageKm: payload.mileageKm, jobs: maintJobs }));
+      if (!ethers.isHexString(maintenanceHash, 32)) {
+        maintenanceHash = ethers.id(maintenanceHash.toString());
+      }
+
       const tx = await contract.logMaintenance(
         tokenId,
         ethers.id(JSON.stringify({ tokenId, workshop: wallet.address })),
         payload.mileageKm || 0,
-        ethers.id(JSON.stringify({ tokenId, mileageKm: payload.mileageKm, jobs: maintJobs })),
+        maintenanceHash,
         ethers.id(JSON.stringify(maintJobs)),
         0,
         Math.floor(Date.now() / 1000)
@@ -298,7 +321,30 @@ export const blockchainService = {
   async logPartCertification(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
     return this.withTxLock(async () => {
       const contract = getContract("VEHICLE_LIFECYCLE", wallet);
-      const tx = await contract.logEvent(tokenId, 200, Math.floor(Date.now() / 1000), ethers.id(JSON.stringify({ type: payload.partType, sn: payload.newPartNo })), ethers.id(payload.reason || "Certification"));
+
+      // ใช้ evidenceHash จากไฟล์ที่อัปโหลด (ถ้ามี) เป็น evidenceHash บน Blockchain
+      let evidenceHash = payload.evidenceHash || ethers.id(payload.reason || "Certification");
+      if (!ethers.isHexString(evidenceHash, 32)) {
+        evidenceHash = ethers.id(evidenceHash.toString());
+      }
+
+      const tx = await contract.logEvent(tokenId, 200, Math.floor(Date.now() / 1000), ethers.id(JSON.stringify({ type: payload.partType, sn: payload.newPartNo })), evidenceHash);
+      const receipt = await tx.wait();
+      return { txHash: receipt.hash };
+    });
+  },
+
+  async logServiceApproval(wallet: ethers.Wallet, tokenId: string, payload: any): Promise<BlockchainResult> {
+    return this.withTxLock(async () => {
+      const contract = getContract("VEHICLE_LIFECYCLE", wallet);
+      // EventType 105: SERVICE_ACCESS_APPROVED (Consumer approving maintenance)
+      const tx = await contract.logEvent(
+        tokenId,
+        105,
+        Math.floor(Date.now() / 1000),
+        ethers.id(JSON.stringify({ workshop: payload.workshop, mileageKm: payload.mileageKm })),
+        ethers.id("Service Approved by Owner")
+      );
       const receipt = await tx.wait();
       return { txHash: receipt.hash };
     });

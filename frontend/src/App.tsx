@@ -7,13 +7,14 @@ import { PrivateRoute } from './components/PrivateRoute';
 import { ConsumerPage } from './pages/ConsumerPage';
 import { DealerPage } from './pages/DealerPage';
 import { DLTPage } from './pages/DLTPage';
-import { FinancePage } from './pages/FinancePage';
+// import { FinancePage } from './pages/FinancePage';
 import { InspectionPage } from './pages/InspectionPage';
 import { InsurancePage } from './pages/InsurancePage';
 import { LoginPage } from './pages/LoginPage';
 import { ManufacturerPage } from './pages/ManufacturerPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ServicePage } from './pages/ServicePage';
+import { EventLogPage } from './pages/EventLogPage';
 import { VehicleProvider } from './store';
 
 function App() {
@@ -29,6 +30,11 @@ function App() {
             <Route path="/" element={
               <PrivateRoute>
                 <OverviewPage />
+              </PrivateRoute>
+            } />
+            <Route path="/event-log" element={
+              <PrivateRoute>
+                <EventLogPage />
               </PrivateRoute>
             } />
 
@@ -69,11 +75,11 @@ function App() {
               </PrivateRoute>
             } />
             
-            <Route path="/finance" element={
+            {/* <Route path="/finance" element={
               <PrivateRoute allowedRoles={[UserRole.LENDER]}>
                 <FinancePage />
               </PrivateRoute>
-            } />
+            } /> */}
             
             <Route path="/insurance" element={
               <PrivateRoute allowedRoles={[UserRole.INSURER]}>

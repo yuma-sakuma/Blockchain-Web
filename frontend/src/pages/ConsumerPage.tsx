@@ -1,13 +1,13 @@
-import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign, FileText, History, Image, Key, Landmark, Lock, Send, Shield, ShieldCheck, ShoppingCart, Trash2, User, Wrench, X } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CheckCircle, Clock, CreditCard, DollarSign, FileText, History, Image, Lock, Shield, ShieldCheck, ShoppingCart, Trash2, User, Wrench, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getWalletForRole } from '../config/contracts';
-import { API_BASE_URL, uploadFile } from '../services/api';
+import { uploadFile } from '../services/api';
 import { blockchainService } from '../services/blockchain';
 import { useVehicleStore } from '../store';
 
-const API_BASE = API_BASE_URL;
+const API_BASE = 'http://localhost:3000';
 
 export const ConsumerPage = () => {
   const { vehicles, events, addEvent } = useVehicleStore();
@@ -17,9 +17,9 @@ export const ConsumerPage = () => {
   const [processingPurchase, setProcessingPurchase] = useState<string | null>(null);
 
   // Lien/Finance modal state
-  const [lienModal, setLienModal] = useState<string | null>(null); // tokenId
-  const [financeLender, setFinanceLender] = useState(import.meta.env.VITE_LENDER_ADDRESS || '');
-  const [lienTerm, setLienTerm] = useState<48 | 60>(48);
+  // const [lienModal, setLienModal] = useState<string | null>(null); // tokenId
+  // // const [financeLender, setFinanceLender] = useState(import.meta.env.VITE_LENDER_ADDRESS || '');
+  // const [lienTerm, setLienTerm] = useState<48 | 60>(48);
   // Sale modal state
   const [saleModal, setSaleModal] = useState<{ tokenId: string; vin: string; model: string } | null>(null);
   const [saleBuyerAddress, setSaleBuyerAddress] = useState('');
@@ -59,6 +59,9 @@ export const ConsumerPage = () => {
     v.pendingPurchase.buyer.toLowerCase() === normalizedAddress
   );
 
+  // Find vehicles with pending service requests (workshops awaiting owner approval)
+  const pendingServiceVehicles = myVehicles.filter(v => v.pendingServiceRequest);
+
   // Insurance: vehicles with expiring policies (within 30 days)
   const now = new Date();
   const expiringVehicles = myVehicles.filter(v => {
@@ -67,120 +70,6 @@ export const ConsumerPage = () => {
     const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
     return daysLeft <= 30 && daysLeft > 0;
   });
-
-  // --- Consent Helpers ---
-  const getActiveConsents = (tokenId: string) => {
-    const consentEvents = events.filter(e => e.tokenId === tokenId && e.type === 'CONSENT_UPDATED');
-    const revokeEvents = events.filter(e => e.tokenId === tokenId && e.type === 'CONSENT_REVOKED');
-    return consentEvents.filter(ce => {
-      const isRevoked = revokeEvents.some(re => re.payload?.revokeFrom === ce.payload?.grantTo && new Date(re.timestamp) > new Date(ce.timestamp));
-      return !isRevoked;
-    });
-  };
-
-  // --- Pending Service Requests (from workshops) ---
-  const pendingServiceRequests = events.filter(e =>
-    e.type === 'SERVICE_ACCESS_REQUESTED' &&
-    myVehicles.some(v => v.tokenId === e.tokenId) &&
-    // Not yet approved or rejected
-    !events.some(r =>
-      r.tokenId === e.tokenId &&
-      (r.type === 'CONSENT_UPDATED' || r.type === 'SERVICE_ACCESS_REJECTED') &&
-      r.payload?.requestId === e.id &&
-      new Date(r.timestamp) > new Date(e.timestamp)
-    )
-  );
-
-  const handleApproveServiceRequest = async (request: any) => {
-    try {
-      const { actionType, actionPayload, actionEvidence, actionLabel } = request.payload;
-
-      // 1. First, grant consent so the workshop has permission on the blockchain
-      // Mark request as approved
-      await addEvent({
-        type: 'CONSENT_UPDATED',
-        actor: currentUser,
-        tokenId: request.tokenId,
-        payload: {
-          grantTo: request.payload.workshop,
-          scope: 'write',
-          approvedAction: actionType,
-          approvedLabel: actionLabel,
-          requestId: request.id,
-          grantedAt: new Date().toISOString()
-        }
-      });
-
-      // 2. Fire the actual event that the workshop requested
-      if (actionType && actionPayload) {
-        await addEvent({
-          type: actionType,
-          actor: request.payload.workshop,
-          actorRole: 'SERVICE',
-          tokenId: request.tokenId,
-          payload: actionPayload,
-          evidence: actionEvidence || undefined
-        });
-
-        // 3. Auto-fire ODOMETER_SNAPSHOT for maintenance events
-        if (actionType === 'MAINTENANCE_RECORDED' && actionPayload.mileageKm) {
-          await addEvent({
-            type: 'ODOMETER_SNAPSHOT',
-            actor: request.payload.workshop,
-            actorRole: 'SERVICE',
-            tokenId: request.tokenId,
-            payload: {
-              mileageKm: actionPayload.mileageKm,
-              date: actionPayload.date || new Date().toISOString(),
-              evidenceHash: actionPayload.evidenceHash
-            },
-            evidence: actionEvidence || undefined
-          });
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to approve:', err);
-      alert(`Failed: ${err.message}`);
-    }
-  };
-
-  const handleRejectServiceRequest = async (request: any) => {
-    if (!confirm('Reject this service request?')) return;
-    try {
-      await addEvent({
-        type: 'SERVICE_ACCESS_REJECTED',
-        actor: currentUser,
-        tokenId: request.tokenId,
-        payload: {
-          rejectFrom: request.payload.workshop,
-          requestId: request.id,
-          rejectedAt: new Date().toISOString(),
-          reason: 'Declined by owner'
-        }
-      });
-    } catch (err: any) {
-      console.error('Failed to reject:', err);
-      alert(`Failed: ${err.message}`);
-    }
-  };
-
-  const handleRevokeConsent = async (tokenId: string, revokeFrom: string) => {
-    if (!confirm(`Revoke consent for ${revokeFrom.substring(0, 8)}...?`)) return;
-    try {
-      await addEvent({
-        type: 'CONSENT_REVOKED',
-        actor: currentUser,
-        tokenId,
-        payload: {
-          revokeFrom,
-          revokedAt: new Date().toISOString()
-        }
-      });
-    } catch (err: any) {
-      console.error('Failed to revoke consent:', err);
-      alert(`Failed: ${err.message}`);
-    }
-  };
 
   // --- Sale Modal Handlers (Consumer-to-Consumer) ---
   const handleOpenSaleModal = (tokenId: string) => {
@@ -200,12 +89,12 @@ export const ConsumerPage = () => {
   };
 
   // --- Privacy Handlers ---
-  const handleOpenPrivacyModal = (tokenId: string) => {
-    const vehicle = vehicles.find(v => v.tokenId === tokenId);
-    if (!vehicle) return;
-    setPrivacyModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
-    setConsentAddress('');
-  };
+  // const handleOpenPrivacyModal = (tokenId: string) => {
+  //   const vehicle = vehicles.find(v => v.tokenId === tokenId);
+  //   if (!vehicle) return;
+  //   setPrivacyModal({ tokenId, vin: vehicle.vin, model: vehicle.makeModelTrim });
+  //   setConsentAddress('');
+  // };
 
   const handleGrantConsent = async () => {
     if (!privacyModal || !consentAddress) return;
@@ -409,43 +298,43 @@ export const ConsumerPage = () => {
     });
   };
 
-  const handleOpenLienModal = (tokenId: string) => {
-    setLienModal(tokenId);
-    setLienTerm(48);
-  };
+  // const handleOpenLienModal = (tokenId: string) => {
+  //   setLienModal(tokenId);
+  //   setLienTerm(48);
+  // };
 
-  const handleLienSubmit = async () => {
-    if (!lienModal || !financeLender) return;
-    const vehicle = vehicles.find(v => v.tokenId === lienModal);
-    if (!vehicle?.pendingPurchase?.financePrincipal) {
-      alert('Error: No Finance Principal found in the original offer.');
-      return;
-    }
-    const principal = vehicle.pendingPurchase.financePrincipal;
+  // const handleLienSubmit = async () => {
+  //   if (!lienModal || !financeLender) return;
+  //   const vehicle = vehicles.find(v => v.tokenId === lienModal);
+  //   if (!vehicle?.pendingPurchase?.financePrincipal) {
+  //     alert('Error: No Finance Principal found in the original offer.');
+  //     return;
+  //   }
+  //   const principal = vehicle.pendingPurchase.financePrincipal;
 
-    setProcessingPurchase(lienModal);
-    try {
-      await addEvent({
-        type: 'LOAN_APPLICATION_CREATED',
-        actor: currentUser,
-        tokenId: lienModal,
-        payload: {
-          borrower: currentUser,
-          lender: financeLender,
-          principal: principal,
-          interestRateBps: 350,
-          termMonths: lienTerm,
-          appliedAt: new Date().toISOString()
-        }
-      });
-      alert(`✅ Loan application submitted!\nLender: ${financeLender.substring(0, 10)}...\nPrincipal: ${principal.toLocaleString()} THB\nRate: 3.5%\nTerm: ${lienTerm} months`);
-      setLienModal(null);
-    } catch (err: any) {
-      alert(`❌ ล้มเหลว: ${err.message}`);
-    } finally {
-      setProcessingPurchase(null);
-    }
-  };
+  //   setProcessingPurchase(lienModal);
+  //   try {
+  //     await addEvent({
+  //       type: 'LOAN_APPLICATION_CREATED',
+  //       actor: currentUser,
+  //       tokenId: lienModal,
+  //       payload: {
+  //         borrower: currentUser,
+  //         lender: financeLender,
+  //         principal: principal,
+  //         interestRateBps: 350,
+  //         termMonths: lienTerm,
+  //         appliedAt: new Date().toISOString()
+  //       }
+  //     });
+  //     alert(`✅ Loan application submitted!\nLender: ${financeLender.substring(0, 10)}...\nPrincipal: ${principal.toLocaleString()} THB\nRate: 3.5%\nTerm: ${lienTerm} months`);
+  //     setLienModal(null);
+  //   } catch (err: any) {
+  //     alert(`❌ ล้มเหลว: ${err.message}`);
+  //   } finally {
+  //     setProcessingPurchase(null);
+  //   }
+  // };
 
   const handleAcceptLien = async (tokenId: string) => {
     const vehicle = vehicles.find(v => v.tokenId === tokenId);
@@ -498,6 +387,57 @@ export const ConsumerPage = () => {
     setC2cCounterModal(null);
     setC2cCounterAmount('');
     alert(`✅ Counter-offer sent: ${amount.toLocaleString()} THB`);
+  };
+
+  // --- Service Approval Handlers ---
+  const handleApproveService = async (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle?.pendingServiceRequest) return;
+    const req = vehicle.pendingServiceRequest;
+    if (!confirm(`อนุมัติการบันทึกซ่อมบำรุง?\n\n${req.actionLabel}\nWorkshop: ${req.workshop.substring(0, 10)}...\nMileage: ${req.actionPayload?.mileageKm?.toLocaleString() || 'N/A'} KM`)) return;
+
+    try {
+      // 1. Emit approval event (clears pending + applies mileage)
+      await addEvent({
+        type: 'SERVICE_ACCESS_APPROVED',
+        actor: currentUser,
+        tokenId: tokenId,
+        payload: {
+          workshop: req.workshop,
+          mileageKm: req.actionPayload?.mileageKm || 0,
+          approvedAt: new Date().toISOString()
+        }
+      });
+
+      // We now handle the blockchain recording via SERVICE_ACCESS_APPROVED
+      // No need to emit MAINTENANCE_RECORDED from the frontend since the workshop already
+      // sent the data and the consumer is just approving it.
+
+      alert('✅ Service record approved and committed to blockchain!');
+    } catch (err: any) {
+      alert(`❌ Failed: ${err.message}`);
+    }
+  };
+
+  const handleRejectService = async (tokenId: string) => {
+    const vehicle = vehicles.find(v => v.tokenId === tokenId);
+    if (!vehicle?.pendingServiceRequest) return;
+    if (!confirm('ปฏิเสธคำขอบันทึกซ่อมบำรุงนี้?')) return;
+
+    try {
+      await addEvent({
+        type: 'SERVICE_ACCESS_REJECTED',
+        actor: currentUser,
+        tokenId: tokenId,
+        payload: {
+          workshop: vehicle.pendingServiceRequest.workshop,
+          rejectedAt: new Date().toISOString()
+        }
+      });
+      alert('❌ Service request rejected.');
+    } catch (err: any) {
+      alert(`❌ Failed: ${err.message}`);
+    }
   };
 
   const selectedVehicle = vehicles.find(v => v.tokenId === (showGreenBook || showHistory));
@@ -643,13 +583,13 @@ export const ConsumerPage = () => {
                       )}
                     </button>
                   )}
-                  {v.pendingLoan && (
+                  {/* {v.pendingLoan && (
                     <button className="premium-btn" disabled style={{ flex: 2, opacity: 0.5, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
                       <Clock size={16} /> Pending Finance Approval
                     </button>
-                  )}
+                  )} */}
                   {/* LIEN Button — purple, between Accept and Decline */}
-                  {!v.pendingPurchase?.isLien && !v.pendingLoan && v.pendingPurchase?.financePrincipal && (
+                  {/* {!v.pendingPurchase?.isLien && !v.pendingLoan && v.pendingPurchase?.financePrincipal && (
                     <button
                       onClick={() => handleOpenLienModal(v.tokenId)}
                       disabled={processingPurchase === v.tokenId}
@@ -666,7 +606,7 @@ export const ConsumerPage = () => {
                     >
                       Apply For Finance
                     </button>
-                  )}
+                  )} */}
                   <button
                     onClick={() => handleDeclineOffer(v.tokenId)}
                     disabled={processingPurchase === v.tokenId}
@@ -768,61 +708,65 @@ export const ConsumerPage = () => {
         document.body
       )}
 
-      {/* ═══════════ Pending Service Requests ═══════════ */}
-      {pendingServiceRequests.length > 0 && (
-        <div style={{ marginBottom: '2rem' }}>
+      {/* ═══════════ Pending Service Requests Section ═══════════ */}
+      {pendingServiceVehicles.length > 0 && (
+        <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Send size={24} color="#a78bfa" />
-            Pending Service Requests
-            <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', border: '1px solid rgba(139, 92, 246, 0.3)', fontSize: '0.8rem' }}>
-              {pendingServiceRequests.length}
+            <Wrench size={24} color="#38bdf8" />
+            Pending Service Approvals
+            <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: '0.8rem' }}>
+              {pendingServiceVehicles.length}
             </span>
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {pendingServiceRequests.map((req, idx) => {
-              const vehicle = vehicles.find(v => v.tokenId === req.tokenId);
-              const timeSince = Math.ceil((Date.now() - new Date(req.payload.requestedAt).getTime()) / 60000);
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            {pendingServiceVehicles.map(v => {
+              const req = v.pendingServiceRequest!;
               return (
-                <div key={idx} className="card" style={{ padding: '1.5rem', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{vehicle?.makeModelTrim || 'Unknown'}</div>
-                      <div className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>VIN: {req.payload.vehicleVin}</div>
+                <div key={v.tokenId + '-svc'} className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ padding: '1.5rem', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{v.makeModelTrim}</h3>
+                        <p className="text-secondary" style={{ fontSize: '0.85rem', margin: '0.25rem 0 0' }}>VIN: {v.vin}</p>
+                      </div>
+                      <span className="badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>SERVICE REQUEST</span>
                     </div>
-                    <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.12)', color: '#a78bfa', fontSize: '0.7rem', border: 'none' }}>
-                      {timeSince < 60 ? `${timeSince}m ago` : `${Math.floor(timeSince / 60)}h ago`}
-                    </span>
+
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(56, 189, 248, 0.03))', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Service Description</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, color: '#38bdf8' }}>{req.actionLabel}</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div>
+                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Workshop</div>
+                          <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', fontWeight: 600 }}>{req.workshop.substring(0, 10)}...{req.workshop.substring(38)}</div>
+                        </div>
+                        <div>
+                          <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>New Mileage</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{req.actionPayload?.mileageKm?.toLocaleString() || 'N/A'} KM</div>
+                        </div>
+                      </div>
+                      <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.75rem' }}>
+                        Requested: {new Date(req.requestedAt).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Wrench size={14} color="var(--accent-secondary)" />
-                      <span className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Workshop</span>
-                    </div>
-                    <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{req.payload.workshop.substring(0, 10)}...{req.payload.workshop.substring(38)}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <FileText size={14} color="var(--accent-primary)" />
-                      <span className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Requested Action</span>
-                      {req.payload.actionType && (
-                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-primary)', fontSize: '0.6rem', border: 'none', marginLeft: 'auto' }}>
-                          {req.payload.actionType.replace(/_/g, ' ')}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>{req.payload.actionLabel || req.payload.requestedJobs || 'Service action'}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+
+                  <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.25)', display: 'flex', gap: '0.75rem' }}>
                     <button
                       className="premium-btn"
-                      onClick={() => handleApproveServiceRequest(req)}
-                      style={{ flex: 1, background: '#10b981' }}
+                      onClick={() => handleApproveService(v.tokenId)}
+                      style={{ flex: 2 }}
                     >
-                      <CheckCircle size={16} /> Approve Access
+                      <CheckCircle size={16} /> Approve & Commit
                     </button>
                     <button
-                      onClick={() => handleRejectServiceRequest(req)}
-                      style={{ flex: 1, padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                      onClick={() => handleRejectService(v.tokenId)}
+                      style={{ flex: 1, background: 'transparent', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer' }}
                     >
-                      <X size={16} /> Reject
+                      Reject
                     </button>
                   </div>
                 </div>
@@ -921,16 +865,18 @@ export const ConsumerPage = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
                   <button onClick={() => { setShowGreenBook(v.tokenId); setShowHistory(null); }} style={{ border: 'none', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <FileText size={18} color="var(--success)" /> BOOK
                   </button>
                   <button onClick={() => { setShowHistory(v.tokenId); setShowGreenBook(null); }} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <History size={18} color="var(--accent-secondary)" /> HISTORY
                   </button>
+                  {/* 
                   <button onClick={() => handleOpenPrivacyModal(v.tokenId)} style={{ border: 'none', borderLeft: '1px solid var(--border-subtle)', background: 'transparent', padding: '1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
                     <ShieldCheck size={18} color="#a78bfa" /> PRIVACY
                   </button>
+                  */}
                   <button
                     onClick={() => handleOpenClaimModal(v.tokenId)}
                     disabled={!!v.activeClaim && !['repaired', 'rejected'].includes(v.activeClaim.status) || !v.insurance}
@@ -1108,7 +1054,7 @@ export const ConsumerPage = () => {
         document.body
       )}
       {/* ═══════════ LIEN Offer Modal ═══════════ */}
-      {lienModal && (() => {
+      {/* {lienModal && (() => {
         const lienVehicle = vehicles.find(v => v.tokenId === lienModal);
         const principal = lienVehicle?.pendingPurchase?.financePrincipal || 0;
         return lienVehicle ? createPortal(
@@ -1200,7 +1146,7 @@ export const ConsumerPage = () => {
           </div>,
           document.body
         ) : null;
-      })()}
+      })()} */}
       {/* ═══════════ C2C Counter-Offer Modal ═══════════ */}
       {c2cCounterModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

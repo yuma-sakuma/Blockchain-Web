@@ -1,4 +1,4 @@
-import { ClipboardCheck, Factory, FileBadge, Landmark, LayoutDashboard, LogOut, Shield, Store, User, Wrench } from 'lucide-react';
+import { ClipboardCheck, Factory, FileBadge, LayoutDashboard, List, LogOut, Shield, Store, User, Wrench } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -93,13 +93,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/', roles: [] }, // Empty roles means all roles
+    { icon: List, label: 'On-Chain Events', path: '/event-log', roles: [] },
     { icon: Factory, label: 'Manufacturer', path: '/manufacturer', roles: [UserRole.MANUFACTURER] },
     { icon: Store, label: 'Dealer', path: '/dealer', roles: [UserRole.DEALER] },
     { icon: User, label: 'My Garage', path: '/consumer', roles: [UserRole.CONSUMER, UserRole.CONSUMER2] },
     { icon: FileBadge, label: 'DLT Registry', path: '/dlt', roles: [UserRole.DLT_OFFICER] },
     { icon: Wrench, label: 'Service Center', path: '/service', roles: [UserRole.SERVICE_PROVIDER] },
     { icon: ClipboardCheck, label: 'Inspection', path: '/inspection', roles: [UserRole.INSPECTOR] },
-    { icon: Landmark, label: 'Finance', path: '/finance', roles: [UserRole.LENDER] },
+    // { icon: Landmark, label: 'Finance', path: '/finance', roles: [UserRole.LENDER] },
     { icon: Shield, label: 'Insurance', path: '/insurance', roles: [UserRole.INSURER] },
   ];
 
